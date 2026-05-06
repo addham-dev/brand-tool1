@@ -117,7 +117,7 @@
 </head>
 <body>
 
-<div class="overlay" id="overlay">
+<div class="overlay" id="overlay" onclick="document.getElementById('overlay').classList.remove('on')">
   <div class="overlay-title" id="overlay-title">Uploading to Supabase...</div>
   <div class="overlay-sub" id="overlay-sub">Processing files</div>
   <div class="overlay-bar"></div>
@@ -169,7 +169,20 @@
     <div class="section-card">
       <div class="card-title">Reporting Week — Select the week you are uploading</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;" id="week-toggle-btns"></div>
-      <div style="margin-top:10px;font-size:11px;color:var(--text2)">Selected: <b id="week-selected-label" style="color:var(--blue)">—</b></div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="font-size:11px;color:var(--text2)">Selected: <b id="week-selected-label" style="color:var(--blue)">—</b></div>
+        <button onclick="showManualDate()" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--blue-light);color:var(--blue-dark);font-size:11px;font-weight:600;cursor:pointer;">Older week ↓</button>
+      </div>
+      <div id="manual-date-row" style="display:none;margin-top:10px;display:none;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div class="input-group">
+          <label class="input-label">Week Start (Sunday)</label>
+          <input type="date" class="date-input" id="manual-start" onchange="manualDateChanged()">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Week End (Saturday)</label>
+          <input type="date" class="date-input" id="manual-end" onchange="manualDateChanged()">
+        </div>
+      </div>
       <input type="hidden" id="week-start">
       <input type="hidden" id="week-end">
     </div>
@@ -351,6 +364,7 @@ function checkPassword() {
   if (pw === ADMIN_PASSWORD) {
     document.getElementById('login-section').style.display = 'none';
     document.getElementById('main-section').style.display = 'block';
+    document.getElementById('overlay').classList.remove('on');
     buildWeekToggles();
     loadHistory();
   } else {
@@ -434,7 +448,26 @@ function loadFile(f, type) {
   checkReady();
 }
 
-function autoDetectWeek(filename) {
+function showManualDate() {
+  const row = document.getElementById('manual-date-row');
+  row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+}
+
+function manualDateChanged() {
+  const start = document.getElementById('manual-start').value;
+  const end = document.getElementById('manual-end').value;
+  if (start && end) {
+    document.getElementById('week-start').value = start;
+    document.getElementById('week-end').value = end;
+    const label = formatDate(start) + ' – ' + formatDate(end) + ' (manual)';
+    document.getElementById('week-selected-label').textContent = label;
+    document.querySelectorAll('#week-toggle-btns button').forEach(b => {
+      b.style.background = 'var(--blue-light)';
+      b.style.color = 'var(--blue-dark)';
+      b.style.borderColor = 'var(--border)';
+    });
+  }
+}
   // Match patterns like 26-04-2026_02-05-2026 or 2026-04-26_2026-05-02
   const m1 = filename.match(/(\d{2}-\d{2}-\d{4})_(\d{2}-\d{2}-\d{4})/);
   const m2 = filename.match(/(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})/);
