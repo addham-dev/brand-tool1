@@ -305,7 +305,7 @@
         <span style="font-size:11px;color:var(--text2);font-weight:600;">OOS &gt; 10% or Unfilled &gt; 50</span>
       </div>
     </div>
-    <div class="supply-items" id="supply-items"></div>
+    <div id="supply-items" style="overflow-x:auto;"></div>
   </div>
 </main>
 
@@ -1135,15 +1135,25 @@ function renderSupplyAlerts() {
   if(header) header.textContent=`⚠️ Supply Gap Alerts${selectedBrand?' — '+BRAND_LABELS[selectedBrand]:''}`;
   if(resetBtn) resetBtn.style.display=selectedBrand?'block':'none';
   if(!alerts.length){g.innerHTML='<div class="empty">✅ No supply gap alerts this week</div>';return;}
-  g.innerHTML=alerts.slice(0,16).map(a=>`
-    <div class="supply-item">
-      <div class="si-asin">${a.asin} ${currentMarket==='ALL'?'<span style="font-size:9px;color:var(--text3)">EU5</span>':`<span class="mp mp-${a.market}">${a.market}</span>`}</div>
-      <div class="si-name" title="${a.name}">${a.name}</div>
-      <div class="si-stats">
-        <div class="si-stat"><b class="${oosClass(a.oos)}">${a.oos.toFixed(1)}%</b> OOS</div>
-        <div class="si-stat"><b style="color:${a.uf>100?'var(--red)':'var(--amber)'}">${Math.round(a.uf)}</b> unfilled</div>
-      </div>
-    </div>`).join('');
+  g.innerHTML=`<table style="width:100%;border-collapse:collapse;">
+    <thead><tr style="border-bottom:2px solid var(--border);">
+      <th style="text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">ASIN</th>
+      <th style="text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">Product</th>
+      <th style="text-align:center;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">Market</th>
+      <th style="text-align:right;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">OOS %</th>
+      <th style="text-align:right;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">Unfilled</th>
+    </tr></thead>
+    <tbody>
+      ${alerts.slice(0,20).map(a=>`
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:7px 12px;font-family:'DM Mono',monospace;font-size:10px;color:var(--blue);white-space:nowrap;">${a.asin}</td>
+          <td style="padding:7px 12px;font-size:11px;color:var(--text);max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${a.name}">${a.name}</td>
+          <td style="padding:7px 12px;text-align:center;white-space:nowrap;">${currentMarket==='ALL'?`<span style="font-size:9px;color:var(--text3)">EU5</span>`:`<span class="mp mp-${a.market}">${a.market}</span>`}</td>
+          <td style="padding:7px 12px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;" class="${oosClass(a.oos)}">${a.oos.toFixed(1)}%</td>
+          <td style="padding:7px 12px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:${a.uf>100?'var(--red)':'var(--amber)'};">${Math.round(a.uf).toLocaleString()}</td>
+        </tr>`).join('')}
+    </tbody>
+  </table>`;
 }
 
 function buildAsinMap(rows, extractor) {
