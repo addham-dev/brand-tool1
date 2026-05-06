@@ -22,11 +22,12 @@
     *{margin:0;padding:0;box-sizing:border-box;}
     body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;}
 
-    header{background:var(--blue);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:68px;box-shadow:0 4px 20px rgba(0,156,222,0.25);}
-    .logo{display:flex;align-items:center;gap:14px;}
-    .logo-mark{width:40px;height:40px;background:white;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--blue);}
-    .logo-text{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:white;}
-    .logo-sub{font-size:10px;color:rgba(255,255,255,0.7);letter-spacing:1.5px;text-transform:uppercase;margin-top:1px;}
+    header{background:#1F1646;padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:68px;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
+    .logo{display:flex;align-items:center;gap:16px;}
+    .logo-img{height:36px;width:auto;display:block;}
+    .logo-divider{width:1px;height:32px;background:rgba(255,255,255,0.2);}
+    .logo-text{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:white;letter-spacing:0.5px;}
+    .logo-sub{font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;}
     .header-right{display:flex;align-items:center;gap:14px;}
     .week-badge{background:rgba(255,255,255,0.15);border-radius:6px;padding:6px 12px;font-family:'DM Mono',monospace;font-size:11px;color:white;}
     .currency-toggle{display:flex;background:rgba(255,255,255,0.15);border-radius:6px;overflow:hidden;}
@@ -34,9 +35,13 @@
     .currency-btn.active{background:white;color:var(--blue);}
 
     .nav-links{display:flex;gap:4px;}
-    .nav-link{padding:6px 16px;border-radius:6px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:rgba(255,255,255,0.75);text-decoration:none;transition:all 0.2s;cursor:pointer;}
-    .nav-link:hover{background:rgba(255,255,255,0.15);color:white;}
-    .nav-link.active{background:white;color:var(--blue);}
+    .nav-link{padding:6px 16px;border-radius:6px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:rgba(255,255,255,0.65);text-decoration:none;transition:all 0.2s;cursor:pointer;}
+    .nav-link:hover{background:rgba(255,255,255,0.1);color:white;}
+    .nav-link.active{background:var(--blue);color:white;}
+    .week-badge{background:rgba(255,255,255,0.1);border-radius:6px;padding:6px 12px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,0.8);}
+    .currency-toggle{display:flex;background:rgba(255,255,255,0.1);border-radius:6px;overflow:hidden;}
+    .currency-btn{padding:6px 12px;border:none;background:transparent;color:rgba(255,255,255,0.6);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;}
+    .currency-btn.active{background:var(--blue);color:white;}
     .filter-bar{background:white;padding:10px 40px;display:flex;align-items:center;gap:14px;border-bottom:2px solid var(--border);box-shadow:var(--shadow);flex-wrap:wrap;}
     .filter-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;}
     .market-tabs,.sort-tabs,.period-tabs{display:flex;gap:4px;}
@@ -209,7 +214,8 @@
 <body>
 <header>
   <div class="logo">
-    <div class="logo-mark">HB</div>
+    <img src="https://corporate.hasbro.com/_next/image?url=%2Fimages%2Fhasbro_logo.png&w=256&q=75" alt="Hasbro" class="logo-img">
+    <div class="logo-divider"></div>
     <div>
       <div class="logo-text">Brand Health Dashboard</div>
       <div class="logo-sub">EU5 Weekly Performance</div>
