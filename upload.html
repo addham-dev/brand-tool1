@@ -1066,6 +1066,37 @@ function mapAdsPlanBrand(brand) {
 function logC(msg, type='') { log(msg, type, 'coverage-log'); }
 
 // ─── SEARCH TERMS UPLOAD ─────────────────────────────────────
+// ─── SEARCH TERMS UPLOAD ─────────────────────────────────────
+// Keywords used to identify Hasbro-relevant search terms
+const HASBRO_SEARCH_KEYWORDS = {
+  TRANSFORMERS: ['transformers','optimus prime','megatron','autobot','decepticon','bumblebee transformer'],
+  NERF:         ['nerf','super soaker','supersoaker'],
+  MONOPOLY:     ['monopoly'],
+  PLAY_DOH:     ['play-doh','play doh','playdoh'],
+  BEYBLADE:     ['beyblade','bey blade'],
+  PEPPA_PIG:    ['peppa pig','peppa'],
+  MARVEL:       ['marvel','spider-man','spiderman','spidey','avengers','iron man toy','thor toy','hulk toy','marvel legends','captain america toy'],
+  STAR_WARS:    ['star wars','lightsaber','mandalorian','darth vader','yoda toy','stormtrooper toy','boba fett','grogu'],
+  GAMES:        ['monopoly','cluedo','hasbro game','jenga','battleship game','connect 4','operation game','guess who','trivial pursuit','hasbro gaming'],
+  DISNEY_KIDS:  ['spidey and his','spidey amazing friends'],
+  HASBRO:       ['hasbro']
+};
+
+// Estimate weekly search volume from rank using power law approximation
+// Based on Amazon search data patterns: rank 1 ≈ 500K/week, rank 1000 ≈ 5K/week
+function estimateSearchVolume(rank) {
+  if (!rank || rank <= 0) return null;
+  return Math.round(500000 / Math.pow(rank, 0.7));
+}
+
+function classifySearchTerm(term) {
+  const t = term.toLowerCase();
+  for (const [brand, keywords] of Object.entries(HASBRO_SEARCH_KEYWORDS)) {
+    if (keywords.some(k => t.includes(k))) return brand;
+  }
+  return null;
+}
+
 async function uploadSearchTerms() {
   const weekStart = document.getElementById('week-start').value;
   if (!weekStart) { alert('Please select a week first.'); return; }
@@ -1074,11 +1105,10 @@ async function uploadSearchTerms() {
 
   try {
     const text = await files.search.text();
-    const clean = text.replace(/^\uFEFF/, ''); // strip BOM
+    const clean = text.replace(/^\uFEFF/, '');
     const lines = clean.split('\n');
 
-    // Row 0 is metadata, Row 1 is headers
-    const headerLine = lines[1];
+    // Row 0 = metadata, Row 1 = headers
     const result = Papa.parse(lines.slice(1).join('\n'), {
       header: true,
       skipEmptyLines: true,
@@ -1086,43 +1116,88 @@ async function uploadSearchTerms() {
     });
 
     const headers = result.meta.fields || [];
-    logS(`Headers found: ${headers.slice(0,6).join(', ')}...`, 'info');
+    logS(`${result.data.length.toLocaleString()} total terms in file`, 'info');
 
-    // Map column names
-    const rankKey   = headers.find(h => h.includes('Search Frequency Rank')) || headers[0];
-    const termKey   = headers.find(h => h.includes('Search Term') && !h.includes('Rank')) || headers[1];
-    const asin1Key  = headers.find(h => h.includes('Product No. 1: ASIN') || h.includes('Top Clicked Product No. 1: ASIN'));
-    const cs1Key    = headers.find(h => h.includes('Product No. 1: Click Share'));
-    const cvr1Key   = headers.find(h => h.includes('Product No. 1: Conversion Share'));
-    const asin2Key  = headers.find(h => h.includes('Product No. 2: ASIN'));
-    const asin3Key  = headers.find(h => h.includes('Product No. 3: ASIN'));
+    const rankKey  = headers.find(h => h.includes('Search Frequency Rank'));
+    const termKey  = headers.find(h => h.includes('Search Term') && !h.includes('Rank'));
+    const cat1Key  = headers.find(h => h.includes('Top Clicked Category No. 1'));
+    const cat2Key  = headers.find(h => h.includes('Top Clicked Category No. 2'));
+    const asin1Key = headers.find(h => h.includes('Product No. 1: ASIN'));
+    const title1Key= headers.find(h => h.includes('Product No. 1: Product Title'));
+    const cs1Key   = headers.find(h => h.includes('Product No. 1: Click Share'));
+    const cvr1Key  = headers.find(h => h.includes('Product No. 1: Conversion Share'));
+    const asin2Key = headers.find(h => h.includes('Product No. 2: ASIN'));
+    const asin3Key = headers.find(h => h.includes('Product No. 3: ASIN'));
 
-    logS(`Mapped — rank:${rankKey} term:${termKey} asin1:${asin1Key}`, 'info');
+    // Filter to Hasbro-relevant terms only + top 500 platform terms
+    const rows = [];
+    const top500 = [];
 
-    const rows = result.data
-      .filter(r => r[rankKey] && r[termKey])
-      .map(r => ({
-        week_start:     weekStart,
-        term:           String(r[termKey]||'').trim(),
-        rank:           parseInt(r[rankKey]) || null,
-        asin1:          String(r[asin1Key]||'').trim() || null,
-        click_share_1:  parseFloat(r[cs1Key]) || null,
-        cvr_1:          parseFloat(r[cvr1Key]) || null,
-        asin2:          String(r[asin2Key]||'').trim() || null,
-        asin3:          String(r[asin3Key]||'').trim() || null,
-      }))
-      .filter(r => r.rank && r.term);
+    result.data.forEach(r => {
+      const rank = parseInt(r[rankKey]) || null;
+      const term = String(r[termKey]||'').trim();
+      if (!rank || !term) return;
 
-    logS(`✓ Parsed ${rows.length} search terms`, 'ok');
-    if (!rows.length) throw new Error('No rows parsed — check file format');
+      // Always include top 500 platform terms
+      if (rank <= 500) {
+        top500.push({
+          week_start: weekStart,
+          term,
+          rank,
+          brand_classified: classifySearchTerm(term) || 'PLATFORM',
+          category: 'TOP500',
+          top_clicked_category: String(r[cat1Key]||'').replace('_',' '),
+          asin1: String(r[asin1Key]||'').trim()||null,
+          product_title_1: String(r[title1Key]||'').trim().substring(0,200)||null,
+          click_share_1: parseFloat(r[cs1Key])||null,
+          cvr_1: parseFloat(r[cvr1Key])||null,
+          asin2: String(r[asin2Key]||'').trim()||null,
+          asin3: String(r[asin3Key]||'').trim()||null,
+          est_weekly_searches: estimateSearchVolume(rank)
+        });
+        return;
+      }
 
+      // For remaining terms, filter to Hasbro-relevant only
+      const brand = classifySearchTerm(term);
+      if (!brand) return;
+
+      rows.push({
+        week_start: weekStart,
+        term,
+        rank,
+        brand_classified: brand,
+        category: 'BRAND',
+        top_clicked_category: String(r[cat1Key]||'').replace('_',' '),
+        asin1: String(r[asin1Key]||'').trim()||null,
+        product_title_1: String(r[title1Key]||'').trim().substring(0,200)||null,
+        click_share_1: parseFloat(r[cs1Key])||null,
+        cvr_1: parseFloat(r[cvr1Key])||null,
+        asin2: String(r[asin2Key]||'').trim()||null,
+        asin3: String(r[asin3Key]||'').trim()||null,
+        est_weekly_searches: estimateSearchVolume(rank)
+      });
+    });
+
+    const allRows = [...top500, ...rows];
+    logS(`✓ ${top500.length} top-500 platform terms + ${rows.length} Hasbro brand terms = ${allRows.length} total`, 'ok');
+
+    // Brand breakdown
+    const brandCounts = {};
+    rows.forEach(r => { brandCounts[r.brand_classified] = (brandCounts[r.brand_classified]||0)+1; });
+    Object.entries(brandCounts).sort((a,b)=>b[1]-a[1]).forEach(([b,n]) => logS(`  ${b}: ${n} terms`, 'ok'));
+
+    if (!allRows.length) throw new Error('No rows parsed');
+
+    // Delete existing and upload
     await sbDelete(`/rest/v1/brand_health_search_terms?week_start=eq.${weekStart}`);
     const BATCH = 500;
-    for (let i = 0; i < rows.length; i += BATCH) {
-      await sbPost('/rest/v1/brand_health_search_terms', rows.slice(i, i + BATCH));
-      logS(`Uploaded ${Math.min(i + BATCH, rows.length)}/${rows.length} rows...`);
+    for (let i = 0; i < allRows.length; i += BATCH) {
+      await sbPost('/rest/v1/brand_health_search_terms', allRows.slice(i, i + BATCH));
+      logS(`Uploaded ${Math.min(i+BATCH, allRows.length)}/${allRows.length}...`);
     }
-    logS(`✅ Done! ${rows.length} search terms uploaded for week ${weekStart}`, 'ok');
+    logS(`✅ Done! ${allRows.length} terms uploaded for week ${weekStart}`, 'ok');
+
   } catch(err) {
     logS('❌ Error: ' + err.message, 'err');
     console.error(err);
