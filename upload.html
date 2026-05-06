@@ -320,19 +320,23 @@ function checkPassword() {
 
 function getAmazonWeeks(n) {
   // Amazon VC week: Sunday to Saturday
-  // Returns last n completed weeks as [{start, end, label}]
+  // Find most recent completed Saturday first, then work backwards
   const now = new Date();
-  const day = now.getDay();
-  const daysSinceSun = day;
+  const day = now.getDay(); // 0=Sun, 1=Mon ... 6=Sat
+  // Most recent completed Saturday: if today is Sun(0), that's yesterday; else go back to last Sat
+  const daysToLastSat = day === 0 ? 1 : day + 1;
+  const lastSat = new Date(now);
+  lastSat.setDate(now.getDate() - daysToLastSat);
+  // Build n weeks going backwards from lastSat
   const weeks = [];
-  for (let i = 1; i <= n; i++) {
-    const sat = new Date(now);
-    sat.setDate(now.getDate() - daysSinceSun - 1 - (i - 1) * 7);
+  for (let i = 0; i < n; i++) {
+    const sat = new Date(lastSat);
+    sat.setDate(lastSat.getDate() - i * 7);
     const sun = new Date(sat);
     sun.setDate(sat.getDate() - 6);
     weeks.push({
       start: sun.toISOString().split('T')[0],
-      end: sat.toISOString().split('T')[0],
+      end:   sat.toISOString().split('T')[0],
       label: formatDate(sun.toISOString().split('T')[0]) + ' – ' + formatDate(sat.toISOString().split('T')[0])
     });
   }
