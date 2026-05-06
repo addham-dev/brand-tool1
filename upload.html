@@ -716,7 +716,7 @@ async function parseExecSummary(file) {
     const reader = new FileReader();
     reader.onload = e => {
       try {
-        const wb = XLSX.read(e.target.result, { type:'array', cellText:false });
+        const wb = XLSX.read(e.target.result, { type:'array', cellText:true, cellDates:true });
 
         // Find the Performance Detail sheet (partial name match)
         const sheetName = wb.SheetNames.find(n => /performance detail/i.test(n));
@@ -728,8 +728,15 @@ async function parseExecSummary(file) {
         console.log('Total rows:', raw.length, '| First 5 rows:', raw.slice(0,5));
 
         // Header row contains 'Platform' — find it scanning all rows
-        let hi = raw.findIndex(r => r.some(c => String(c).trim() === 'Platform'));
-        if (hi === -1) throw new Error('Could not find header row with "Platform" column. First row: ' + JSON.stringify(raw[0]));
+        let hi = raw.findIndex(r => r.some(c => String(c).trim().toLowerCase() === 'platform'));
+        if (hi === -1) {
+          // Try finding any row that looks like a header (has both Platform and Brand)
+          hi = raw.findIndex(r => {
+            const strs = r.map(c => String(c).trim().toLowerCase());
+            return strs.includes('platform') || (strs.includes('brand') && strs.includes('spend'));
+          });
+        }
+        if (hi === -1) throw new Error('Could not find header row. Rows found: ' + JSON.stringify(raw.slice(0,6)));
         
         const headers = raw[hi].map(h => String(h).trim());
         const rows = raw.slice(hi + 1)
