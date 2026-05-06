@@ -720,6 +720,7 @@ async function parseExecSummary(file) {
 
         // Find the Performance Detail sheet (partial name match)
         const sheetName = wb.SheetNames.find(n => /performance detail/i.test(n));
+        console.log('Sheets found:', wb.SheetNames, '| Matched:', sheetName);
         if (!sheetName) throw new Error('Could not find "Performance Detail by Platform & Brand" sheet. Sheets found: '+wb.SheetNames.join(', '));
 
         const ws = wb.Sheets[sheetName];
