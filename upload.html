@@ -727,19 +727,19 @@ async function parseExecSummary(file) {
         const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
         console.log('Total rows:', raw.length, '| First 5 rows:', raw.slice(0,5));
 
-        // Find header row
+        // Header row contains 'Platform' — find it scanning all rows
         let hi = raw.findIndex(r => r.some(c => String(c).trim() === 'Platform'));
-        if (hi === -1) hi = 0;
+        if (hi === -1) throw new Error('Could not find header row with "Platform" column. First row: ' + JSON.stringify(raw[0]));
+        
         const headers = raw[hi].map(h => String(h).trim());
-
-        const rows = raw.slice(hi+1)
-          .filter(r => r.some(c => c !== '' && c !== null))
+        const rows = raw.slice(hi + 1)
+          .filter(r => r.some(c => c !== '' && c !== null && c !== undefined))
+          .filter(r => String(r[0]).trim() !== '' && String(r[0]).trim() !== 'Totals')
           .map(r => {
             const o = {};
             headers.forEach((h, i) => { o[h] = (r[i] !== undefined && r[i] !== null) ? r[i] : ''; });
             return o;
-          })
-          .filter(r => String(r['Platform']).trim() !== '' && String(r['Platform']).trim() !== 'Totals');
+          });
 
         const results = [];
         rows.forEach(r => {
