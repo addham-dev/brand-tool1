@@ -522,8 +522,10 @@ async function loadPeriod(periodVal) {
       });
     }
   } else {
-    // Multi-week (month/quarter/year) — aggregate from allRowsAllWeeks
-    allRows=allRowsAllWeeks.filter(r=>weekStarts.includes(r.week_start));
+    // Multi-week (month/quarter/year) — fetch full data for all matching weeks
+    const weekFilter=weekStarts.map(w=>`week_start=eq.${w}`).join(',');
+    const res=await sbFetch(`/rest/v1/brand_health_snapshots?or=(${weekFilter})&select=*&limit=100000&order=week_start.desc`);
+    allRows=res.length>0?res:allRowsAllWeeks.filter(r=>weekStarts.includes(r.week_start));
     // Aggregate ads for selected period — sum across all markets, then filter by currentMarket when rendering
     adsData={};
     Object.entries(adsDataAllWeeks).forEach(([k,v])=>{
@@ -543,7 +545,11 @@ async function loadPeriod(periodVal) {
 
   const sel=document.getElementById('week-select');
   const selOpt=sel.options[sel.selectedIndex];
-  document.getElementById('week-badge').textContent=selOpt?.text||periodVal;
+  const badgeLabel=periodMode==='week'?(selOpt?.text||periodVal):
+    periodMode==='month'?`Month: ${periodVal}`:
+    periodMode==='quarter'?`Quarter: ${periodVal}`:
+    `Year: ${periodVal}`;
+  document.getElementById('week-badge').textContent=badgeLabel;
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('main-content').style.display='grid';
   buildDashboard();
