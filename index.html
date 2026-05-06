@@ -623,7 +623,7 @@ function getSentiment(d) {
   return 'sad';
 }
 
-const SC={happy:{emoji:'😊',label:'Happy',cls:'happy'},sad:{emoji:'😐',label:'Mixed',cls:'sad'},cry:{emoji:'😢',label:'Needs Attention',cls:'cry'}};
+const SC={happy:{emoji:'🤑',label:'Happy',cls:'happy'},sad:{emoji:'🧐',label:'Mixed',cls:'sad'},cry:{emoji:'😭',label:'Needs Attention',cls:'cry'}};
 
 // ─── BUILD DASHBOARD ─────────────────────────────────────────
 function buildDashboard() {
@@ -641,9 +641,9 @@ function renderSentimentBar() {
     counts[getSentiment(d)]++;
   });
   document.getElementById('sentiment-bar').innerHTML=`
-    <div class="sentiment-pill happy"><span style="font-size:20px">😊</span><span style="font-size:22px;font-weight:800">${counts.happy}</span><span style="font-size:12px;font-weight:600;opacity:0.8">Brands Happy</span></div>
-    <div class="sentiment-pill sad"><span style="font-size:20px">😐</span><span style="font-size:22px;font-weight:800">${counts.sad}</span><span style="font-size:12px;font-weight:600;opacity:0.8">Brands Mixed</span></div>
-    <div class="sentiment-pill cry"><span style="font-size:20px">😢</span><span style="font-size:22px;font-weight:800">${counts.cry}</span><span style="font-size:12px;font-weight:600;opacity:0.8">Need Attention</span></div>
+    <div class="sentiment-pill happy"><span style="font-size:20px">🤑</span><span style="font-size:22px;font-weight:800">${counts.happy}</span><span style="font-size:12px;font-weight:600;opacity:0.8">Brands Happy</span></div>
+    <div class="sentiment-pill sad"><span style="font-size:20px">🧐</span><span style="font-size:22px;font-weight:800">${counts.sad}</span><span style="font-size:12px;font-weight:600;opacity:0.8">Brands Mixed</span></div>
+    <div class="sentiment-pill cry"><span style="font-size:20px">😭</span><span style="font-size:22px;font-weight:800">${counts.cry}</span><span style="font-size:12px;font-weight:600;opacity:0.8">Need Attention</span></div>
   `;
 }
 
