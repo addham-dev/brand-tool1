@@ -1196,6 +1196,16 @@ async function processAndUploadAds() {
     logA(`✓ Built ${finalRows.length} brand-market rows`, 'ok');
     await sbDelete(`/rest/v1/brand_health_ads?week_start=eq.${weekStart}`);
     await sbPost('/rest/v1/brand_health_ads', finalRows);
+
+    // Ensure week exists in brand_health_weeks so it shows in history
+    const existingWeek = await sbFetch(`/rest/v1/brand_health_weeks?week_start=eq.${weekStart}&select=week_start`);
+    if (!existingWeek.length) {
+      const d = new Date(weekStart);
+      const end = new Date(d); end.setDate(d.getDate() + 6);
+      const fmt = d => d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'/');
+      await sbPost('/rest/v1/brand_health_weeks', { week_start: weekStart, week_label: fmt(d) + ' – ' + fmt(end) });
+    }
+
     logA(`✅ Done! ${finalRows.length} rows uploaded for week ${weekStart}`, 'ok');
     loadHistory();
 
