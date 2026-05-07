@@ -199,33 +199,26 @@
     <!-- ADS REPORTS -->
     <div class="section-card ad-border">
       <div class="card-title ad">🎯 Weekly Ads Report — Executive Summary</div>
-      <div class="note-box ad-note">Upload the Executive Summary .xlsx from the Advertising Console. Select the week manually — the filename doesn't contain the date range.</div>
+      <div class="note-box ad-note">Upload the Executive Summary .xlsx from the Advertising Console. The week is auto-detected from the "Widget Date Range" field inside the file.</div>
       <div style="margin-bottom:16px;">
-        <div class="week-inputs" style="margin-bottom:14px;">
-          <div class="input-group">
-            <label class="input-label">Week Start (Sunday)</label>
-            <input type="date" class="date-input" id="ads-week-start">
-          </div>
-          <div class="input-group">
-            <label class="input-label">Week End (Saturday)</label>
-            <input type="date" class="date-input" id="ads-week-end">
-          </div>
-        </div>
         <div class="upload-card ad-style" id="card-sp" onclick="document.getElementById('file-sp').click()"
           ondragover="dOver(event,'card-sp')" ondragleave="dLeave('card-sp')" ondrop="dDrop(event,'sp')"
           style="max-width:320px;">
           <div class="uc-icon">📊</div>
           <div class="uc-title">Executive Summary Report</div>
-          <div class="uc-sub" id="lbl-sp">Executive Summary .xlsx<br>Current reporting week</div>
+          <div class="uc-sub" id="lbl-sp">Executive Summary .xlsx<br>Week auto-detected from file</div>
           <div class="uc-check">✅</div>
           <input type="file" id="file-sp" accept=".csv,.xlsx" onchange="onFile(event,'sp')">
+        </div>
+        <div id="ads-week-detected" style="display:none;margin-top:10px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text);">
+          ✓ Week auto-detected: <b id="ads-week-label" style="color:var(--green)">—</b>
         </div>
       </div>
       <div>
         <button class="process-btn ad-btn" id="ads-btn" onclick="processAndUploadAds()" disabled>
           🎯 Process &amp; Upload Ads Data
         </button>
-        <div class="log-area" id="ads-log"><span class="log-line">Select the week, upload the Executive Summary then click Process.</span></div>
+        <div class="log-area" id="ads-log"><span class="log-line">Upload the Executive Summary — week will be auto-detected from inside the file.</span></div>
       </div>
     </div>
 
@@ -402,6 +395,61 @@ function selectWeek(start, end, label, btn) {
 function setCurrentWeek() { buildWeekToggles(); }
 
 // ─── FILE HANDLING ────────────────────────────────────────────
+function loadFile(f, type) {
+  files[type] = f;
+  const card = document.getElementById('card-'+type);
+  if (card) card.classList.add('loaded');
+  const lbl = document.getElementById('lbl-'+type);
+  if (lbl) lbl.textContent = '✓ ' + f.name;
+
+  // Auto-detect week from Executive Summary xlsx
+  if (type === 'sp') {
+    extractAdsWeekFromFile(f);
+  }
+
+  checkReady();
+}
+
+let adsDetectedWeekStart = null;
+
+async function extractAdsWeekFromFile(file) {
+  try {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, { type:'array', cellText:true });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+
+    // Look for Widget Date Range row
+    for (const row of raw.slice(0, 20)) {
+      for (let i = 0; i < row.length; i++) {
+        if (String(row[i]).includes('Widget Date Range') || String(row[i]).includes('Date Range')) {
+          const dateStr = String(row[i+1] || '').trim();
+          // Format: DD-MM-YYYY DD-MM-YYYY or similar
+          const m = dateStr.match(/(\d{2}-\d{2}-\d{4})\s+(\d{2}-\d{2}-\d{4})/);
+          if (m) {
+            const [d1,mo1,y1] = m[1].split('-');
+            const [d2,mo2,y2] = m[2].split('-');
+            adsDetectedWeekStart = `${y1}-${mo1}-${d1}`;
+            const label = `${d1}/${mo1}/${y1} – ${d2}/${mo2}/${y2}`;
+            document.getElementById('ads-week-detected').style.display = 'block';
+            document.getElementById('ads-week-label').textContent = label;
+            console.log('Ads week detected:', adsDetectedWeekStart);
+            return;
+          }
+        }
+      }
+    }
+    // Not found — show warning
+    document.getElementById('ads-week-detected').style.display = 'block';
+    document.getElementById('ads-week-detected').style.background = 'var(--amber-bg)';
+    document.getElementById('ads-week-detected').style.borderColor = 'var(--amber)';
+    document.getElementById('ads-week-label').textContent = 'Could not detect — check file';
+    adsDetectedWeekStart = null;
+  } catch(e) {
+    console.error('Could not extract ads week:', e);
+  }
+}
+
 function dOver(e,id){e.preventDefault();document.getElementById(id).style.borderColor='var(--blue)';}
 function dLeave(id){document.getElementById(id).style.borderColor='';}
 function dDrop(e,type){e.preventDefault();const f=e.dataTransfer.files[0];if(f)loadFile(f,type);}
@@ -996,9 +1044,8 @@ function aggregateAdsRows(rows) {
 
 // ─── ADS UPLOAD ──────────────────────────────────────────────
 async function processAndUploadAds() {
-  // Use dedicated ads week date inputs
-  const weekStart = document.getElementById('ads-week-start').value;
-  if (!weekStart) { alert('Please select the ads reporting week dates first.'); return; }
+  const weekStart = adsDetectedWeekStart;
+  if (!weekStart) { alert('Could not detect week from the Executive Summary file. Make sure you uploaded the correct file.'); return; }
 
   document.getElementById('ads-log').innerHTML = '';
   logA('Starting ads processing...', 'info');
