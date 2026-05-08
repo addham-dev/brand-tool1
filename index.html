@@ -1147,36 +1147,46 @@ function renderSupplyAlerts() {
       const k=currentMarket==='ALL'?r.asin:r.asin+'_'+r.market;
       if(!seen.has(k)){
         seen.add(k);
-        alerts.push({asin:r.asin,name:r.product_title,market:r.market,oos,uf});
+        alerts.push({asin:r.asin,name:r.product_title,market:r.market,oos,uf,gv:r.glance_views||0});
       } else if(currentMarket==='ALL') {
         const existing=alerts.find(a=>a.asin===r.asin);
-        if(existing) existing.uf+=uf;
+        if(existing){existing.uf+=uf;existing.gv+=(r.glance_views||0);}
       }
     }
   });
-  alerts.sort((a,b)=>b.uf-a.uf);
+  alerts.sort((a,b)=>supplySort.dir==='asc'?a[supplySort.key]-b[supplySort.key]:b[supplySort.key]-a[supplySort.key]);
   const g=document.getElementById('supply-items');
   const header=document.getElementById('supply-title');
   const resetBtn=document.getElementById('supply-reset-btn');
   if(header) header.textContent=`⚠️ Supply Gap Alerts${selectedBrand?' — '+BRAND_LABELS[selectedBrand]:''}`;
   if(resetBtn) resetBtn.style.display=selectedBrand?'block':'none';
   if(!alerts.length){g.innerHTML='<div class="empty">✅ No supply gap alerts this week</div>';return;}
+
+  function supplyTh(label, key, align='right') {
+    const active = supplySort.key === key;
+    const arrow = active ? (supplySort.dir === 'asc' ? ' ↑' : ' ↓') : ' ↕';
+    const style = `text-align:${align};font-size:10px;font-weight:700;color:${active?'var(--blue)':'var(--text2)'};text-transform:uppercase;letter-spacing:1px;padding:8px 12px;cursor:pointer;user-select:none;`;
+    return `<th style="${style}" onclick="setSupplySort('${key}')">${label}<span style="font-size:9px;opacity:0.6">${arrow}</span></th>`;
+  }
+
   g.innerHTML=`<table style="width:100%;border-collapse:collapse;">
     <thead><tr style="border-bottom:2px solid var(--border);">
       <th style="text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">ASIN</th>
       <th style="text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">Product</th>
       <th style="text-align:center;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">Market</th>
-      <th style="text-align:right;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">OOS %</th>
-      <th style="text-align:right;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">Unfilled</th>
+      ${supplyTh('OOS %','oos')}
+      ${supplyTh('Unfilled','uf')}
+      ${supplyTh('Customer Demand (GVs)','gv')}
     </tr></thead>
     <tbody>
-      ${alerts.slice(0,20).map(a=>`
+      ${alerts.slice(0,30).map(a=>`
         <tr style="border-bottom:1px solid var(--border);">
           <td style="padding:7px 12px;font-family:'DM Mono',monospace;font-size:10px;color:var(--blue);white-space:nowrap;">${a.asin}</td>
-          <td style="padding:7px 12px;font-size:11px;color:var(--text);max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${a.name}">${a.name}</td>
+          <td style="padding:7px 12px;font-size:11px;color:var(--text);max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${a.name}">${a.name}</td>
           <td style="padding:7px 12px;text-align:center;white-space:nowrap;">${currentMarket==='ALL'?`<span style="font-size:9px;color:var(--text3)">EU5</span>`:`<span class="mp mp-${a.market}">${a.market}</span>`}</td>
           <td style="padding:7px 12px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;" class="${oosClass(a.oos)}">${a.oos.toFixed(1)}%</td>
           <td style="padding:7px 12px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:${a.uf>100?'var(--red)':'var(--amber)'};">${Math.round(a.uf).toLocaleString()}</td>
+          <td style="padding:7px 12px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--blue-dark);">${a.gv>0?a.gv.toLocaleString():'—'}</td>
         </tr>`).join('')}
     </tbody>
   </table>`;
@@ -1379,6 +1389,12 @@ function clusterSearchTerms(terms) {
 }
 
 // ─── CONTROLS ────────────────────────────────────────────────
+const supplySort = { key: 'uf', dir: 'desc' };
+function setSupplySort(key) {
+  if (supplySort.key === key) supplySort.dir = supplySort.dir === 'asc' ? 'desc' : 'asc';
+  else { supplySort.key = key; supplySort.dir = 'desc'; }
+  renderSupplyAlerts();
+}
 function resetSupplyFilter(){selectedBrand=null;document.querySelectorAll('.brand-card').forEach(c=>c.classList.remove('selected'));document.getElementById('rca-panel').style.display='none';renderSupplyAlerts();}
 function setMarket(m,btn){currentMarket=m;document.querySelectorAll('.market-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');buildDashboard();}
 function setSort(s,btn){currentSort=s;document.querySelectorAll('.sort-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderBrandCards();}
