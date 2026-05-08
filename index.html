@@ -862,6 +862,19 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'<span style="color:var(
     }
   },10000);
 
+  function adamFormat(text){
+    var escaped=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // code blocks
+    escaped=escaped.replace(/```[\w]*\n?([\s\S]*?)```/g,'<pre style="background:#0d1117;color:#e6edf3;border-radius:6px;padding:10px;font-family:\'DM Mono\',monospace;font-size:11px;overflow-x:auto;margin:6px 0;white-space:pre;">$1</pre>');
+    // inline code
+    escaped=escaped.replace(/`([^`]+)`/g,'<code style="background:#f0f4f8;color:#003A54;padding:1px 4px;border-radius:3px;font-size:11px;font-family:\'DM Mono\',monospace;">$1</code>');
+    // bold
+    escaped=escaped.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
+    // newlines
+    escaped=escaped.replace(/\n/g,'<br>');
+    return escaped;
+  }
+
   window.adamToggle=function(){
     open=!open;
     document.getElementById('adam-panel').classList.toggle('open',open);
@@ -882,7 +895,7 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'<span style="color:var(
     var bubble=document.createElement('div');
     bubble.className='adam-bubble';
     if(typing)bubble.innerHTML='<div class="adam-typing"><span></span><span></span><span></span></div>';
-    else bubble.textContent=content;
+    else bubble.innerHTML=adamFormat(content);
     div.appendChild(av);div.appendChild(bubble);msgs.appendChild(div);
     msgs.scrollTop=msgs.scrollHeight;
     if(!typing&&suggestionsShown&&history.length>1){
