@@ -740,7 +740,7 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'<span style="color:var(
 (function(){
   var PROXY='https://adam-proxy.addham.workers.dev/';
   var AVATAR='https://attic.sh/arz5gqoevz38gefaczkyj07h42iz';
-  var SYSTEM='You are Adam. You are a brilliant, quietly eccentric English data analyst — think Sherlock Holmes applied to Amazon vendor data. You have an almost unsettling ability to spot patterns in numbers, a dry wit, impeccable manners, and absolutely no patience for vagueness. You are never rude, but you are precise to the point of being disarming. You find commercial data genuinely fascinating, the way Holmes finds a crime scene fascinating.\n\nYou work inside the Hasbro EU brand health dashboard, covering GB, DE, FR, IT and ES across these brands: Nerf, Play-Doh, Monopoly, Transformers, Marvel, Star Wars, Peppa Pig, Beyblade, Games, Disney Kids.\n\nYour metrics: revenue (dispatched and ordered), glance views (page traffic), conversion rate (units divided by glance views), OOS percentage, unfilled units, year on year movement, ad spend, ad revenue, ROAS, repeat purchase rate, and LTV.\n\nLive data for the current week is injected below. Use it. Reason from it. If someone asks about a brand or ASIN, find it in the data and give them a real, grounded answer. If the data does not contain what they need, say so plainly and briefly.\n\nHow you speak: You talk like a real, brilliant person — not a chatbot, not a consultant. You use natural English sentences. You occasionally use dry, understated humour. You might observe something the person has not thought to ask. You never use bullet points or numbered lists. You never write SQL or code. You never recite methodology. When someone asks a question, you answer it — directly, confidently, with a touch of elegance. You do not over-explain. You do not hedge unnecessarily. If something is obvious from the data, say it as if it were obvious. If something is genuinely uncertain, acknowledge it briefly and move on. You speak the way a very good doctor delivers a diagnosis — calm, clear, authoritative, human.';
+  var SYSTEM='You are Adam. You are a brilliant, quietly eccentric English data analyst — think Sherlock Holmes applied to Amazon vendor data. You have an almost unsettling ability to spot patterns in numbers, a dry wit, impeccable manners, and absolutely no patience for vagueness. You are never rude, but you are precise to the point of being disarming.\n\nYou work inside the Hasbro EU brand health dashboard, covering GB, DE, FR, IT and ES across these brands: Nerf, Play-Doh, Monopoly, Transformers, Marvel, Star Wars, Peppa Pig, Beyblade, Games, Disney Kids.\n\nYour metrics: revenue, glance views (page traffic), conversion rate, OOS percentage, unfilled units, year on year movement, ad spend, ad revenue, ROAS, repeat purchase rate, LTV.\n\nLive data for the current week is injected below — real numbers from Supabase. Use them. Reason from them.\n\nWhen you do not have data: say what you do have, and say what you do not, in one short sentence. Never say "I am afraid" or "If you would like" or "I can try to help" — those are the phrases of a nervous assistant. You are not nervous. You simply state what is and is not available, then move forward.\n\nWhen someone asks about an ASIN: search the data. If it is there, tell them what you see. If it is not, say so in five words and offer what you do have on that brand.\n\nHow you speak: Natural English sentences. Dry, confident, occasionally amused. No bullet points. No code. No methodology lectures. Answer the question, add one observation if the data warrants it, and stop. Less is more.';
 
   var history=[];
   var loading=false;
@@ -750,15 +750,38 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'<span style="color:var(
 
   async function fetchLiveContext(){
     try{
-      var wRes=await fetch(SUPABASE_URL+'/rest/v1/brand_health_weeks?select=week_start,week_label&order=week_start.desc&limit=1',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+      var wRes=await fetch(SUPABASE_URL+'/rest/v1/brand_health_weeks?select=week_start,week_label&order=week_start.desc&limit=4',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
       var weeks=await wRes.json();
       if(!weeks||!weeks.length){liveDataContext='No data uploaded yet.';return;}
-      var ws=weeks[0].week_start,wLabel=weeks[0].week_label||ws;
-      var sRes=await fetch(SUPABASE_URL+'/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=brand_classified,market,asin,product_title,dispatched_revenue,ordered_revenue,dispatched_units,ordered_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy&limit=20000',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+      var latestWs=weeks[0].week_start,wLabel=weeks[0].week_label||latestWs;
+      var weekStarts=weeks.map(function(w){return w.week_start;});
+
+      // Fetch current week full snapshot
+      var sRes=await fetch(SUPABASE_URL+'/rest/v1/brand_health_snapshots?week_start=eq.'+latestWs+'&select=brand_classified,market,asin,product_title,dispatched_revenue,ordered_revenue,dispatched_units,ordered_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy&limit=20000',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
       var snaps=await sRes.json();
-      var aRes=await fetch(SUPABASE_URL+'/rest/v1/brand_health_ads?week_start=eq.'+ws+'&select=brand_classified,market,ad_revenue,ad_spend,organic_revenue&limit=500',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+
+      // Fetch prior 3 weeks ASIN-level glance views for trend context
+      var priorSnaps=[];
+      for(var wi=1;wi<weekStarts.length;wi++){
+        var pr=await fetch(SUPABASE_URL+'/rest/v1/brand_health_snapshots?week_start=eq.'+weekStarts[wi]+'&select=week_start,asin,market,glance_views,dispatched_revenue,ordered_revenue&limit=20000',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+        var prData=await pr.json();
+        if(Array.isArray(prData))priorSnaps=priorSnaps.concat(prData);
+      }
+
+      var aRes=await fetch(SUPABASE_URL+'/rest/v1/brand_health_ads?week_start=eq.'+latestWs+'&select=brand_classified,market,ad_revenue,ad_spend,organic_revenue&limit=500',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
       var ads=await aRes.json();
+
       if(!snaps||!snaps.length){liveDataContext='No snapshot data for latest week.';return;}
+
+      // Build ASIN trend lookup from prior weeks
+      var asinTrend={};
+      priorSnaps.forEach(function(r){
+        if(!r.asin)return;
+        var k=r.asin+'_'+r.market;
+        if(!asinTrend[k])asinTrend[k]=[];
+        asinTrend[k].push({week:r.week_start,gv:r.glance_views||0,rev:r.dispatched_revenue||r.ordered_revenue||0});
+      });
+
       var bAgg={};
       snaps.forEach(function(r){
         var b=r.brand_classified;
@@ -768,15 +791,22 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'<span style="color:var(
         if(r.oos_pct!=null)bAgg[b].oos.push(r.oos_pct);
         if(r.revenue_yoy!=null&&rev>0){bAgg[b].revYoyN+=rev*r.revenue_yoy;bAgg[b].revYoyD+=rev;}
         var gv=r.glance_views||0;if(r.glance_views_yoy!=null&&gv>0){bAgg[b].gvYoyN+=gv*r.glance_views_yoy;bAgg[b].gvYoyD+=gv;}
-        if(r.asin&&r.product_title)bAgg[b].asins.push({asin:r.asin,title:r.product_title,market:r.market,rev:rev,gv:r.glance_views||0,oos:r.oos_pct||0});
+        if(r.asin&&r.product_title){
+          var trend=asinTrend[r.asin+'_'+r.market]||[];
+          var priorGv=trend.length>0?Math.round(trend.reduce(function(s,t){return s+t.gv;},0)/trend.length):null;
+          bAgg[b].asins.push({asin:r.asin,title:r.product_title,market:r.market,rev:rev,gv:r.glance_views||0,oos:r.oos_pct||0,priorAvgGv:priorGv});
+        }
       });
+
       var adAgg={};
       if(Array.isArray(ads))ads.forEach(function(r){if(!adAgg[r.brand_classified])adAgg[r.brand_classified]={adRev:0,adSpend:0};adAgg[r.brand_classified].adRev+=(r.ad_revenue||0);adAgg[r.brand_classified].adSpend+=(r.ad_spend||0);});
+
       var fM=function(v){if(v>=1000000)return'€'+(v/1000000).toFixed(1)+'M';if(v>=1000)return'€'+(v/1000).toFixed(0)+'K';return'€'+v.toFixed(0);};
       var fN=function(n){if(n>=1000000)return(n/1000000).toFixed(1)+'M';if(n>=1000)return(n/1000).toFixed(0)+'K';return Math.round(n).toLocaleString();};
       var fY=function(n,d){if(!d)return'n/a';var p=((n/d)*100).toFixed(1);return(n/d>=0?'+':'')+p+'%';};
       var fO=function(a){if(!a.length)return'n/a';return(a.reduce(function(x,y){return x+y;},0)/a.length).toFixed(1)+'%';};
-      var lines=['=== LIVE DASHBOARD DATA — Week: '+wLabel+' ===',''];
+
+      var lines=['=== LIVE DASHBOARD DATA — Current week: '+wLabel+' (plus prior 3 weeks for trend context) ===',''];
       var ORDER=['NERF','PLAY_DOH','MONOPOLY','TRANSFORMERS','MARVEL','STAR_WARS','GAMES','PEPPA_PIG','BEYBLADE','DISNEY_KIDS','OTHER'];
       var BL={NERF:'Nerf',PLAY_DOH:'Play-Doh',MONOPOLY:'Monopoly',TRANSFORMERS:'Transformers',MARVEL:'Marvel',STAR_WARS:'Star Wars',GAMES:'Games',PEPPA_PIG:'Peppa Pig',BEYBLADE:'Beyblade',DISNEY_KIDS:'Disney Kids',OTHER:'Other'};
       ORDER.forEach(function(bid){
@@ -786,8 +816,12 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'<span style="color:var(
         var line='\n['+( BL[bid]||bid)+'] revenue='+fM(d.rev)+' yoy='+fY(d.revYoyN,d.revYoyD)+' glance_views='+fN(d.gv)+' gv_yoy='+fY(d.gvYoyN,d.gvYoyD)+' cvr='+conv+' avg_oos='+fO(d.oos);
         if(ad&&ad.adSpend>0)line+=' | ad_spend='+fM(ad.adSpend)+' ad_rev='+fM(ad.adRev)+' roas='+(ad.adRev/ad.adSpend).toFixed(2)+'x';
         lines.push(line);
-        d.asins.slice().sort(function(a,b){return b.rev-a.rev;}).slice(0,3).forEach(function(a){lines.push('  '+a.asin+' ('+a.market+'): "'+a.title.substring(0,55)+'" rev='+fM(a.rev)+' gv='+fN(a.gv)+' oos='+a.oos.toFixed(1)+'%');});
+        d.asins.slice().sort(function(a,b){return b.rev-a.rev;}).slice(0,5).forEach(function(a){
+          var trendStr=a.priorAvgGv!=null?' (3wk avg gv: '+fN(a.priorAvgGv)+')':'';
+          lines.push('  '+a.asin+' ('+a.market+'): "'+a.title.substring(0,55)+'" rev='+fM(a.rev)+' gv='+fN(a.gv)+trendStr+' oos='+a.oos.toFixed(1)+'%');
+        });
       });
+
       liveDataContext=lines.join('\n');
       console.log('Adam: live context loaded, '+liveDataContext.length+' chars');
     }catch(e){console.warn('Adam: live context failed',e);liveDataContext='';}
