@@ -427,14 +427,10 @@ async function loadPeriod(periodVal){
       if(ws!==adsWeekToUse)return;
       var v=adsDataAllWeeks[k];
       if(!adsData[bid])adsData[bid]={};
-      if(!adsData[bid][mkt])adsData[bid][mkt]={ad_revenue:0,ad_spend:0,ad_impressions:0,ad_clicks:0,organic_revenue:0,organic_glance_views:0,ad_glance_views:0};
-      adsData[bid][mkt].ad_revenue+=(v.ad_revenue||0);adsData[bid][mkt].ad_spend+=(v.ad_spend||0);adsData[bid][mkt].ad_clicks+=(v.ad_clicks||0);adsData[bid][mkt].ad_glance_views+=(v.ad_glance_views||0);
+      if(!adsData[bid][mkt])adsData[bid][mkt]={ad_revenue:0,ad_spend:0,ad_glance_views:0};
+      adsData[bid][mkt].ad_revenue+=(v.ad_revenue||0);adsData[bid][mkt].ad_spend+=(v.ad_spend||0);adsData[bid][mkt].ad_glance_views+=(v.ad_glance_views||0);
     });
-    if(Object.keys(adsData).length>0){
-      var vcTotals={};
-      allRows.forEach(function(r){var k=r.brand_classified+'||'+(r.market||'ALL');if(!vcTotals[k])vcTotals[k]={revenue:0,gviews:0};vcTotals[k].revenue+=(r.dispatched_revenue||r.ordered_revenue||0);vcTotals[k].gviews+=(r.glance_views||0);});
-      Object.keys(adsData).forEach(function(bid){Object.keys(adsData[bid]).forEach(function(mk){var ad=adsData[bid][mk];var vc=vcTotals[bid+'||'+mk]||{revenue:0,gviews:0};ad.organic_revenue=Math.max(0,vc.revenue-ad.ad_revenue);ad.organic_glance_views=Math.max(0,vc.gviews-ad.ad_clicks);});});
-    }
+
   }else{
     var weekArrays=await Promise.all(weekStarts.map(function(ws){return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=*&limit=50000');}));
     allRows=weekArrays.reduce(function(a,b){return a.concat(b);},[]);
@@ -444,8 +440,8 @@ async function loadPeriod(periodVal){
       if(weekStarts.indexOf(ws)===-1)return;
       var v=adsDataAllWeeks[k];
       if(!adsData[bid])adsData[bid]={};
-      if(!adsData[bid][mkt])adsData[bid][mkt]={ad_revenue:0,ad_spend:0,ad_impressions:0,ad_clicks:0,organic_revenue:0,organic_glance_views:0,ad_glance_views:0};
-      adsData[bid][mkt].ad_revenue+=(v.ad_revenue||0);adsData[bid][mkt].ad_spend+=(v.ad_spend||0);adsData[bid][mkt].organic_revenue+=(v.organic_revenue||0);adsData[bid][mkt].organic_glance_views+=(v.organic_glance_views||0);adsData[bid][mkt].ad_glance_views+=(v.ad_glance_views||0);
+      if(!adsData[bid][mkt])adsData[bid][mkt]={ad_revenue:0,ad_spend:0,ad_glance_views:0};
+      adsData[bid][mkt].ad_revenue+=(v.ad_revenue||0);adsData[bid][mkt].ad_spend+=(v.ad_spend||0);adsData[bid][mkt].ad_glance_views+=(v.ad_glance_views||0);
     });
   }
   var sel=document.getElementById('week-select');var selOpt=sel.options[sel.selectedIndex];
@@ -476,8 +472,8 @@ function aggregateBrand(brandId){
   var ads=null;
   if(adsData[brandId]){
     var mkts=currentMarket==='ALL'?Object.keys(adsData[brandId]):[currentMarket];
-    ads={ad_revenue:0,ad_spend:0,ad_impressions:0,ad_clicks:0,organic_revenue:0,organic_glance_views:0,ad_glance_views:0};
-    mkts.forEach(function(mk){var a=adsData[brandId][mk];if(a){ads.ad_revenue+=(a.ad_revenue||0);ads.ad_spend+=(a.ad_spend||0);ads.organic_revenue+=(a.organic_revenue||0);ads.organic_glance_views+=(a.organic_glance_views||0);ads.ad_glance_views+=(a.ad_glance_views||0);}});
+    ads={ad_revenue:0,ad_spend:0,ad_impressions:0,ad_clicks:0,ad_glance_views:0};
+    mkts.forEach(function(mk){var a=adsData[brandId][mk];if(a){ads.ad_revenue+=(a.ad_revenue||0);ads.ad_spend+=(a.ad_spend||0);ads.ad_glance_views+=(a.ad_glance_views||0);}});
     if(ads.ad_revenue===0&&ads.ad_spend===0)ads=null;
   }
   return{revenue:revenue,revenueYoy:revYoyD>0?revYoyN/revYoyD:null,units:units,asp:asp,conv:conv,gviews:gviews,gviewsYoy:gvYoyD>0?gvYoyN/gvYoyD:null,unfilled:unfilled,avgOos:avgOos,repeatRate:repeatRate,ltv:ltv,ads:ads};
@@ -530,13 +526,15 @@ function renderBrandCards(){
     var ads=d.ads,hasAds=ads!=null&&(ads.ad_spend>0||ads.ad_revenue>0);
     var adRevPct=hasAds&&d.revenue>0?((ads.ad_revenue/d.revenue)*100).toFixed(0):null;
     var adGvPct=hasAds&&d.gviews>0?((ads.ad_glance_views/d.gviews)*100).toFixed(0):null;
+    var orgRev=hasAds?Math.max(0,d.revenue-(ads.ad_revenue||0)):0;
+    var orgGv=hasAds?Math.max(0,d.gviews-(ads.ad_glance_views||0)):0;
     var subRevHtml=hasAds?
-      '<div class="bm-sub-row"><span class="bm-sub-label"><span class="dot-org"></span>Organic</span><span class="bm-sub-value">'+fmtCur(ads.organic_revenue||0)+'</span></div>'+
+      '<div class="bm-sub-row"><span class="bm-sub-label"><span class="dot-org"></span>Organic</span><span class="bm-sub-value">'+fmtCur(orgRev)+'</span></div>'+
       '<div class="bm-sub-row"><span class="bm-sub-label"><span class="dot-ad"></span>Ad Attributed</span><span class="bm-sub-value">'+fmtCur(ads.ad_revenue||0)+' <span style="color:var(--ad-color);font-size:9px">'+adRevPct+'%</span></span></div>'+
       '<div class="bm-sub-row"><span class="bm-sub-label" style="color:var(--ad-color)">◆ ROAS</span><span class="bm-sub-value" style="font-weight:700">'+(ads.ad_spend>0?(ads.ad_revenue/ads.ad_spend).toFixed(2)+'x':'—')+'</span></div>':
       '<div class="bm-sub-row"><span class="bm-sub-label" style="color:var(--text3)">No ads data</span></div>';
     var subGvHtml=hasAds?
-      '<div class="bm-sub-row"><span class="bm-sub-label"><span class="dot-org"></span>Organic</span><span class="bm-sub-value">'+fmtNum(ads.organic_glance_views||0)+'</span></div>'+
+      '<div class="bm-sub-row"><span class="bm-sub-label"><span class="dot-org"></span>Organic</span><span class="bm-sub-value">'+fmtNum(orgGv)+'</span></div>'+
       '<div class="bm-sub-row"><span class="bm-sub-label"><span class="dot-ad"></span>Ad Traffic</span><span class="bm-sub-value">'+fmtNum(ads.ad_glance_views||0)+' <span style="color:var(--ad-color);font-size:9px">'+adGvPct+'%</span></span></div>':
       '<div class="bm-sub-row"><span class="bm-sub-label" style="color:var(--text3)">No ads data</span></div>';
     var card=document.createElement('div');
@@ -581,9 +579,11 @@ function setTab(tab,btn){currentTab=tab;document.querySelectorAll('.rca-tab').fo
 function renderRCA(brandId,tab){
   var rows=getRows(brandId),d=aggregateBrand(brandId),ads=d.ads;
   var adRevPct=ads&&d.revenue>0?((ads.ad_revenue/d.revenue)*100).toFixed(0):null;
+  var rcaOrgRev=ads?Math.max(0,d.revenue-(ads.ad_revenue||0)):0;
+  var rcaOrgGv=ads?Math.max(0,d.gviews-(ads.ad_glance_views||0)):0;
   document.getElementById('kpi-row').innerHTML=
-    '<div class="kpi-card"><div class="kpi-label">Revenue</div><div class="kpi-value c-blue">'+fmtCur(d.revenue)+'</div><div class="kpi-yoy">'+fmtYoyText(d.revenueYoy)+' vs last year</div>'+(ads?'<div class="kpi-ads-split"><span class="kpi-split-pill org">🌿 Org '+fmtCur(ads.organic_revenue||0)+'</span><span class="kpi-split-pill ad">🎯 Ads '+fmtCur(ads.ad_revenue||0)+' ('+adRevPct+'%)</span></div>':'')+'</div>'+
-    '<div class="kpi-card"><div class="kpi-label">Glance Views</div><div class="kpi-value c-green">'+fmtNum(d.gviews)+'</div><div class="kpi-yoy">'+fmtYoyText(d.gviewsYoy)+' vs last year</div>'+(ads?'<div class="kpi-ads-split"><span class="kpi-split-pill org">🌿 Org '+fmtNum(ads.organic_glance_views||0)+'</span><span class="kpi-split-pill ad">🎯 Ad '+fmtNum(ads.ad_glance_views||0)+'</span></div>':'')+'</div>'+
+    '<div class="kpi-card"><div class="kpi-label">Revenue</div><div class="kpi-value c-blue">'+fmtCur(d.revenue)+'</div><div class="kpi-yoy">'+fmtYoyText(d.revenueYoy)+' vs last year</div>'+(ads?'<div class="kpi-ads-split"><span class="kpi-split-pill org">🌿 Org '+fmtCur(rcaOrgRev)+'</span><span class="kpi-split-pill ad">🎯 Ads '+fmtCur(ads.ad_revenue||0)+' ('+adRevPct+'%)</span></div>':'')+'</div>'+
+    '<div class="kpi-card"><div class="kpi-label">Glance Views</div><div class="kpi-value c-green">'+fmtNum(d.gviews)+'</div><div class="kpi-yoy">'+fmtYoyText(d.gviewsYoy)+' vs last year</div>'+(ads?'<div class="kpi-ads-split"><span class="kpi-split-pill org">🌿 Org '+fmtNum(rcaOrgGv)+'</span><span class="kpi-split-pill ad">🎯 Ad '+fmtNum(ads.ad_glance_views||0)+'</span></div>':'')+'</div>'+
     '<div class="kpi-card"><div class="kpi-label">Conversion Rate</div><div class="kpi-value '+(cvrLevel(d.conv)==='good'?'c-green':cvrLevel(d.conv)==='ok'?'c-amber':'c-red')+'">'+d.conv.toFixed(2)+'%</div><div class="kpi-yoy">'+(d.conv>=10?'✅ Good (≥10%)':d.conv>=5?'⚠️ Average (5–9%)':'🔴 Low (<5%)')+'</div></div>'+
     '<div class="kpi-card"><div class="kpi-label">Avg OOS</div><div class="kpi-value '+(oosLabel(d.avgOos)==='green'?'c-green':oosLabel(d.avgOos)==='amber'?'c-amber':'c-red')+'">'+d.avgOos.toFixed(1)+'%</div><div class="kpi-yoy">'+(d.avgOos<=6?'✅ Good (≤6%)':d.avgOos<=9?'⚠️ Monitor (7–9%)':'🔴 High (≥10%)')+' · Unfilled: '+Math.round(d.unfilled)+'</div></div>';
   var wrap=document.getElementById('table-wrap');
@@ -651,7 +651,7 @@ function renderAdsTab(brandId,d,ads,wrap){
   var roas=ads.ad_spend>0?(ads.ad_revenue/ads.ad_spend).toFixed(2):null;
   var blendedRoas=ads.ad_spend>0?(d.revenue/ads.ad_spend).toFixed(1):null;
   var acos=ads.ad_revenue>0?((ads.ad_spend/ads.ad_revenue)*100).toFixed(1):null;
-  var orgRevPct=d.revenue>0?(((ads.organic_revenue||0)/d.revenue)*100).toFixed(0):null;
+  var orgRevPct=d.revenue>0?(Math.max(0,d.revenue-(ads.ad_revenue||0))/d.revenue*100).toFixed(0):null;
   var adRevPct2=d.revenue>0?(((ads.ad_revenue||0)/d.revenue)*100).toFixed(0):null;
   var roasNum=parseFloat(roas)||0;
   wrap.innerHTML='<div style="margin-bottom:20px;"><div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Revenue Mix</div><div style="height:28px;border-radius:14px;overflow:hidden;display:flex;"><div style="width:'+orgRevPct+'%;background:var(--org-color);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white">'+orgRevPct+'% organic</div><div style="flex:1;background:var(--ad-color);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white">'+adRevPct2+'% ads</div></div></div>'+
