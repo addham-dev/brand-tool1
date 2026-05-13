@@ -1100,18 +1100,13 @@ async function parseExecSummary(file) {
         // Deduplicate by Media Buy Name to prevent AMS+DSP double-counting.
         // Each campaign line appears once per platform row in the detail sheet —
         // we want the row where Spend > 0 (the actual spend row), or the first occurrence.
-        const seenCampaigns = new Set();
-        const deduped = [];
-        // First pass: prefer rows where Spend > 0
-        rows.forEach(r => {
-          const campaignKey = String(r['Media Buy Name']||'').trim();
-          if (!campaignKey) { deduped.push(r); return; } // no campaign name — include as-is
-          if (!seenCampaigns.has(campaignKey)) {
-            seenCampaigns.add(campaignKey);
-            deduped.push(r);
-          }
+        // Filter to only rows with actual spend — removes zero-spend comparison/reference rows
+        // that inflate totals when the sheet contains prior period data alongside current data.
+        const deduped = rows.filter(r => {
+          const spend = parseFloat(String(r['Spend']||0).replace(/[^0-9.\-]/g,'')) || 0;
+          return spend > 0;
         });
-        console.log('Rows before dedup:', rows.length, '| Rows after dedup:', deduped.length, '| Sample campaign key:', rows[4] ? String(rows[4]['Media Buy Name']||'MISSING') : 'n/a');
+        console.log('Rows before filter:', rows.length, '| Rows after filter (spend>0):', deduped.length);
 
         const results = [];
         deduped.forEach(r => {
