@@ -632,62 +632,74 @@ function smartFileSelect(e) {
   handleSmartFiles([...e.target.files]);
 }
 
+// ─── BULK WEEK QUEUE ─────────────────────────────────────────
+let weekQueue = [];
+
 function handleSmartFiles(fileList) {
+  const byWeek = {};
   fileList.forEach(f => {
     const type = detectFileType(f.name);
     const week = detectWeekFromFilename(f.name);
-    if (type) {
-      smartFiles[type] = { file: f, week };
-      // Also set in legacy files object for processAndUpload/processAndUploadAds
-      files[type === 'sp' ? 'sp' : type] = f;
-      if (type === 'sp') {
-        document.getElementById('ads-btn').disabled = false;
-        document.getElementById('lbl-sp').textContent = '✓ ' + f.name;
-      }
+    if (!type) return;
+    // Ads files go to the ads queue, not the VC week queue
+    if (type === 'sp') {
+      files.sp = f;
+      document.getElementById('ads-btn').disabled = false;
+      document.getElementById('lbl-sp').textContent = '✓ ' + f.name;
+      return;
     }
+    if (!week) { log(`⚠️ Could not detect week from: ${f.name}`, 'err'); return; }
+    const key = week.start;
+    if (!byWeek[key]) byWeek[key] = { weekStart: week.start, weekEnd: week.end, weekLabel: week.label };
+    byWeek[key][type] = f;
   });
+
+  Object.values(byWeek).forEach(w => {
+    const idx = weekQueue.findIndex(q => q.weekStart === w.weekStart);
+    if (idx >= 0) weekQueue[idx] = { ...weekQueue[idx], ...w };
+    else weekQueue.push(w);
+  });
+
+  weekQueue.sort((a, b) => a.weekStart.localeCompare(b.weekStart));
   renderDetectedFiles();
   checkSmartReady();
 }
 
 function renderDetectedFiles() {
-  const types = { sales:'📊 Sales', traffic:'👁 Traffic', inventory:'📦 Inventory', sp:'🎯 Exec Summary' };
-  const entries = Object.entries(smartFiles);
-  if (!entries.length) return;
-  document.getElementById('detected-files').style.display = 'block';
-  document.getElementById('detected-list').innerHTML = entries.map(([type, {file, week}]) => `
-    <div style="display:flex;align-items:center;gap:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;padding:10px 14px;">
-      <span style="font-size:16px">${types[type]?.split(' ')[0]||'📄'}</span>
+  const container = document.getElementById('detected-files');
+  const list = document.getElementById('detected-list');
+  if (!weekQueue.length) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+  list.innerHTML = weekQueue.map((w, i) => {
+    const complete = w.sales && w.traffic && w.inventory;
+    const missing = [!w.sales&&'Sales', !w.traffic&&'Traffic', !w.inventory&&'Inventory'].filter(Boolean).join(', ');
+    const bg = complete ? 'var(--green-bg)' : 'var(--amber-bg)';
+    const border = complete ? 'var(--green)' : 'var(--amber)';
+    const status = complete ? '✅ Ready to upload' : `⚠️ Missing: ${missing}`;
+    return `<div style="display:flex;align-items:center;gap:12px;background:${bg};border:1px solid ${border};border-radius:8px;padding:10px 14px;margin-bottom:6px;">
+      <span style="font-size:16px">📅</span>
       <div style="flex:1;">
-        <div style="font-size:12px;font-weight:700;color:var(--text)">${types[type]||type}</div>
-        <div style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${file.name}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);">${w.weekLabel}</div>
+        <div style="font-size:11px;color:${complete?'var(--green)':'var(--amber)'};">${status}</div>
       </div>
-      <div style="text-align:right;">
-        ${week ? `<div style="font-size:11px;font-weight:700;color:var(--blue)">${week.label}</div><div style="font-size:10px;color:var(--green)">✓ Week auto-detected</div>` 
-                : `<div style="font-size:10px;color:var(--amber)">⚠️ No date in filename</div>`}
-      </div>
-      <button onclick="removeSmartFile('${type}')" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;">✕</button>
-    </div>
-  `).join('');
+      <button onclick="removeWeekQueue(${i})" style="background:none;border:none;color:var(--red);font-size:14px;cursor:pointer;padding:2px 6px;">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function removeWeekQueue(i) {
+  weekQueue.splice(i, 1);
+  renderDetectedFiles();
+  checkSmartReady();
 }
 
 function removeSmartFile(type) {
-  delete smartFiles[type];
-  files[type] = null;
-  renderDetectedFiles();
-  checkSmartReady();
-  if (!Object.keys(smartFiles).length) {
-    document.getElementById('detected-files').style.display = 'none';
-  }
+  // Legacy — no-op in bulk mode
 }
 
 function checkSmartReady() {
-  const hasVC = smartFiles.sales && smartFiles.traffic && smartFiles.inventory;
-  const allHaveWeek = hasVC && smartFiles.sales.week && smartFiles.traffic.week && smartFiles.inventory.week;
-  document.getElementById('process-btn').disabled = !(hasVC && allHaveWeek);
-  if (hasVC && !allHaveWeek) {
-    log('⚠️ Could not detect week from filename — rename files to include date range (e.g. Sales_ASIN_..._26-04-2026_02-05-2026.csv)', 'err');
-  }
+  const hasReady = weekQueue.some(w => w.sales && w.traffic && w.inventory);
+  document.getElementById('process-btn').disabled = !hasReady;
 }
 
 function showManualDate() {
@@ -908,121 +920,105 @@ function log(msg,type='',areaId='log-area'){
 }
 
 // ─── MAIN PROCESS ────────────────────────────────────────────
+// ─── MAIN PROCESS (BULK MULTI-WEEK) ──────────────────────────
 async function processAndUpload() {
-  // Get week from detected files
-  const weekData = smartFiles.sales?.week || smartFiles.traffic?.week || smartFiles.inventory?.week;
-  if (!weekData) { alert('Could not detect week from filenames. Please rename files to include the date range.'); return; }
-  const weekStart = weekData.start;
-  const weekEnd = weekData.end;
-
-  // Set hidden inputs for compatibility
-  document.getElementById('week-start').value = weekStart;
-  document.getElementById('week-end').value = weekEnd;
-
-  // Use detected files
-  files.sales = smartFiles.sales?.file || files.sales;
-  files.traffic = smartFiles.traffic?.file || files.traffic;
-  files.inventory = smartFiles.inventory?.file || files.inventory;
+  const ready = weekQueue.filter(w => w.sales && w.traffic && w.inventory);
+  if (!ready.length) { alert('No complete weeks to upload. Each week needs Sales, Traffic and Inventory files.'); return; }
 
   document.getElementById('overlay').classList.add('on');
-  document.getElementById('log-area').innerHTML='';
-  log('Starting process...','info');
+  document.getElementById('log-area').innerHTML = '';
+  log(`Starting bulk upload — ${ready.length} week(s)...`, 'info');
 
-  try {
-    document.getElementById('overlay-sub').textContent='Reading Sales report...';
-    log('Reading Sales report...');
-    const salesRaw=await parseVCFile(files.sales);
-    log(`✓ Sales: ${salesRaw.length} total rows`,'ok');
+  let successCount = 0;
+  for (let wi = 0; wi < ready.length; wi++) {
+    const w = ready[wi];
+    log(`[${wi+1}/${ready.length}] Processing ${w.weekLabel}...`, 'info');
+    try {
+      document.getElementById('overlay-sub').textContent = `Reading Sales — ${w.weekLabel}`;
+      const salesRaw = await parseVCFile(w.sales);
+      log(`✓ Sales: ${salesRaw.length} rows`, 'ok');
 
-    document.getElementById('overlay-sub').textContent='Reading Traffic report...';
-    log('Reading Traffic report...');
-    const trafficRaw=await parseVCFile(files.traffic);
-    log(`✓ Traffic: ${trafficRaw.length} total rows`,'ok');
+      document.getElementById('overlay-sub').textContent = `Reading Traffic — ${w.weekLabel}`;
+      const trafficRaw = await parseVCFile(w.traffic);
+      log(`✓ Traffic: ${trafficRaw.length} rows`, 'ok');
 
-    document.getElementById('overlay-sub').textContent='Reading Inventory report...';
-    log('Reading Inventory report...');
-    const invRaw=await parseVCFile(files.inventory);
-    log(`✓ Inventory: ${invRaw.length} total rows`,'ok');
+      document.getElementById('overlay-sub').textContent = `Reading Inventory — ${w.weekLabel}`;
+      const invRaw = await parseVCFile(w.inventory);
+      log(`✓ Inventory: ${invRaw.length} rows`, 'ok');
 
-    const sales=salesRaw.filter(r=>EU5.includes(String(col(r,'Store code')||'').trim().toUpperCase()));
-    const traffic=trafficRaw.filter(r=>EU5.includes(String(col(r,'Store code')||'').trim().toUpperCase()));
-    const inv=invRaw.filter(r=>EU5.includes(String(col(r,'Store code')||'').trim().toUpperCase()));
-    log(`EU5 filter: ${sales.length} sales, ${traffic.length} traffic, ${inv.length} inventory`,'info');
+      const sales   = salesRaw.filter(r => EU5.includes(String(col(r,'Store code')||'').trim().toUpperCase()));
+      const traffic = trafficRaw.filter(r => EU5.includes(String(col(r,'Store code')||'').trim().toUpperCase()));
+      const inv     = invRaw.filter(r => EU5.includes(String(col(r,'Store code')||'').trim().toUpperCase()));
+      log(`EU5: ${sales.length} sales, ${traffic.length} traffic, ${inv.length} inventory`, 'info');
 
-    const trafficMap={};
-    traffic.forEach(r=>{
-      const k=String(r['ASIN']).trim()+'_'+String(col(r,'Store code')||'').trim().toUpperCase();
-      if(!trafficMap[k]) trafficMap[k]={gviews:0,gviewsYoy:null};
-      trafficMap[k].gviews+=cleanNum(col(r,'Featured offer page views'))||0;
-      const yoy=parseYoy(col(r,'Featured offer page views – Same Period Last Year (%)'),true);
-      if(yoy!==null) trafficMap[k].gviewsYoy=yoy;
-    });
-
-    const invMap={};
-    inv.forEach(r=>{
-      const k=String(r['ASIN']).trim()+'_'+String(col(r,'Store code')||'').trim().toUpperCase();
-      if(!invMap[k]) invMap[k]={oos:0,unfilled:0};
-      invMap[k].oos=cleanNum(col(r,'Sourceable product OOS %'))||0;
-      invMap[k].unfilled+=cleanNum(col(r,'Unfilled Customer Ordered Units'))||0;
-    });
-
-    log('Classifying brands & building rows...');
-    const rows=[];
-    sales.forEach(r=>{
-      const asin=String(r['ASIN']).trim();
-      const market=String(col(r,'Store code')||'').trim().toUpperCase();
-      const k=asin+'_'+market;
-      const t=trafficMap[k]||{gviews:0,gviewsYoy:null};
-      const iv=invMap[k]||{oos:0,unfilled:0};
-      const dispRev=cleanNum(col(r,'Dispatched revenue'));
-      const ordRev=cleanNum(col(r,'Ordered revenue'));
-      const dispUnits=cleanNum(col(r,'Dispatched units'));
-      const ordUnits=cleanNum(col(r,'Ordered units'));
-      const revYoy=parseYoy(col(r,'Dispatched Revenue – Same Period Last Year (%)'),true)??parseYoy(col(r,'Ordered Revenue – Same Period Last Year (%)'),true);
-      const unitsYoy=parseYoy(col(r,'Dispatched Units – Same Period Last Year (%)'),true)??parseYoy(col(r,'Ordered Units – Same Period Last Year (%)'),true);
-      rows.push({
-        week_start:weekStart,asin,
-        product_title:String(col(r,'Product title')||'').trim().substring(0,500),
-        brand_raw:String(col(r,'Brand')||'').trim(),
-        brand_classified:classifyBrand(col(r,'Product title'),col(r,'Brand')),
-        market,
-        dispatched_revenue:dispRev,ordered_revenue:ordRev,
-        dispatched_units:dispUnits?Math.round(dispUnits):null,
-        ordered_units:ordUnits?Math.round(ordUnits):null,
-        revenue_yoy:revYoy,units_yoy:unitsYoy,
-        glance_views:t.gviews?Math.round(t.gviews):null,
-        glance_views_yoy:t.gviewsYoy,
-        oos_pct:iv.oos,
-        unfilled_units:Math.round(iv.unfilled)
+      const trafficMap = {};
+      traffic.forEach(r => {
+        const k = String(r['ASIN']).trim()+'_'+String(col(r,'Store code')||'').trim().toUpperCase();
+        if (!trafficMap[k]) trafficMap[k] = { gviews:0, gviewsYoy:null };
+        trafficMap[k].gviews += cleanNum(col(r,'Featured offer page views'))||0;
+        const yoy = parseYoy(col(r,'Featured offer page views – Same Period Last Year (%)'),true);
+        if (yoy !== null) trafficMap[k].gviewsYoy = yoy;
       });
-    });
-    log(`✓ Built ${rows.length} rows`,'ok');
 
-    document.getElementById('overlay-sub').textContent='Clearing existing week data...';
-    log(`Clearing existing data for week ${weekStart}...`);
-    await sbDelete(`/rest/v1/brand_health_snapshots?week_start=eq.${weekStart}`);
-    log('✓ Cleared','ok');
+      const invMap = {};
+      inv.forEach(r => {
+        const k = String(r['ASIN']).trim()+'_'+String(col(r,'Store code')||'').trim().toUpperCase();
+        if (!invMap[k]) invMap[k] = { oos:0, unfilled:0 };
+        invMap[k].oos = cleanNum(col(r,'Sourceable product OOS %'))||0;
+        invMap[k].unfilled += cleanNum(col(r,'Unfilled Customer Ordered Units'))||0;
+      });
 
-    document.getElementById('overlay-sub').textContent='Uploading to Supabase...';
-    const BATCH=500;let uploaded=0;
-    for(let i=0;i<rows.length;i+=BATCH){
-      const batch=rows.slice(i,i+BATCH);
-      await sbPost('/rest/v1/brand_health_snapshots',batch);
-      uploaded+=batch.length;
-      document.getElementById('overlay-progress').textContent=`${uploaded} / ${rows.length} rows`;
-      log(`Uploaded ${uploaded}/${rows.length} rows...`);
+      log('Building rows...', 'info');
+      const rows = [];
+      sales.forEach(r => {
+        const asin   = String(r['ASIN']).trim();
+        const market = String(col(r,'Store code')||'').trim().toUpperCase();
+        const k = asin+'_'+market;
+        const t  = trafficMap[k]||{ gviews:0, gviewsYoy:null };
+        const iv = invMap[k]||{ oos:0, unfilled:0 };
+        rows.push({
+          week_start: w.weekStart, asin,
+          product_title: String(col(r,'Product title')||'').trim().substring(0,500),
+          brand_raw: String(col(r,'Brand')||'').trim(),
+          brand_classified: classifyBrand(col(r,'Product title'), col(r,'Brand')),
+          market,
+          dispatched_revenue: cleanNum(col(r,'Dispatched revenue')),
+          ordered_revenue: cleanNum(col(r,'Ordered revenue')),
+          dispatched_units: cleanNum(col(r,'Dispatched units')) ? Math.round(cleanNum(col(r,'Dispatched units'))) : null,
+          ordered_units: cleanNum(col(r,'Ordered units')) ? Math.round(cleanNum(col(r,'Ordered units'))) : null,
+          revenue_yoy: parseYoy(col(r,'Dispatched Revenue – Same Period Last Year (%)'),true) ?? parseYoy(col(r,'Ordered Revenue – Same Period Last Year (%)'),true),
+          units_yoy: parseYoy(col(r,'Dispatched Units – Same Period Last Year (%)'),true) ?? parseYoy(col(r,'Ordered Units – Same Period Last Year (%)'),true),
+          glance_views: t.gviews ? Math.round(t.gviews) : null,
+          glance_views_yoy: t.gviewsYoy,
+          oos_pct: iv.oos,
+          unfilled_units: Math.round(iv.unfilled)
+        });
+      });
+      log(`✓ Built ${rows.length} rows`, 'ok');
+
+      document.getElementById('overlay-sub').textContent = `Uploading — ${w.weekLabel}`;
+      await sbDelete(`/rest/v1/brand_health_snapshots?week_start=eq.${w.weekStart}`);
+      const BATCH = 500; let uploaded = 0;
+      for (let i = 0; i < rows.length; i += BATCH) {
+        await sbPost('/rest/v1/brand_health_snapshots', rows.slice(i, i+BATCH));
+        uploaded += Math.min(BATCH, rows.length - i);
+        document.getElementById('overlay-progress').textContent = `Week ${wi+1}/${ready.length} — ${uploaded}/${rows.length} rows`;
+      }
+      await sbDelete(`/rest/v1/brand_health_weeks?week_start=eq.${w.weekStart}`);
+      await sbPost('/rest/v1/brand_health_weeks', { week_start:w.weekStart, week_label:w.weekLabel }, { prefer:'resolution=merge-duplicates' });
+      log(`✅ Week ${w.weekLabel} — ${rows.length} rows uploaded`, 'ok');
+      successCount++;
+    } catch(err) {
+      log(`❌ Week ${w.weekLabel} failed: ${err.message}`, 'err');
+      console.error(err);
     }
-
-    await sbDelete(`/rest/v1/brand_health_weeks?week_start=eq.${weekStart}`);
-    await sbPost('/rest/v1/brand_health_weeks',{week_start:weekStart,week_label:formatDate(weekStart)+' – '+formatDate(weekEnd)},{prefer:'resolution=merge-duplicates'});
-    document.getElementById('overlay').classList.remove('on');
-    log(`✅ Done! ${rows.length} rows uploaded for week ${weekStart}`,'ok');
-    loadHistory();
-  } catch(err){
-    document.getElementById('overlay').classList.remove('on');
-    log('❌ Error: '+err.message,'err');
-    console.error(err);
   }
+
+  document.getElementById('overlay').classList.remove('on');
+  log(`✅ Complete — ${successCount}/${ready.length} weeks uploaded.`, 'ok');
+  weekQueue = weekQueue.filter(w => !ready.find(r => r.weekStart === w.weekStart));
+  renderDetectedFiles();
+  loadHistory();
 }
 
 // ─── ADS BRAND CLASSIFICATION ────────────────────────────────
