@@ -457,14 +457,31 @@ function getRows(brandId){var rows=allRows.filter(function(r){return r.brand_cla
 
 function aggregateBrand(brandId){
   var rows=getRows(brandId);
-  var revenue=0,revYoyN=0,revYoyD=0,units=0,gviews=0,gvYoyN=0,gvYoyD=0,unfilled=0,oosVals=[];
+  var revenue=0,units=0,gviews=0,unfilled=0,oosVals=[];
   rows.forEach(function(r){
     var rev=r.dispatched_revenue||r.ordered_revenue||0;revenue+=rev;units+=r.dispatched_units||r.ordered_units||0;
-    if(r.revenue_yoy!=null&&rev>0){revYoyN+=rev*r.revenue_yoy;revYoyD+=rev;}
     var gv=r.glance_views||0;gviews+=gv;
-    if(r.glance_views_yoy!=null&&gv>0){gvYoyN+=gv*r.glance_views_yoy;gvYoyD+=gv;}
     unfilled+=r.unfilled_units||0;if(r.oos_pct!=null)oosVals.push(r.oos_pct);
   });
+
+  // ── MoM: compare to same brand 4 weeks prior ──────────────
+  var currentWeeks=rows.map(function(r){return r.week_start;}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
+  var priorWeeks=currentWeeks.map(function(ws){
+    var d=new Date(ws);d.setDate(d.getDate()-28);return d.toISOString().split('T')[0];
+  });
+  var priorRows=allRowsAllWeeks.filter(function(r){
+    if(r.brand_classified!==brandId)return false;
+    if(currentMarket!=='ALL'&&r.market!==currentMarket)return false;
+    return priorWeeks.indexOf(r.week_start)>=0;
+  });
+  var priorRevenue=0,priorGviews=0;
+  priorRows.forEach(function(r){
+    priorRevenue+=r.dispatched_revenue||r.ordered_revenue||0;
+    priorGviews+=r.glance_views||0;
+  });
+  var revenueYoy=priorRevenue>0?(revenue-priorRevenue)/priorRevenue:null;
+  var gviewsYoy=priorGviews>0?(gviews-priorGviews)/priorGviews:null;
+
   var avgOos=oosVals.length>0?oosVals.reduce(function(a,b){return a+b;},0)/oosVals.length:0;
   var conv=gviews>0?(units/gviews)*100:0,asp=units>0?revenue/units:0;
   var loyalty=loyaltyData[brandId],repeatRate=loyalty?loyalty.repeat_rate:null;
@@ -476,7 +493,7 @@ function aggregateBrand(brandId){
     mkts.forEach(function(mk){var a=adsData[brandId][mk];if(a){ads.ad_revenue+=(a.ad_revenue||0);ads.ad_spend+=(a.ad_spend||0);ads.ad_glance_views+=(a.ad_glance_views||0);}});
     if(ads.ad_revenue===0&&ads.ad_spend===0)ads=null;
   }
-  return{revenue:revenue,revenueYoy:revYoyD>0?revYoyN/revYoyD:null,units:units,asp:asp,conv:conv,gviews:gviews,gviewsYoy:gvYoyD>0?gvYoyN/gvYoyD:null,unfilled:unfilled,avgOos:avgOos,repeatRate:repeatRate,ltv:ltv,ads:ads};
+  return{revenue:revenue,revenueYoy:revenueYoy,units:units,asp:asp,conv:conv,gviews:gviews,gviewsYoy:gviewsYoy,unfilled:unfilled,avgOos:avgOos,repeatRate:repeatRate,ltv:ltv,ads:ads};
 }
 
 function getSentiment(d){
@@ -582,8 +599,8 @@ function renderRCA(brandId,tab){
   var rcaOrgRev=ads?Math.max(0,d.revenue-(ads.ad_revenue||0)):0;
   var rcaOrgGv=ads?Math.max(0,d.gviews-(ads.ad_glance_views||0)):0;
   document.getElementById('kpi-row').innerHTML=
-    '<div class="kpi-card"><div class="kpi-label">Revenue</div><div class="kpi-value c-blue">'+fmtCur(d.revenue)+'</div><div class="kpi-yoy">'+fmtYoyText(d.revenueYoy)+' vs last year</div>'+(ads?'<div class="kpi-ads-split"><span class="kpi-split-pill org">🌿 Org '+fmtCur(rcaOrgRev)+'</span><span class="kpi-split-pill ad">🎯 Ads '+fmtCur(ads.ad_revenue||0)+' ('+adRevPct+'%)</span></div>':'')+'</div>'+
-    '<div class="kpi-card"><div class="kpi-label">Glance Views</div><div class="kpi-value c-green">'+fmtNum(d.gviews)+'</div><div class="kpi-yoy">'+fmtYoyText(d.gviewsYoy)+' vs last year</div>'+(ads?'<div class="kpi-ads-split"><span class="kpi-split-pill org">🌿 Org '+fmtNum(rcaOrgGv)+'</span><span class="kpi-split-pill ad">🎯 Ad '+fmtNum(ads.ad_glance_views||0)+'</span></div>':'')+'</div>'+
+    '<div class="kpi-card"><div class="kpi-label">Revenue</div><div class="kpi-value c-blue">'+fmtCur(d.revenue)+'</div><div class="kpi-yoy">'+fmtYoyText(d.revenueYoy)+'</div>'+(ads?'<div class="kpi-ads-split"><span class="kpi-split-pill org">🌿 Org '+fmtCur(rcaOrgRev)+'</span><span class="kpi-split-pill ad">🎯 Ads '+fmtCur(ads.ad_revenue||0)+' ('+adRevPct+'%)</span></div>':'')+'</div>'+
+    '<div class="kpi-card"><div class="kpi-label">Glance Views</div><div class="kpi-value c-green">'+fmtNum(d.gviews)+'</div><div class="kpi-yoy">'+fmtYoyText(d.gviewsYoy)+'</div>'+(ads?'<div class="kpi-ads-split"><span class="kpi-split-pill org">🌿 Org '+fmtNum(rcaOrgGv)+'</span><span class="kpi-split-pill ad">🎯 Ad '+fmtNum(ads.ad_glance_views||0)+'</span></div>':'')+'</div>'+
     '<div class="kpi-card"><div class="kpi-label">Conversion Rate</div><div class="kpi-value '+(cvrLevel(d.conv)==='good'?'c-green':cvrLevel(d.conv)==='ok'?'c-amber':'c-red')+'">'+d.conv.toFixed(2)+'%</div><div class="kpi-yoy">'+(d.conv>=10?'✅ Good (≥10%)':d.conv>=5?'⚠️ Average (5–9%)':'🔴 Low (<5%)')+'</div></div>'+
     '<div class="kpi-card"><div class="kpi-label">Avg OOS</div><div class="kpi-value '+(oosLabel(d.avgOos)==='green'?'c-green':oosLabel(d.avgOos)==='amber'?'c-amber':'c-red')+'">'+d.avgOos.toFixed(1)+'%</div><div class="kpi-yoy">'+(d.avgOos<=6?'✅ Good (≤6%)':d.avgOos<=9?'⚠️ Monitor (7–9%)':'🔴 High (≥10%)')+' · Unfilled: '+Math.round(d.unfilled)+'</div></div>';
   var wrap=document.getElementById('table-wrap');
