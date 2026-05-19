@@ -455,16 +455,63 @@ async function loadPeriod(periodVal){
 function setPeriodMode(mode,btn){periodMode=mode;document.querySelectorAll('.period-tab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');buildPeriodSelect();loadPeriod(currentPeriod);}
 function getRows(brandId){var rows=allRows.filter(function(r){return r.brand_classified===brandId;});if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});return rows;}
 
+var currentComparison = 'wow'; // 'wow' | '4w' | 'yoy'
+
+function setComparison(mode, btn) {
+  currentComparison = mode;
+  document.querySelectorAll('.comp-tab').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  buildDashboard();
+}
+
+function getPriorWeeks(currentWeeks) {
+  var allAvailable = allRowsAllWeeks.map(function(r){ return r.week_start; })
+    .filter(function(v,i,a){ return a.indexOf(v)===i; }).sort();
+  return currentWeeks.map(function(ws) {
+    var idx = allAvailable.indexOf(ws);
+    if (currentComparison === 'wow') return idx >= 1 ? allAvailable[idx-1] : null;
+    if (currentComparison === '4w')  return idx >= 4 ? allAvailable[idx-4] : null;
+    if (currentComparison === 'yoy') {
+      // Find closest week ~52 weeks prior (within 2 weeks tolerance)
+      var target = new Date(ws);
+      target.setDate(target.getDate() - 364);
+      var best = null, bestDiff = Infinity;
+      allAvailable.forEach(function(w) {
+        var d = Math.abs(new Date(w) - target);
+        if (d < bestDiff && d <= 14*24*60*60*1000) { bestDiff = d; best = w; }
+      });
+      return best;
+    }
+    return null;
+  }).filter(Boolean);
+}
+
 function aggregateBrand(brandId){
   var rows=getRows(brandId);
-  var revenue=0,revYoyN=0,revYoyD=0,units=0,gviews=0,gvYoyN=0,gvYoyD=0,unfilled=0,oosVals=[];
+  var revenue=0,units=0,gviews=0,unfilled=0,oosVals=[];
   rows.forEach(function(r){
     var rev=r.dispatched_revenue||0;revenue+=rev;units+=r.dispatched_units||0;
-    if(r.revenue_yoy!=null&&rev>0){revYoyN+=rev*r.revenue_yoy;revYoyD+=rev;}
     var gv=r.glance_views||0;gviews+=gv;
-    if(r.glance_views_yoy!=null&&gv>0){gvYoyN+=gv*r.glance_views_yoy;gvYoyD+=gv;}
     unfilled+=r.unfilled_units||0;if(r.oos_pct!=null)oosVals.push(r.oos_pct);
   });
+
+  // ── Comparison: calculate from actual data ─────────────────
+  var currentWeeks = rows.map(function(r){ return r.week_start; })
+    .filter(function(v,i,a){ return a.indexOf(v)===i; });
+  var priorWeeks = getPriorWeeks(currentWeeks);
+  var priorRevenue=0, priorGviews=0;
+  if (priorWeeks.length) {
+    allRowsAllWeeks.forEach(function(r) {
+      if (r.brand_classified !== brandId) return;
+      if (currentMarket !== 'ALL' && r.market !== currentMarket) return;
+      if (priorWeeks.indexOf(r.week_start) < 0) return;
+      priorRevenue += r.dispatched_revenue||0;
+      priorGviews  += r.glance_views||0;
+    });
+  }
+  var revenueYoy = priorRevenue > 0 ? (revenue - priorRevenue) / priorRevenue : null;
+  var gviewsYoy  = priorGviews  > 0 ? (gviews  - priorGviews)  / priorGviews  : null;
+
   var avgOos=oosVals.length>0?oosVals.reduce(function(a,b){return a+b;},0)/oosVals.length:0;
   var conv=gviews>0?(units/gviews)*100:0,asp=units>0?revenue/units:0;
   var loyalty=loyaltyData[brandId],repeatRate=loyalty?loyalty.repeat_rate:null;
@@ -476,7 +523,7 @@ function aggregateBrand(brandId){
     mkts.forEach(function(mk){var a=adsData[brandId][mk];if(a){ads.ad_revenue+=(a.ad_revenue||0);ads.ad_spend+=(a.ad_spend||0);ads.ad_glance_views+=(a.ad_glance_views||0);}});
     if(ads.ad_revenue===0&&ads.ad_spend===0)ads=null;
   }
-  return{revenue:revenue,revenueYoy:revYoyD>0?revYoyN/revYoyD:null,units:units,asp:asp,conv:conv,gviews:gviews,gviewsYoy:gvYoyD>0?gvYoyN/gvYoyD:null,unfilled:unfilled,avgOos:avgOos,repeatRate:repeatRate,ltv:ltv,ads:ads};
+  return{revenue:revenue,revenueYoy:revenueYoy,units:units,asp:asp,conv:conv,gviews:gviews,gviewsYoy:gviewsYoy,unfilled:unfilled,avgOos:avgOos,repeatRate:repeatRate,ltv:ltv,ads:ads};
 }
 
 function getSentiment(d){
@@ -738,8 +785,8 @@ function setCurrency(c){currency=c;['eur','gbp','usd'].forEach(function(x){docum
 
 function fmtCur(val){var v=val*FX[currency],sym=currency==='gbp'?'£':currency==='usd'?'$':'€';if(v>=1000000)return sym+(v/1000000).toFixed(1)+'M';if(v>=1000)return sym+(v/1000).toFixed(1)+'K';return sym+v.toFixed(0);}
 function fmtNum(n){if(n>=1000000)return(n/1000000).toFixed(1)+'M';if(n>=1000)return(n/1000).toFixed(0)+'K';return Math.round(n).toLocaleString();}
-function fmtYoy(val){return'';}
-function fmtYoyText(val){return '';}
+function fmtYoy(val){if(val==null||isNaN(val))return'';var p=(val*100).toFixed(1),cls=val>0?'yoy-up':val<0?'yoy-down':'yoy-na',arr=val>0?'▲':val<0?'▼':'';return'<span class="yoy '+cls+'">'+arr+Math.abs(p)+'%</span>';}
+function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFixed(1),col=val>0?'var(--green)':val<0?'var(--red)':'var(--text3)',arr=val>0?'▲':val<0?'▼':'';return'<span style="color:'+col+';font-weight:700">'+arr+Math.abs(p)+'%</span>';}
 
 /* ADAM WIDGET LOGIC */
 (function(){
