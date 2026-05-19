@@ -698,44 +698,50 @@ function handleSmartFiles(fileList) {
 
 function groupAndRender(byType) {
   const salesFiles = byType.sales;
-  if (!salesFiles.length) {
-    renderDetectedFiles();
-    checkSmartReady();
-    // Restore dropzone
-    document.getElementById('smart-dropzone').innerHTML = `<div style="font-size:36px;margin-bottom:10px;">📂</div><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue-dark);margin-bottom:4px;">Drop files or click to browse</div><div style="font-size:12px;color:var(--text2)">Sales · Traffic · Inventory · Executive Summary — auto-detected</div><input type="file" id="smart-file-input" accept=".csv,.xlsx" multiple style="display:none" onchange="smartFileSelect(event)">`;
-    return;
+
+  if (salesFiles.length) {
+    salesFiles.forEach(s => {
+      const key = s.week.start;
+      const existing = weekQueue.findIndex(q => q.weekStart === key);
+      const entry = existing >= 0 ? weekQueue[existing] : { weekStart: s.week.start, weekEnd: s.week.end, weekLabel: s.week.label };
+      entry.sales = s.file;
+
+      const inv = byType.inventory.reduce((best, f) => {
+        const diff = Math.abs(new Date(f.week.start) - new Date(key));
+        const bestDiff = best ? Math.abs(new Date(best.week.start) - new Date(key)) : Infinity;
+        return diff < bestDiff ? f : best;
+      }, null);
+      if (inv) entry.inventory = inv.file;
+
+      const traffic = byType.traffic.reduce((best, f) => {
+        const diff = Math.abs(new Date(f.week.start) - new Date(key));
+        const bestDiff = best ? Math.abs(new Date(best.week.start) - new Date(key)) : Infinity;
+        return diff < bestDiff && diff <= 14*24*60*60*1000 ? f : best;
+      }, null);
+      if (traffic) entry.traffic = traffic.file;
+
+      if (existing >= 0) weekQueue[existing] = entry;
+      else weekQueue.push(entry);
+    });
+
+    weekQueue.sort((a, b) => a.weekStart.localeCompare(b.weekStart));
   }
 
-  salesFiles.forEach(s => {
-    const key = s.week.start;
-    const existing = weekQueue.findIndex(q => q.weekStart === key);
-    const entry = existing >= 0 ? weekQueue[existing] : { weekStart: s.week.start, weekEnd: s.week.end, weekLabel: s.week.label };
-    entry.sales = s.file;
-
-    const inv = byType.inventory.reduce((best, f) => {
-      const diff = Math.abs(new Date(f.week.start) - new Date(key));
-      const bestDiff = best ? Math.abs(new Date(best.week.start) - new Date(key)) : Infinity;
-      return diff < bestDiff ? f : best;
-    }, null);
-    if (inv) entry.inventory = inv.file;
-
-    const traffic = byType.traffic.reduce((best, f) => {
-      const diff = Math.abs(new Date(f.week.start) - new Date(key));
-      const bestDiff = best ? Math.abs(new Date(best.week.start) - new Date(key)) : Infinity;
-      return diff < bestDiff && diff <= 14*24*60*60*1000 ? f : best;
-    }, null);
-    if (traffic) entry.traffic = traffic.file;
-
-    if (existing >= 0) weekQueue[existing] = entry;
-    else weekQueue.push(entry);
-  });
-
-  weekQueue.sort((a, b) => a.weekStart.localeCompare(b.weekStart));
   renderDetectedFiles();
   checkSmartReady();
 
-  // Restore dropzone
-  document.getElementById('smart-dropzone').innerHTML = `<div style="font-size:36px;margin-bottom:10px;">📂</div><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue-dark);margin-bottom:4px;">Drop more files or click to browse</div><div style="font-size:12px;color:var(--text2)">Sales · Traffic · Inventory · Executive Summary — auto-detected</div><input type="file" id="smart-file-input" accept=".csv,.xlsx" multiple style="display:none" onchange="smartFileSelect(event)">`;
+  // Restore dropzone text only — don't touch the input element
+  const dz = document.getElementById('smart-dropzone');
+  if (dz) {
+    dz.style.borderColor = 'var(--border)';
+    dz.style.background = 'var(--blue-light)';
+    // Only update the visible text elements, leave the hidden input alone
+    const divs = dz.querySelectorAll('div');
+    if (divs.length >= 2) {
+      divs[0].textContent = '📂';
+      divs[1].innerHTML = `<span style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue-dark);">✓ ${weekQueue.length} week(s) detected — drop more or hit Process</span>`;
+    }
+  }
 }
 
 function renderDetectedFiles() {
