@@ -294,8 +294,10 @@ let snapshotData=[];
 let allWeeks=[];
 
 function sbFetch(path){
+  const hasLimit=path.includes('limit=');
   const sep=path.indexOf('?')>=0?'&':'?';
-  return fetch(SB_URL+path+sep+'limit=20000',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}})
+  const url=SB_URL+path+(hasLimit?'':sep+'limit=10000');
+  return fetch(url,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}})
     .then(r=>r.ok?r.json():[])
     .then(d=>Array.isArray(d)?d:[])
     .catch(()=>[]);
@@ -344,7 +346,7 @@ async function loadWeek(ws){
   const [campaigns,placement,queries,priorCampaigns,priorPlacement,snapshots,adsAgg,priorAdsAgg]=await Promise.all([
     sbFetch(`/rest/v1/brand_health_ads_campaigns?week_start=eq.${pw}${mktFilter}&select=week_start,campaign_name,brand_classified,market,ad_spend,ad_revenue,ad_clicks,ad_impressions`),
     sbFetch(`/rest/v1/brand_health_ads_placement?week_start=eq.${pw}${mktFilter}&select=week_start,placement,brand_classified,market,ad_spend,ad_revenue,ad_clicks,ad_impressions`),
-    sbFetch(`/rest/v1/brand_health_ads_queries?week_start=eq.${ws}${mktFilter}&select=week_start,query,brand_classified,market,ad_spend,ad_revenue,ad_clicks`),
+    sbFetch(`/rest/v1/brand_health_ads_queries?week_start=eq.${ws}${mktFilter}&select=query,brand_classified,market,ad_spend,ad_revenue,ad_clicks&order=ad_spend.desc&limit=5000`),
     ppw?sbFetch(`/rest/v1/brand_health_ads_campaigns?week_start=eq.${ppw}${mktFilter}&select=brand_classified,market,ad_spend,ad_revenue,ad_clicks,ad_impressions`):Promise.resolve([]),
     ppw?sbFetch(`/rest/v1/brand_health_ads_placement?week_start=eq.${ppw}${mktFilter}&select=placement,brand_classified,market,ad_spend,ad_revenue,ad_clicks,ad_impressions`):Promise.resolve([]),
     sbFetch(`/rest/v1/brand_health_snapshots?week_start=eq.${ws}${mktFilter}&select=asin,product_title,brand_classified,market,oos_pct,unfilled_units,glance_views`),
