@@ -1232,6 +1232,19 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFix
 })();
 
 init();
+
+// Re-initialise when user returns to this tab from another page
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden && allWeeks.length > 0) {
+    // Data already loaded — just make sure the UI is visible
+    var main = document.getElementById('main-content');
+    var loading = document.getElementById('loading-screen');
+    if (main && main.style.display === 'none' && loading && loading.style.display === 'none') {
+      main.style.display = 'grid';
+      buildDashboard();
+    }
+  }
+});
 </script>
 </body>
 </html>
