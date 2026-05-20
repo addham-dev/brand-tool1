@@ -428,7 +428,7 @@ async function loadPeriod(periodVal){
   document.getElementById('main-content').style.display='none';
   var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){return periodKey(ws)===periodVal;});
   if(periodMode==='week'&&weekStarts.length===1){
-    allRows=await sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+weekStarts[0]+'&select=*&limit=20000');
+    allRows=await sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+weekStarts[0]+'&select=*');
     var adsWeeks=Object.keys(adsDataAllWeeks).map(function(k){return k.split('||')[0];}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
     var vcWeek=weekStarts[0];
     var priorAdsWeek=adsWeeks.filter(function(w){return w<vcWeek;}).pop();
@@ -444,7 +444,7 @@ async function loadPeriod(periodVal){
     });
 
   }else{
-    var weekArrays=await Promise.all(weekStarts.map(function(ws){return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=*&limit=50000');}));
+    var weekArrays=await Promise.all(weekStarts.map(function(ws){return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=*');}));
     allRows=weekArrays.reduce(function(a,b){return a.concat(b);},[]);
     adsData={};
     Object.keys(adsDataAllWeeks).forEach(function(k){
@@ -513,7 +513,7 @@ async function loadPriorData() {
   var fetches = priorWeekStarts.map(function(ws) {
     return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+
       '&select=brand_classified,market,dispatched_revenue,dispatched_units,glance_views'+
-      '&limit=20000');
+      '');
   });
   var results = await Promise.all(fetches);
   var allPrior = results.reduce(function(a,b){ return a.concat(b); }, []);
@@ -772,7 +772,7 @@ function setSearchView(brandId,view){window._searchView=view;renderRCA(brandId,'
 async function renderTrendsTab(brandId,wrap){
   wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--text2);font-size:13px;">Loading trend data...</div>';
   // Fetch all weeks for this brand from Supabase
-  var trendRows = await sbFetch('/rest/v1/brand_health_snapshots?select=week_start,brand_classified,market,dispatched_revenue,dispatched_units,glance_views,oos_pct&brand_classified=eq.'+brandId+'&limit=100000&order=week_start.asc');
+  var trendRows = await sbFetch('/rest/v1/brand_health_snapshots?select=week_start,brand_classified,market,dispatched_revenue,dispatched_units,glance_views,oos_pct&brand_classified=eq.'+brandId+'&order=week_start.asc');
   if(currentMarket!=='ALL') trendRows=trendRows.filter(function(r){return r.market===currentMarket;});
   var byWeek={};
   trendRows.forEach(function(r){if(!byWeek[r.week_start])byWeek[r.week_start]={revenue:0,gviews:0,units:0,oos:[]};byWeek[r.week_start].revenue+=(r.dispatched_revenue||0);byWeek[r.week_start].gviews+=(r.glance_views||0);byWeek[r.week_start].units+=(r.dispatched_units||0);if(r.oos_pct!=null)byWeek[r.week_start].oos.push(r.oos_pct);});
@@ -854,13 +854,13 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFix
       var weekStarts=weeks.map(function(w){return w.week_start;});
 
       // Fetch current week full snapshot
-      var sRes=await fetch(SUPABASE_URL+'/rest/v1/brand_health_snapshots?week_start=eq.'+latestWs+'&select=brand_classified,market,asin,product_title,dispatched_revenue,ordered_revenue,dispatched_units,ordered_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy&limit=20000',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+      var sRes=await fetch(SUPABASE_URL+'/rest/v1/brand_health_snapshots?week_start=eq.'+latestWs+'&select=brand_classified,market,asin,product_title,dispatched_revenue,ordered_revenue,dispatched_units,ordered_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
       var snaps=await sRes.json();
 
       // Fetch prior 3 weeks ASIN-level glance views for trend context
       var priorSnaps=[];
       for(var wi=1;wi<weekStarts.length;wi++){
-        var pr=await fetch(SUPABASE_URL+'/rest/v1/brand_health_snapshots?week_start=eq.'+weekStarts[wi]+'&select=week_start,asin,market,glance_views,dispatched_revenue,ordered_revenue&limit=20000',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+        var pr=await fetch(SUPABASE_URL+'/rest/v1/brand_health_snapshots?week_start=eq.'+weekStarts[wi]+'&select=week_start,asin,market,glance_views,dispatched_revenue,ordered_revenue',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
         var prData=await pr.json();
         if(Array.isArray(prData))priorSnaps=priorSnaps.concat(prData);
       }
