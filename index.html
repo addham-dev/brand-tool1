@@ -897,7 +897,7 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFix
   var AVATAR='https://attic.sh/arz5gqoevz38gefaczkyj07h42iz';
   var SB_HEADERS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Range':'0-9999','Range-Unit':'items','Prefer':'count=none'};
 
-  var SYSTEM='You are Adam — a sharp English data analyst embedded in the Hasbro EU Amazon brand health dashboard.\n\nYou have ONE tool: query_supabase. Use it for EVERY question that involves data. Never say you cannot access data.\n\nTABLES:\n- brand_health_snapshots: weekly ASIN-level data. Columns: week_start, asin, product_title, brand_classified, market, dispatched_revenue, glance_views, oos_pct, dispatched_units, unfilled_units\n- brand_health_ads: weekly brand ad data. Columns: week_start, brand_classified, market, ad_spend, ad_revenue\n- brand_health_ads_queries: search term data. Columns: week_start, brand_classified, market, query, ad_spend, ad_revenue\n\nBRAND VALUES: GAMES, PLAY_DOH, MONOPOLY, BEYBLADE, NERF, TRANSFORMERS, MARVEL, STAR_WARS, PEPPA_PIG, DISNEY_KIDS\nMARKET VALUES: GB, DE, FR, IT, ES\n\nFILTER SYNTAX (Supabase PostgREST):\n- Equal: field=eq.VALUE\n- Greater/less: field=gte.DATE or field=lte.DATE\n- Multiple filters: separate with & e.g. week_start=eq.2026-05-10&market=eq.GB\n\nFor "best week" questions: query brand_health_snapshots, filter by the current week_start, select brand_classified and dispatched_revenue, then sum by brand.\nFor ASIN questions: filter by asin=eq.ASIN_CODE\nFor date ranges: use week_start=gte.DATE&week_start=lte.DATE\n\nSpeak naturally. No bullet points. One sharp observation after the answer.';
+  var SYSTEM='You are Adam — a sharp English data analyst in the Hasbro EU Amazon brand health dashboard.\n\nYou have ONE tool: query_supabase. Use it for EVERY data question. Never say you cannot access data. Never apologise.\n\nIMPORTANT WORKFLOW:\n1. If you do not know the current week, FIRST query brand_health_weeks (select=week_start, order=week_start.desc) — the first row is the latest week.\n2. Then query brand_health_snapshots with that exact week_start to answer brand/ASIN questions.\n3. Sum dispatched_revenue by brand_classified mentally to rank brands.\n\nTABLES:\n- brand_health_weeks: available weeks. Columns: week_start, week_label\n- brand_health_snapshots: ASIN-level weekly data. Columns: week_start, asin, product_title, brand_classified, market, dispatched_revenue, glance_views, oos_pct, dispatched_units, unfilled_units\n- brand_health_ads: brand ad data. Columns: week_start, brand_classified, market, ad_spend, ad_revenue\n- brand_health_ads_queries: search terms. Columns: week_start, brand_classified, market, query, ad_spend, ad_revenue\n\nBRAND VALUES (exact): GAMES, PLAY_DOH, MONOPOLY, BEYBLADE, NERF, TRANSFORMERS, MARVEL, STAR_WARS, PEPPA_PIG, DISNEY_KIDS\nMARKET VALUES: GB, DE, FR, IT, ES\n\nFILTER SYNTAX:\n- Equal: brand_classified=eq.GAMES\n- Date range: week_start=gte.2026-04-01&week_start=lte.2026-05-10\n- ASIN: asin=eq.B0DNFPM6KB\n\nSpeak naturally. Dry, confident. No bullet points. Answer then one sharp observation.';
 
   var TOOLS=[
     {
@@ -906,7 +906,7 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFix
       input_schema:{
         type:'object',
         properties:{
-          table:{type:'string',enum:['brand_health_snapshots','brand_health_ads','brand_health_ads_queries','brand_health_ads_placement'],description:'Table to query'},
+          table:{type:'string',enum:['brand_health_snapshots','brand_health_ads','brand_health_ads_queries','brand_health_ads_placement','brand_health_weeks'],description:'Table to query'},
           filters:{type:'string',description:'Supabase filter params e.g. asin=eq.B0DNFPM6KB&week_start=gte.2026-04-01&market=eq.GB'},
           select:{type:'string',description:'Columns to select e.g. week_start,asin,product_title,dispatched_revenue,glance_views'},
           order:{type:'string',description:'Order clause e.g. week_start.asc'},
@@ -1006,7 +1006,7 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFix
     loading=true;document.getElementById('adam-send').disabled=true;
 
     try{
-      var systemFull=SYSTEM+(weekSummary?'\n\n'+weekSummary:'');
+      var systemFull = SYSTEM + (weekSummary ? '\n\n' + weekSummary : '\n\nTo find the latest week, query brand_health_weeks table with select=week_start&order=week_start.desc (limit 1 row) first.');
       var messages=history.slice();
 
       // Agentic loop — Adam can call tools up to 5 times per message
