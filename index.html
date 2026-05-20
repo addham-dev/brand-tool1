@@ -469,7 +469,7 @@ function setPeriodMode(mode,btn){periodMode=mode;document.querySelectorAll('.per
 function getRows(brandId){var rows=allRows.filter(function(r){return r.brand_classified===brandId;});if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});return rows;}
 
 var currentComparison = 'wow'; // 'wow' | '4w' | 'yoy'
-var priorData = {}; // { brand_classified: { revenue, gviews } }
+var priorData = {};
 
 function setComparison(mode, btn) {
   currentComparison = mode;
@@ -478,54 +478,56 @@ function setComparison(mode, btn) {
   loadPriorData().then(function(){ buildDashboard(); });
 }
 
-function getPriorWeekStart(currentWeekStart) {
-  var sorted = allWeeks.map(function(w){ return w.week_start; }).sort(); // ascending
-  var idx = sorted.indexOf(currentWeekStart);
-  if (idx < 0) { console.log('getPriorWeekStart: week not found:', currentWeekStart); return null; }
-  if (currentComparison === 'wow') { var r = idx >= 1 ? sorted[idx-1] : null; console.log('WoW prior:', r); return r; }
-  if (currentComparison === '4w')  { var r = idx >= 4 ? sorted[idx-4] : null; console.log('4W prior:', r); return r; }
-  if (currentComparison === 'yoy') {
-    var target = new Date(currentWeekStart);
-    target.setDate(target.getDate() - 364);
-    var best = null, bestDiff = Infinity;
-    sorted.forEach(function(w) {
-      var d = Math.abs(new Date(w) - target);
-      if (d < bestDiff && d <= 14*24*60*60*1000) { bestDiff = d; best = w; }
+function getPriorPeriodWeekStarts(currentWeekStarts) {
+  var sorted = allWeeks.map(function(w){ return w.week_start; }).sort();
+
+  if (periodMode === 'week') {
+    var ws = currentWeekStarts[0]; if (!ws) return [];
+    var idx = sorted.indexOf(ws); if (idx < 0) return [];
+    if (currentComparison === 'wow') return idx >= 1 ? [sorted[idx-1]] : [];
+    if (currentComparison === '4w')  return idx >= 4 ? [sorted[idx-4]] : [];
+    if (currentComparison === 'yoy') {
+      var target = new Date(ws); target.setDate(target.getDate() - 364);
+      var best = null, bestDiff = Infinity;
+      sorted.forEach(function(w){ var d=Math.abs(new Date(w)-target); if(d<bestDiff&&d<=14*24*60*60*1000){bestDiff=d;best=w;} });
+      return best ? [best] : [];
+    }
+  } else {
+    // Monthly/quarterly/annual: map each current week to its equivalent prior period week
+    // WoW = 4 weeks back per week | 4W = 4 weeks | YoY = 52 weeks
+    var offset = currentComparison === 'yoy' ? 52 : currentComparison === '4w' ? 4 : 4;
+    var priorWeeks = [];
+    currentWeekStarts.forEach(function(ws) {
+      var idx = sorted.indexOf(ws);
+      if (idx >= offset) priorWeeks.push(sorted[idx - offset]);
     });
-    console.log('YoY prior:', best, 'target:', target.toISOString().split('T')[0]);
-    return best;
+    return priorWeeks;
   }
-  return null;
+  return [];
 }
 
 async function loadPriorData() {
   priorData = {};
-  // Get current week starts for selected period
   var weekStarts = allWeeks.map(function(w){ return w.week_start; })
     .filter(function(ws){ return periodKey(ws) === currentPeriod; });
   if (!weekStarts.length) return;
 
-  // Get prior week starts
-  var priorWeekStarts = weekStarts.map(getPriorWeekStart).filter(Boolean);
-  if (!priorWeekStarts.length) return;
+  var priorWeekStarts = getPriorPeriodWeekStarts(weekStarts);
+  if (!priorWeekStarts.length) { console.log('No prior weeks found'); return; }
 
-  // Fetch aggregated prior data per brand+market from Supabase
+  console.log('Prior weeks:', priorWeekStarts);
   var fetches = priorWeekStarts.map(function(ws) {
     return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+
-      '&select=brand_classified,market,dispatched_revenue,dispatched_units,glance_views'+
-      '');
+      '&select=brand_classified,market,dispatched_revenue,glance_views');
   });
   var results = await Promise.all(fetches);
-  var allPrior = results.reduce(function(a,b){ return a.concat(b); }, []);
-
-  // Aggregate by brand+market
-  allPrior.forEach(function(r) {
+  results.reduce(function(a,b){return a.concat(b);}, []).forEach(function(r) {
     var k = r.brand_classified + '||' + (r.market||'');
     if (!priorData[k]) priorData[k] = { revenue:0, gviews:0 };
     priorData[k].revenue += r.dispatched_revenue||0;
     priorData[k].gviews  += r.glance_views||0;
   });
-  console.log('priorData loaded:', Object.keys(priorData).length, 'brand-market combinations, sample GAMES||GB:', priorData['GAMES||GB']);
+  console.log('priorData:', Object.keys(priorData).length, 'combinations');
 }
 
 function aggregateBrand(brandId){
