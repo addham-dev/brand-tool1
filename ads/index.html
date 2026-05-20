@@ -292,6 +292,7 @@ let weekData={campaigns:[],placement:[],queries:[]};
 let priorData={campaigns:[],placement:[],queries:[]};
 let snapshotData=[];
 let allWeeks=[];
+let historyData=[]; // [{week, campaigns}] last 4 weeks for trend analysis
 
 function sbFetch(path){
   const hasLimit=path.includes('limit=');
@@ -361,6 +362,22 @@ async function loadWeek(ws){
   weekData={campaigns:effectiveCampaigns, placement, queries};
   priorData={campaigns:effectivePriorCampaigns, placement:priorPlacement};
   snapshotData=snapshots;
+
+  // Fetch 4 weeks of campaign history for trend analysis (background, non-blocking)
+  const histIdx=allWeeks.findIndex(w=>w.week_start===ws);
+  const histWeeks=allWeeks.slice(histIdx, histIdx+4).map(w=>w.week_start);
+  Promise.all(histWeeks.map(w=>{
+    const p=satWeek(w);
+    return sbFetch(`/rest/v1/brand_health_ads_campaigns?week_start=eq.${p}&select=brand_classified,market,ad_spend,ad_revenue,ad_clicks,ad_impressions&limit=5000`)
+      .then(rows=>({week:w, pw:p, campaigns:rows.length>0?rows:
+        // fallback to aggregated ads table
+        []}));
+  })).then(hist=>{
+    historyData=hist;
+    // Re-render analysis sections with trend data
+    renderRootCause();
+    renderAgencyBrief();
+  });
 
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('main').style.display='grid';
@@ -656,6 +673,23 @@ function renderQueries(){
       </table>`:'<div class="empty">No query data for this week. Check that the Query Report was uploaded.</div>';
   }
 }
+function getBrandTrend(brandId){
+  return historyData.map(h=>{
+    const rows=h.campaigns.filter(r=>brandId==='ALL'||r.brand_classified===brandId);
+    let spend=0,revenue=0,clicks=0,impressions=0;
+    rows.forEach(r=>{spend+=r.ad_spend||0;revenue+=r.ad_revenue||0;clicks+=r.ad_clicks||0;impressions+=r.ad_impressions||0;});
+    return{week:h.week,spend,revenue,roas:spend>0?revenue/spend:0,ctr:impressions>0?clicks/impressions*100:0,clicks,impressions};
+  });
+}
+
+function trendArrow(values,key){
+  if(values.length<2)return'';
+  const cur=values[0][key],old=values[values.length-1][key];
+  if(!old)return'';
+  const chg=(cur-old)/old*100;
+  const col=chg>5?'var(--green)':chg<-5?'var(--red)':'var(--text3)';
+  return`<span style="color:${col};font-size:10px;font-weight:700">${chg>0?'▲':'▼'}${Math.abs(chg).toFixed(0)}% 4wk</span>`;
+}
 
 function renderRootCause(){
   const panel=document.getElementById('root-cause-panel');
@@ -666,6 +700,17 @@ function renderRootCause(){
     if(!byBrand[b])byBrand[b]={spend:0,revenue:0,clicks:0,impressions:0};
     byBrand[b].spend+=r.ad_spend||0;byBrand[b].revenue+=r.ad_revenue||0;byBrand[b].clicks+=r.ad_clicks||0;byBrand[b].impressions+=r.ad_impressions||0;
   });
+  const wastedByBrand={};
+  filterByBrand(weekData.queries).forEach(r=>{
+    const b=r.brand_classified||'OTHER';
+    if(!wastedByBrand[b])wastedByBrand[b]={spend:0,count:0,terms:[]};
+    if((r.ad_revenue||0)<(r.ad_spend||0)&&(r.ad_spend||0)>2){
+      wastedByBrand[b].spend+=r.ad_spend||0;wastedByBrand[b].count++;
+      if(wastedByBrand[b].terms.length<3)wastedByBrand[b].terms.push(r.query||'');
+    }
+  });
+  const oosByBrand={};
+  snapshotData.filter(r=>(r.oos_pct||0)>=50).forEach(r=>{const b=r.brand_classified||'OTHER';if(!oosByBrand[b])oosByBrand[b]=0;oosByBrand[b]++;});
   const brands=Object.entries(byBrand).sort((a,b)=>b[1].spend-a[1].spend);
   if(!brands.length){panel.innerHTML='<div class="empty">No campaign data available.</div>';return;}
 
@@ -673,34 +718,49 @@ function renderRootCause(){
     const roas=d.spend>0?d.revenue/d.spend:0;
     const ctr=d.impressions>0?d.clicks/d.impressions*100:0;
     const cpc=d.clicks>0?d.spend/d.clicks:0;
-    // Root cause logic
-    let issues=[];let actions=[];
-    if(ctr<0.15){issues.push('Very low CTR ('+ctr.toFixed(2)+'%) — impressions not converting to clicks');actions.push('Refresh ad creative and main image. Test price-led headlines. Check if ads are showing for irrelevant broad match terms.');}
-    else if(ctr<0.30){issues.push('CTR below 0.30% threshold ('+ctr.toFixed(2)+'%)');actions.push('A/B test headline copy. Ensure lifestyle imagery is used on Sponsored Brand ads. Review keyword match types.');}
-    if(roas<1.5&&d.spend>500){issues.push('ROAS at '+roas.toFixed(2)+'x — spend not generating sufficient revenue');actions.push('Reduce bids by 20% on campaigns below 2x ROAS. Pause lowest-performing ad groups. Shift budget to top-performing campaigns.');}
-    else if(roas>=5){issues.push('Strong ROAS at '+roas.toFixed(2)+'x — potential underinvestment');actions.push('Increase daily budgets by 30-50%. Expand keyword list. Test broader match types to capture more volume.');}
-    if(cpc>3&&d.clicks<1000){issues.push('High CPC ('+fmtCur(cpc)+') with low click volume');actions.push('Review bid strategy. Consider switching from fixed bid to dynamic bids down only. Check auction competitiveness.');}
-    if(!issues.length){issues.push('Performance within normal range');actions.push('Monitor week-on-week trends. Consider incremental testing on placements or match types.');}
-
+    const trend=getBrandTrend(b);
+    const waste=wastedByBrand[b]||{spend:0,count:0,terms:[]};
+    const oosCount=oosByBrand[b]||0;
     const color=BRAND_COLORS[b]||'var(--ad)';
-    return`<div style="border-left:4px solid ${color};padding:12px 16px;margin-bottom:12px;background:var(--bg);border-radius:0 8px 8px 0;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">${BRAND_LABELS[b]||b}</div>
-        <div style="display:flex;gap:12px;font-size:11px;">
+    const actions=[];
+    if(ctr<0.15) actions.push({sev:'urgent',title:'Critical CTR '+ctr.toFixed(2)+'% — Creative Emergency',detail:'Pacvue: <b>Campaigns → [Campaign] → Ad Groups → Ads</b> — pause lowest CTR variants. Upload lifestyle creative. For SB: <b>Campaigns → Sponsored Brand → Creative</b> — test price-led headline. Target: ≥0.30% min, ≥0.50% optimal.'});
+    else if(ctr<0.30) actions.push({sev:'warning',title:'CTR '+ctr.toFixed(2)+'% Below Threshold',detail:'Pacvue: <b>Campaigns → Bid Optimisation → Dynamic Bids Down Only</b>. Review <b>Targeting → Search Terms</b> for irrelevant queries diluting relevance. A/B test new headline with product benefit vs brand name.'});
+    if(roas<2&&d.spend>200) actions.push({sev:'urgent',title:'ROAS '+roas.toFixed(2)+'x — Reduce Bids 20%',detail:'Pacvue: <b>Campaigns → Bulk Operations → Download → filter ROAS<2x → reduce bids 20-25%</b>. Set daily budget cap at current level. Do NOT increase budget until ROAS exceeds 3x for 2 consecutive weeks.'});
+    else if(roas>=5) actions.push({sev:'good',title:'ROAS '+roas.toFixed(2)+'x — Scale Budget +40%',detail:'Pacvue: <b>Campaigns → Budget → increase daily budget 40-50%</b>. Then <b>Targeting → Keyword Bid → increase top exact match bids 15%</b>. Add phrase match variants to capture more volume. Consider Sponsored Brand Video.'});
+    if(waste.spend>15) actions.push({sev:'warning',title:'€'+waste.spend.toFixed(0)+' Wasted — '+waste.count+' Negative Keywords Needed',detail:'Pacvue: <b>Campaigns → Search Term Report → filter ROAS<1x → select all → Add as Negatives → Exact Match at campaign level</b>. Priority terms: <b>'+waste.terms.join(', ')+'</b>. Do this every Monday before any other optimisation.'});
+    if(oosCount>0) actions.push({sev:'urgent',title:oosCount+' OOS ASINs — Pause All Campaigns Now',detail:'Pacvue: <b>Products → ASIN List → filter OOS → Bulk Pause all campaigns for these ASINs</b>. Re-enable within 24hrs of restock. Never run spend on OOS products — every click is pure waste.'});
+    if(cpc>2.5&&d.clicks<500) actions.push({sev:'warning',title:'High CPC €'+cpc.toFixed(2)+' Low Volume',detail:'Overpaying per click. Pacvue: <b>Campaigns → Keyword Bids → reduce top bids 15%</b>. Switch to <b>Dynamic Bids Down Only</b>. If all exact match: add phrase match variants in <b>Targeting → Keywords → Add Keywords</b> to increase auction participation.'});
+    if(!actions.length) actions.push({sev:'good',title:'Performing Within Range',detail:'Monitor weekly. Pacvue: <b>Reports → Performance Dashboard</b> — set up automated weekly report to track ROAS and CTR trend. Consider incrementally testing new placements or ad formats.'});
+
+    const trendHtml=trend.length>=2?`
+      <div style="display:grid;grid-template-columns:repeat(${trend.length},1fr);gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+        ${trend.map(t=>`<div style="text-align:center;background:white;border-radius:6px;padding:6px 4px;border:1px solid var(--border);">
+          <div style="font-size:9px;color:var(--text3);margin-bottom:2px;">${t.week.slice(5).replace('-','/')}</div>
+          <div style="font-size:11px;font-weight:700;color:${t.roas>=4?'var(--green)':t.roas>=2?'var(--amber)':'var(--red)'}">${t.roas.toFixed(1)}x</div>
+          <div style="font-size:10px;color:var(--text2)">${t.ctr.toFixed(2)}%</div>
+          <div style="font-size:10px;color:var(--text3)">${fmtNum(t.clicks)}</div>
+        </div>`).join('')}
+      </div>`:'';
+
+    return`<div style="border-left:4px solid ${color};padding:14px 18px;margin-bottom:14px;background:var(--bg);border-radius:0 10px 10px 0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800">${BRAND_LABELS[b]||b}</div>
+        <div style="display:flex;gap:14px;font-size:11px;flex-wrap:wrap;">
           <span>Spend: <b>${fmtCur(d.spend)}</b></span>
-          <span>ROAS: <b class="${roasClass(roas)}">${fmtRoas(roas)}</b></span>
-          <span>CTR: <b class="${ctrClass(ctr)}">${ctr.toFixed(2)}%</b></span>
-          <span>Clicks: <b>${fmtNum(d.clicks)}</b></span>
+          <span>ROAS: <b class="${roasClass(roas)}">${fmtRoas(roas)}</b> ${trendArrow(trend,'roas')}</span>
+          <span>CTR: <b class="${ctrClass(ctr)}">${ctr.toFixed(2)}%</b> ${trendArrow(trend,'ctr')}</span>
+          <span>Clicks: <b>${fmtNum(d.clicks)}</b> ${trendArrow(trend,'clicks')}</span>
         </div>
       </div>
-      ${issues.map((iss,i)=>`
-        <div style="margin-bottom:6px;">
-          <div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:2px;">⚠ ${iss}</div>
-          <div style="font-size:11px;color:var(--text2);padding-left:12px;">→ ${actions[i]||''}</div>
-        </div>`).join('')}
+      ${actions.map(a=>`<div style="margin-bottom:8px;padding:10px 12px;border-radius:6px;background:${a.sev==='urgent'?'var(--red-bg)':a.sev==='warning'?'var(--amber-bg)':'var(--green-bg)'};border-left:3px solid ${a.sev==='urgent'?'var(--red)':a.sev==='warning'?'var(--amber)':'var(--green)'};">
+        <div style="font-size:12px;font-weight:700;color:${a.sev==='urgent'?'var(--red)':a.sev==='warning'?'var(--amber)':'var(--green)'};margin-bottom:4px;">${a.sev==='urgent'?'🚨':a.sev==='warning'?'⚠️':'✅'} ${a.title}</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6;">${a.detail}</div>
+      </div>`).join('')}
+      ${trendHtml}
     </div>`;
   }).join('');
 }
+
 
 function renderAgencyBrief(){
   const panel=document.getElementById('agency-brief-panel');
