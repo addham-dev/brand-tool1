@@ -651,9 +651,10 @@ function smartDrop(e) {
 }
 function smartFileSelect(e) {
   const files = [...e.target.files];
-  if (files.length > 20) {
-    document.getElementById('smart-dropzone').innerHTML = `<div style="font-size:14px;color:var(--blue);font-weight:700">⏳ Processing ${files.length} files...</div>`;
-  }
+  if (!files.length) return;
+  const dz = document.getElementById('smart-dropzone');
+  const divs = dz ? dz.querySelectorAll('div') : [];
+  if (divs.length >= 2) divs[1].innerHTML = `<span style="color:var(--blue);font-weight:700">⏳ Grouping ${files.length} files...</span>`;
   setTimeout(() => handleSmartFiles(files), 10);
 }
 
@@ -1193,16 +1194,18 @@ function countryToMarket(country) {
 // ─── DETECT FILE FORMAT ──────────────────────────────────────
 // Returns 'pacvue' or 'datorama' based on sheet/header structure
 function detectAdsFileFormat(wb) {
-  // Pacvue: first sheet has 'Time Range' metadata and Campaign Name / Portfolio Name columns
+  // Datorama: has a 'Performance Detail by Platform' sheet name
+  if (wb.SheetNames.some(n => /performance detail/i.test(n))) return 'datorama';
+  // Pacvue: scan first sheet for Campaign Name + Portfolio Name header row
   const ws = wb.Sheets[wb.SheetNames[0]];
   const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
-  for (const row of raw.slice(0, 12)) {
+  for (const row of raw.slice(0, 15)) {
     const strs = row.map(c => String(c).trim().toLowerCase());
     if (strs.some(s => s === 'campaign name') && strs.some(s => s === 'portfolio name')) return 'pacvue';
+    if (strs.some(s => s === 'placement') && strs.some(s => s === 'spend')) return 'pacvue';
+    if ((strs.some(s => s === 'query') || strs.some(s => s === 'keyword text')) && strs.some(s => s === 'spend')) return 'pacvue';
   }
-  // Datorama: has a 'Performance Detail by Platform' sheet
-  if (wb.SheetNames.some(n => /performance detail/i.test(n))) return 'datorama';
-  return 'unknown';
+  return 'datorama'; // fallback
 }
 
 // ─── PACVUE BRAND FROM PORTFOLIO ─────────────────────────────
@@ -1671,7 +1674,7 @@ async function processAndUploadAds() {
 
     const format = detectAdsFileFormat(wb);
     const reportType = format === 'pacvue' ? detectPacvueReportType(wb) : 'datorama';
-    logA(`Format: ${format === 'pacvue' ? 'Pacvue ' + reportType : 'Datorama Executive Summary'}`, 'info');
+    logA(`Format: ${format === 'pacvue' ? 'Pacvue — ' + reportType : 'Datorama Executive Summary'}`, 'info');
 
     if (format === 'pacvue' && reportType === 'campaign') {
       const campaignRows = await parsePacvueCampaign(files.sp);
