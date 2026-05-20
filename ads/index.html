@@ -301,16 +301,21 @@ async function loadWeek(ws){
 
   const mktFilter=currentMarket!=='ALL'?`&market=eq.${currentMarket}`:'';
 
+  // Pacvue weeks start Saturday, VC weeks start Sunday — offset by 1 day
+  function pacvueWeek(vcWeek){ if(!vcWeek)return null; const d=new Date(vcWeek); d.setDate(d.getDate()-1); return d.toISOString().split('T')[0]; }
+  const pw=pacvueWeek(ws);
+  const ppw=pacvueWeek(priorWeek);
+
   // Fetch all data in parallel
   const [campaigns,placement,queries,priorCampaigns,priorPlacement,snapshots,adsAgg,priorAdsAgg]=await Promise.all([
-    sbFetch(`/rest/v1/brand_health_ads_campaigns?week_start=eq.${ws}${mktFilter}&select=week_start,campaign_name,brand_classified,market,ad_spend,ad_revenue,ad_clicks,ad_impressions`),
-    sbFetch(`/rest/v1/brand_health_ads_placement?week_start=eq.${ws}${mktFilter}&select=week_start,placement,brand_classified,market,ad_spend,ad_revenue,ad_clicks,ad_impressions`),
-    sbFetch(`/rest/v1/brand_health_ads_queries?week_start=eq.${ws}${mktFilter}&select=week_start,query,brand_classified,market,ad_spend,ad_revenue,ad_clicks`),
-    priorWeek?sbFetch(`/rest/v1/brand_health_ads_campaigns?week_start=eq.${priorWeek}${mktFilter}&select=brand_classified,market,ad_spend,ad_revenue,ad_clicks,ad_impressions`):Promise.resolve([]),
-    priorWeek?sbFetch(`/rest/v1/brand_health_ads_placement?week_start=eq.${priorWeek}${mktFilter}&select=placement,brand_classified,market,ad_spend,ad_revenue,ad_clicks,ad_impressions`):Promise.resolve([]),
+    sbFetch(`/rest/v1/brand_health_ads_campaigns?week_start=eq.${pw}${mktFilter}&select=week_start,campaign_name,brand_classified,market,ad_spend,ad_revenue,ad_clicks,ad_impressions`),
+    sbFetch(`/rest/v1/brand_health_ads_placement?week_start=eq.${pw}${mktFilter}&select=week_start,placement,brand_classified,market,ad_spend,ad_revenue,ad_clicks,ad_impressions`),
+    sbFetch(`/rest/v1/brand_health_ads_queries?week_start=eq.${pw}${mktFilter}&select=week_start,query,brand_classified,market,ad_spend,ad_revenue,ad_clicks`),
+    ppw?sbFetch(`/rest/v1/brand_health_ads_campaigns?week_start=eq.${ppw}${mktFilter}&select=brand_classified,market,ad_spend,ad_revenue,ad_clicks,ad_impressions`):Promise.resolve([]),
+    ppw?sbFetch(`/rest/v1/brand_health_ads_placement?week_start=eq.${ppw}${mktFilter}&select=placement,brand_classified,market,ad_spend,ad_revenue,ad_clicks,ad_impressions`):Promise.resolve([]),
     sbFetch(`/rest/v1/brand_health_snapshots?week_start=eq.${ws}${mktFilter}&select=asin,product_title,brand_classified,market,oos_pct,unfilled_units,glance_views`),
-    sbFetch(`/rest/v1/brand_health_ads?week_start=eq.${ws}${mktFilter}&select=brand_classified,market,ad_spend,ad_revenue,ad_impressions,ad_clicks`),
-    priorWeek?sbFetch(`/rest/v1/brand_health_ads?week_start=eq.${priorWeek}${mktFilter}&select=brand_classified,market,ad_spend,ad_revenue,ad_impressions,ad_clicks`):Promise.resolve([]),
+    sbFetch(`/rest/v1/brand_health_ads?week_start=eq.${pw}${mktFilter}&select=brand_classified,market,ad_spend,ad_revenue,ad_impressions,ad_clicks`),
+    ppw?sbFetch(`/rest/v1/brand_health_ads?week_start=eq.${ppw}${mktFilter}&select=brand_classified,market,ad_spend,ad_revenue,ad_impressions,ad_clicks`):Promise.resolve([]),
   ]);
 
   // If no campaign-level data, synthesise from aggregated ads table
