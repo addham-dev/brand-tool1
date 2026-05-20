@@ -433,8 +433,29 @@ async function loadPeriod(periodVal){
   document.getElementById('loading-screen').style.display='flex';
   document.getElementById('main-content').style.display='none';
   var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){return periodKey(ws)===periodVal;});
+  var SNAP_COLS='week_start,asin,product_title,brand_classified,market,dispatched_revenue,dispatched_units,glance_views,oos_pct,unfilled_units';
+
   if(periodMode==='week'&&weekStarts.length===1){
-    allRows=await sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+weekStarts[0]+'&select=*');
+    // Fetch snapshot and prior data in parallel
+    var results=await Promise.all([
+      sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+weekStarts[0]+'&select='+SNAP_COLS),
+      (function(){
+        // Pre-compute prior weeks for parallel fetch
+        var sorted=allWeeks.map(function(w){return w.week_start;}).sort();
+        var idx=sorted.indexOf(weekStarts[0]);
+        var priorWs=currentComparison==='wow'?(idx>=1?sorted[idx-1]:null):currentComparison==='4w'?(idx>=4?sorted[idx-4]:null):null;
+        return priorWs?sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+priorWs+'&select=brand_classified,market,dispatched_revenue,glance_views'):Promise.resolve([]);
+      })()
+    ]);
+    allRows=results[0];
+    // Build priorData from parallel fetch
+    priorData={};
+    results[1].forEach(function(r){
+      var k=r.brand_classified+'||'+(r.market||'');
+      if(!priorData[k])priorData[k]={revenue:0,gviews:0};
+      priorData[k].revenue+=r.dispatched_revenue||0;
+      priorData[k].gviews+=r.glance_views||0;
+    });
     var adsWeeks=Object.keys(adsDataAllWeeks).map(function(k){return k.split('||')[0];}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
     var vcWeek=weekStarts[0];
     var priorAdsWeek=adsWeeks.filter(function(w){return w<vcWeek;}).pop();
@@ -450,7 +471,7 @@ async function loadPeriod(periodVal){
     });
 
   }else{
-    var weekArrays=await Promise.all(weekStarts.map(function(ws){return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=*');}));
+    var weekArrays=await Promise.all(weekStarts.map(function(ws){return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select='+SNAP_COLS);}));
     allRows=weekArrays.reduce(function(a,b){return a.concat(b);},[]);
     adsData={};
     Object.keys(adsDataAllWeeks).forEach(function(k){
@@ -461,13 +482,14 @@ async function loadPeriod(periodVal){
       if(!adsData[bid][mkt])adsData[bid][mkt]={ad_revenue:0,ad_spend:0,ad_glance_views:0};
       adsData[bid][mkt].ad_revenue+=(v.ad_revenue||0);adsData[bid][mkt].ad_spend+=(v.ad_spend||0);adsData[bid][mkt].ad_glance_views+=(v.ad_glance_views||0);
     });
+    // Load prior data for multi-week periods
+    await loadPriorData();
   }
   var sel=document.getElementById('week-select');var selOpt=sel.options[sel.selectedIndex];
   var badgeLabel=periodMode==='week'?(selOpt?selOpt.text:periodVal):periodMode==='month'?'Month: '+periodVal:periodMode==='quarter'?'Quarter: '+periodVal:'Year: '+periodVal;
   document.getElementById('week-badge').textContent=badgeLabel;
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('main-content').style.display='grid';
-  await loadPriorData();
   buildDashboard();
 }
 
