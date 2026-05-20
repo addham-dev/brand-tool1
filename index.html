@@ -903,11 +903,10 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFix
       input_schema:{
         type:'object',
         properties:{
-          table:{type:'string',description:'Table name: brand_health_snapshots | brand_health_ads | brand_health_ads_queries | brand_health_ads_placement'},
-          filters:{type:'string',description:'Supabase filter params e.g. asin=eq.B0DNFPM6KB&week_start=gte.2026-04-01&week_start=lte.2026-05-10&market=eq.GB'},
-          select:{type:'string',description:'Columns to select e.g. week_start,asin,product_title,dispatched_revenue,glance_views,oos_pct'},
+          table:{type:'string',enum:['brand_health_snapshots','brand_health_ads','brand_health_ads_queries','brand_health_ads_placement'],description:'Table to query'},
+          filters:{type:'string',description:'Supabase filter params e.g. asin=eq.B0DNFPM6KB&week_start=gte.2026-04-01&market=eq.GB'},
+          select:{type:'string',description:'Columns to select e.g. week_start,asin,product_title,dispatched_revenue,glance_views'},
           order:{type:'string',description:'Order clause e.g. week_start.asc'},
-          limit:{type:'number',description:'Max rows, default 200'}
         },
         required:['table','select']
       }
@@ -921,7 +920,7 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFix
       var select=toolInput.select||'*';
       var filters=toolInput.filters||'';
       var order=toolInput.order?'&order='+toolInput.order:'';
-      var limit=toolInput.limit||200;
+      var limit=200; // fixed safe limit — not passed by model
       var url=SUPABASE_URL+'/rest/v1/'+table+'?select='+encodeURIComponent(select)+(filters?'&'+filters:'')+order;
       var headers=Object.assign({},SB_HEADERS,{'Range':'0-'+(limit-1)});
       var res=await fetch(url,{headers:headers});
