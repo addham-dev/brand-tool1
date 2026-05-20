@@ -398,24 +398,31 @@ async function init(){
     adsDataAllWeeks={};
     adsRes.forEach(function(r){var k=r.week_start+'||'+r.brand_classified+'||'+(r.market||'ALL');adsDataAllWeeks[k]=r;});
     if(!allWeeks.length){document.getElementById('loading-screen').style.display='none';document.getElementById('no-data-screen').style.display='block';return;}
-    // Fetch all snapshots with pagination
+    // Fetch all snapshots with pagination using Supabase Range header
     var snap = [];
-    var pageSize = 10000;
-    var offset = 0;
+    var pageSize = 5000;
+    var from = 0;
     while(true) {
-      var res = await fetch(SUPABASE_URL+'/rest/v1/brand_health_snapshots?select=week_start,brand_classified,market,dispatched_revenue,ordered_revenue,dispatched_units,ordered_units,glance_views,oos_pct,unfilled_units&order=week_start.asc&limit='+pageSize+'&offset='+offset, {
-        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+      var to = from + pageSize - 1;
+      var res = await fetch(SUPABASE_URL+'/rest/v1/brand_health_snapshots?select=week_start,brand_classified,market,dispatched_revenue,dispatched_units,glance_views,oos_pct,unfilled_units&order=week_start.asc', {
+        headers:{
+          'apikey':SUPABASE_KEY,
+          'Authorization':'Bearer '+SUPABASE_KEY,
+          'Range': from+'-'+to,
+          'Range-Unit': 'items',
+          'Prefer': 'count=none'
+        }
       });
       var chunk = await res.json();
       if (!Array.isArray(chunk) || chunk.length === 0) break;
       snap = snap.concat(chunk);
-      console.log('Loaded '+snap.length+' snapshot rows...');
+      console.log('Snapshots loaded:', snap.length);
       if (chunk.length < pageSize) break;
-      offset += pageSize;
-      if (offset > 500000) break;
+      from += pageSize;
+      if (from > 500000) break;
     }
-    allRowsAllWeeks=snap;
-    console.log('Total snapshot rows loaded:', snap.length);
+    allRowsAllWeeks = snap;
+    console.log('Total snapshots:', snap.length, '| Weeks:', [...new Set(snap.map(function(r){return r.week_start;}))].length);
     buildPeriodSelect();
     await loadPeriod(currentPeriod);
   }catch(err){
