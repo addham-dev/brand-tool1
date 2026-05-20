@@ -923,12 +923,12 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFix
       var select=toolInput.select||'*';
       var filters=toolInput.filters||'';
       var order=toolInput.order?'&order='+toolInput.order:'';
-      var limit=200; // fixed safe limit — not passed by model
       var url=SUPABASE_URL+'/rest/v1/'+table+'?select='+encodeURIComponent(select)+(filters?'&'+filters:'')+order;
-      var headers=Object.assign({},SB_HEADERS,{'Range':'0-'+(limit-1)});
+      var headers=Object.assign({},SB_HEADERS,{'Range':'0-99'}); // max 100 rows to stay under token limit
       var res=await fetch(url,{headers:headers});
       var data=await res.json();
       if(!Array.isArray(data)) return JSON.stringify({error:'Query failed',detail:data});
+      // Trim response to keep tokens manageable
       return JSON.stringify({rows:data,count:data.length});
     }catch(e){
       return JSON.stringify({error:e.message});
@@ -1015,6 +1015,14 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFix
           body:JSON.stringify({system:systemFull,messages:messages,tools:TOOLS})
         });
         var data=await res.json();
+
+        // Retry once on rate limit
+        if(data.error&&data.error.toString().includes('Rate limit')){
+          updateBubble(typingEl,'⏳ Rate limit — retrying in 15s...');
+          await new Promise(function(r){setTimeout(r,15000);});
+          var res2=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:systemFull,messages:messages,tools:TOOLS})});
+          data=await res2.json();
+        }
 
         if(data.error){
           updateBubble(typingEl,'Error: '+data.error);
