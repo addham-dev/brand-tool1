@@ -814,20 +814,153 @@ function renderSupplyTab(rows,wrap){
   var data=Object.values(m).filter(function(r){return r.oos>0||r.unfilled>0;}).map(function(r){return Object.assign({},r,{risk:r.oos>=10?r.rev*(r.oos/100):0});}).sort(function(a,b){return b.risk-a.risk||b.unfilled-a.unfilled;}).slice(0,30);
   wrap.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text2);"><b style="color:var(--red)">OOS Thresholds:</b> ≤6% green ✅ · 7–9% amber ⚠️ · ≥10% red 🔴</div>'+buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'oos',label:'OOS %',r:true},{k:'unfilled',label:'Unfilled',r:true},{k:'rev',label:'Revenue',r:true},{k:'risk',label:'Rev at Risk',r:true,dir:'desc'}],data,'risk','desc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name">'+r.name+'</span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val"><span class="'+oosClass(r.oos)+'">'+r.oos.toFixed(1)+'%</span></td><td class="td-val" style="color:'+(r.unfilled>100?'var(--red)':r.unfilled>50?'var(--amber)':'var(--text)')+'">'+Math.round(r.unfilled).toLocaleString()+'</td><td class="td-val">'+fmtCur(r.rev)+'</td><td class="td-val" style="color:var(--red);font-weight:700">'+(r.risk>0?fmtCur(r.risk):'—')+'</td>';},'supply');
 }
-function renderAdsTab(brandId,d,ads,wrap){
+async function renderAdsTab(brandId,d,ads,wrap){
   if(!ads||(!ads.ad_revenue&&!ads.ad_spend)){wrap.innerHTML='<div class="empty">📊 No ads data uploaded for this brand/period.</div>';return;}
+
   var roas=ads.ad_spend>0?(ads.ad_revenue/ads.ad_spend).toFixed(2):null;
   var blendedRoas=ads.ad_spend>0?(d.revenue/ads.ad_spend).toFixed(1):null;
   var acos=ads.ad_revenue>0?((ads.ad_spend/ads.ad_revenue)*100).toFixed(1):null;
   var orgRevPct=d.revenue>0?(Math.max(0,d.revenue-(ads.ad_revenue||0))/d.revenue*100).toFixed(0):null;
   var adRevPct2=d.revenue>0?(((ads.ad_revenue||0)/d.revenue)*100).toFixed(0):null;
   var roasNum=parseFloat(roas)||0;
-  wrap.innerHTML='<div style="margin-bottom:20px;"><div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Revenue Mix</div><div style="height:28px;border-radius:14px;overflow:hidden;display:flex;"><div style="width:'+orgRevPct+'%;background:var(--org-color);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white">'+orgRevPct+'% organic</div><div style="flex:1;background:var(--ad-color);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white">'+adRevPct2+'% ads</div></div></div>'+
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">'+
-    '<div style="background:var(--bg);border-radius:10px;padding:12px;border:1px solid var(--border);"><div style="font-size:10px;color:var(--text2);font-weight:600;margin-bottom:4px">True ROAS</div><div style="font-family:\'Syne\',sans-serif;font-size:22px;font-weight:800;color:'+(roasNum>=4?'var(--green)':roasNum>=2?'var(--amber)':'var(--red)')+'">'+( roas||'—')+'x</div></div>'+
-    '<div style="background:var(--bg);border-radius:10px;padding:12px;border:1px solid var(--border);"><div style="font-size:10px;color:var(--text2);font-weight:600;margin-bottom:4px">Blended ROAS</div><div style="font-family:\'Syne\',sans-serif;font-size:22px;font-weight:800;color:var(--text)">'+(blendedRoas||'—')+'x</div></div>'+
-    '<div style="background:var(--bg);border-radius:10px;padding:12px;border:1px solid var(--border);"><div style="font-size:10px;color:var(--text2);font-weight:600;margin-bottom:4px">Ad Spend</div><div style="font-family:\'Syne\',sans-serif;font-size:22px;font-weight:800;color:var(--ad-color)">'+fmtCur(ads.ad_spend||0)+'</div></div>'+
-    '<div style="background:var(--bg);border-radius:10px;padding:12px;border:1px solid var(--border);"><div style="font-size:10px;color:var(--text2);font-weight:600;margin-bottom:4px">ACoS</div><div style="font-family:\'Syne\',sans-serif;font-size:22px;font-weight:800;color:'+(parseFloat(acos)>30?'var(--red)':parseFloat(acos)>20?'var(--amber)':'var(--green)')+'">'+( acos||'—')+'%</div></div></div>';
+
+  // Get current week starts
+  var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){return periodKey(ws)===currentPeriod;});
+  var wsFilter=weekStarts.map(function(ws){return'week_start=eq.'+ws;}).join(',');
+  var wsParam=weekStarts.length===1?'week_start=eq.'+weekStarts[0]:'week_start=in.('+weekStarts.join(',')+')';
+
+  // Show skeleton immediately
+  wrap.innerHTML='<div id="ads-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">'+
+    ['True ROAS','Blended ROAS','Ad Spend','ACoS'].map(function(l,i){
+      var vals=[roas?roas+'x':'—',blendedRoas?blendedRoas+'x':'—',fmtCur(ads.ad_spend||0),(acos||'—')+'%'];
+      var cols=[roasNum>=4?'var(--green)':roasNum>=2?'var(--amber)':'var(--red)','var(--text)','var(--ad-color)',parseFloat(acos)>30?'var(--red)':parseFloat(acos)>20?'var(--amber)':'var(--green)'];
+      return'<div style="background:var(--bg);border-radius:10px;padding:12px;border:1px solid var(--border);"><div style="font-size:10px;color:var(--text2);font-weight:600;margin-bottom:4px">'+l+'</div><div style="font-family:\'Syne\',sans-serif;font-size:22px;font-weight:800;color:'+cols[i]+'">'+vals[i]+'</div></div>';
+    }).join('')+
+  '</div>'+
+  '<div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:20px;overflow:hidden;"><div style="width:'+adRevPct2+'%;height:100%;background:var(--ad-color);border-radius:2px;"></div></div>'+
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">'+
+    '<div id="ads-placement-wrap"><div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Placement Split</div><div style="color:var(--text3);font-size:12px">Loading...</div></div>'+
+    '<div id="ads-query-wrap"><div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Top Search Queries</div><div style="color:var(--text3);font-size:12px">Loading...</div></div>'+
+  '</div>'+
+  '<div id="ads-campaign-wrap" style="margin-top:16px;"><div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Top Campaigns</div><div style="color:var(--text3);font-size:12px">Loading...</div></div>';
+
+  // Fetch placement, queries and campaigns in parallel
+  var mktFilter=currentMarket!=='ALL'?'&market=eq.'+currentMarket:'';
+  var fetches=await Promise.all([
+    sbFetch('/rest/v1/brand_health_ads_placement?'+wsParam+'&brand_classified=eq.'+brandId+mktFilter+'&select=placement,ad_spend,ad_revenue,ad_clicks,ad_impressions&order=ad_spend.desc'),
+    sbFetch('/rest/v1/brand_health_ads_queries?'+wsParam+'&brand_classified=eq.'+brandId+mktFilter+'&select=query,ad_spend,ad_revenue,ad_clicks,roas&order=ad_spend.desc'),
+    sbFetch('/rest/v1/brand_health_ads_campaigns?'+wsParam+'&brand_classified=eq.'+brandId+mktFilter+'&select=campaign_name,ad_spend,ad_revenue,ad_clicks,ad_impressions,roas&order=ad_spend.desc')
+  ]);
+
+  var placements=fetches[0],queries=fetches[1],campaigns=fetches[2];
+
+  // Aggregate placements
+  var plAgg={};
+  placements.forEach(function(r){
+    var p=r.placement||'Unknown';
+    if(!plAgg[p])plAgg[p]={spend:0,revenue:0,clicks:0};
+    plAgg[p].spend+=r.ad_spend||0;plAgg[p].revenue+=r.ad_revenue||0;plAgg[p].clicks+=r.ad_clicks||0;
+  });
+  var plData=Object.entries(plAgg).sort(function(a,b){return b[1].spend-a[1].spend;});
+  var totalPlSpend=plData.reduce(function(s,p){return s+p[1].spend;},0);
+
+  var plWrap=document.getElementById('ads-placement-wrap');
+  if(plWrap){
+    if(!plData.length){plWrap.innerHTML+='<div style="color:var(--text3);font-size:12px">No placement data for this period.</div>';}
+    else{
+      plWrap.innerHTML='<div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Placement Split</div>'+
+        plData.map(function(p){
+          var pct=totalPlSpend>0?(p[1].spend/totalPlSpend*100).toFixed(0):0;
+          var roas=p[1].spend>0?(p[1].revenue/p[1].spend).toFixed(2):0;
+          var col=p[0].toLowerCase().includes('top')?'var(--blue)':p[0].toLowerCase().includes('detail')?'var(--purple)':'var(--amber)';
+          return'<div style="margin-bottom:10px;">'+
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'+
+              '<span style="font-size:12px;font-weight:600;color:var(--text)">'+p[0]+'</span>'+
+              '<span style="font-size:11px;color:var(--text2)">'+fmtCur(p[1].spend)+' · ROAS '+roas+'x</span>'+
+            '</div>'+
+            '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">'+
+              '<div style="width:'+pct+'%;height:100%;background:'+col+';border-radius:4px;"></div>'+
+            '</div>'+
+            '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+pct+'% of spend · '+p[1].clicks.toLocaleString()+' clicks</div>'+
+          '</div>';
+        }).join('');
+    }
+  }
+
+  // Aggregate queries
+  var qAgg={};
+  queries.forEach(function(r){
+    var q=r.query||'';if(!q)return;
+    if(!qAgg[q])qAgg[q]={spend:0,revenue:0,clicks:0};
+    qAgg[q].spend+=r.ad_spend||0;qAgg[q].revenue+=r.ad_revenue||0;qAgg[q].clicks+=r.ad_clicks||0;
+  });
+  var qData=Object.entries(qAgg).sort(function(a,b){return b[1].spend-a[1].spend;}).slice(0,10);
+
+  var qWrap=document.getElementById('ads-query-wrap');
+  if(qWrap){
+    if(!qData.length){qWrap.innerHTML='<div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Top Search Queries</div><div style="color:var(--text3);font-size:12px">No query data for this period.</div>';}
+    else{
+      qWrap.innerHTML='<div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Top Search Queries by Spend</div>'+
+        '<table style="width:100%;border-collapse:collapse;font-size:11px;">'+
+        '<thead><tr>'+
+          '<th style="text-align:left;padding:5px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">Query</th>'+
+          '<th style="text-align:right;padding:5px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">Spend</th>'+
+          '<th style="text-align:right;padding:5px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">Rev</th>'+
+          '<th style="text-align:right;padding:5px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">ROAS</th>'+
+        '</tr></thead><tbody>'+
+        qData.map(function(q){
+          var roas=q[1].spend>0?(q[1].revenue/q[1].spend).toFixed(2):0;
+          var roasCol=parseFloat(roas)>=4?'var(--green)':parseFloat(roas)>=2?'var(--amber)':'var(--red)';
+          return'<tr>'+
+            '<td style="padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600;color:var(--text)">'+q[0]+'</td>'+
+            '<td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+fmtCur(q[1].spend)+'</td>'+
+            '<td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+fmtCur(q[1].revenue)+'</td>'+
+            '<td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:'+roasCol+'">'+roas+'x</td>'+
+          '</tr>';
+        }).join('')+
+        '</tbody></table>';
+    }
+  }
+
+  // Campaigns
+  var cAgg={};
+  campaigns.forEach(function(r){
+    var c=r.campaign_name||'Unknown';
+    if(!cAgg[c])cAgg[c]={spend:0,revenue:0,clicks:0,impressions:0};
+    cAgg[c].spend+=r.ad_spend||0;cAgg[c].revenue+=r.ad_revenue||0;cAgg[c].clicks+=r.ad_clicks||0;cAgg[c].impressions+=r.ad_impressions||0;
+  });
+  var cData=Object.entries(cAgg).sort(function(a,b){return b[1].spend-a[1].spend;}).slice(0,15);
+
+  var cWrap=document.getElementById('ads-campaign-wrap');
+  if(cWrap){
+    if(!cData.length){cWrap.innerHTML='<div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Top Campaigns</div><div style="color:var(--text3);font-size:12px">No campaign data — upload Pacvue Campaign Report.</div>';}
+    else{
+      cWrap.innerHTML='<div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Top Campaigns by Spend</div>'+
+        '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;">'+
+        '<thead><tr>'+
+          '<th style="text-align:left;padding:6px 10px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">Campaign</th>'+
+          '<th style="text-align:right;padding:6px 10px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">Spend</th>'+
+          '<th style="text-align:right;padding:6px 10px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">Revenue</th>'+
+          '<th style="text-align:right;padding:6px 10px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">ROAS</th>'+
+          '<th style="text-align:right;padding:6px 10px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">Clicks</th>'+
+          '<th style="text-align:right;padding:6px 10px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">CTR</th>'+
+        '</tr></thead><tbody>'+
+        cData.map(function(c){
+          var roas=c[1].spend>0?(c[1].revenue/c[1].spend).toFixed(2):0;
+          var ctr=c[1].impressions>0?(c[1].clicks/c[1].impressions*100).toFixed(2):0;
+          var roasCol=parseFloat(roas)>=4?'var(--green)':parseFloat(roas)>=2?'var(--amber)':'var(--red)';
+          return'<tr>'+
+            '<td style="padding:7px 10px;border-bottom:1px solid var(--border);font-weight:600;color:var(--text);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+c[0]+'</td>'+
+            '<td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+fmtCur(c[1].spend)+'</td>'+
+            '<td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+fmtCur(c[1].revenue)+'</td>'+
+            '<td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:'+roasCol+'">'+roas+'x</td>'+
+            '<td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+c[1].clicks.toLocaleString()+'</td>'+
+            '<td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+ctr+'%</td>'+
+          '</tr>';
+        }).join('')+
+        '</tbody></table></div>';
+    }
+  }
 }
 function renderAdOppTab(rows,wrap){
   var m=buildAsinMap(rows,function(r){return{rev:r.dispatched_revenue||0,units:r.dispatched_units||0,gv:r.glance_views||0,oos:r.oos_pct||0};});
