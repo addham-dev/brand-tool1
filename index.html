@@ -396,7 +396,7 @@ async function init(){
     var weeksRes=results[0],loyaltyRes=results[1],adsRes=results[2];
     var coverageRes=[];
     try{var cr=await sbFetch('/rest/v1/brand_health_ads_coverage?select=*');if(Array.isArray(cr))coverageRes=cr;}catch(e){}
-    try{var sr=await sbFetch('/rest/v1/brand_health_search_terms?select=*&order=week_start.desc,rank.asc&limit=5000');if(Array.isArray(sr))searchTermsData=sr;}catch(e){}
+    try{var sr=await sbFetch('/rest/v1/brand_health_search_terms?select=*&order=week_start.desc,rank.asc&limit=50000');if(Array.isArray(sr))searchTermsData=sr;}catch(e){}
     allWeeks=weeksRes;
     loyaltyData={};
     loyaltyRes.forEach(function(r){if(!loyaltyData[r.brand_classified])loyaltyData[r.brand_classified]=r;});
@@ -568,6 +568,45 @@ function aggregateBrand(brandId){
   return{revenue:revenue,revenueYoy:revenueYoy,units:units,asp:asp,conv:conv,gviews:gviews,gviewsYoy:gviewsYoy,unfilled:unfilled,avgOos:avgOos,repeatRate:repeatRate,ltv:ltv,ads:ads};
 }
 
+function getToysRank(brandId) {
+  if (!searchTermsData.length) return null;
+  // Get all weeks available in search terms data
+  var weeks = searchTermsData.map(function(t){ return t.week_start; })
+    .filter(function(v,i,a){ return a.indexOf(v)===i; }).sort();
+  if (!weeks.length) return null;
+
+  var latestWeek = weeks[weeks.length-1];
+  var priorWeek  = weeks.length >= 2 ? weeks[weeks.length-2] : null;
+
+  // Find best (lowest) rank for this brand in Toys category, current week
+  var brandTerms = searchTermsData.filter(function(t){
+    return t.brand_classified === brandId &&
+           t.week_start === latestWeek &&
+           (t.top_clicked_category||'').toLowerCase().indexOf('toy') >= 0 &&
+           t.rank;
+  });
+  if (!brandTerms.length) return null;
+  var bestRank = Math.min.apply(null, brandTerms.map(function(t){ return t.rank; }));
+
+  // Find prior week rank for WoW
+  var priorRank = null;
+  if (priorWeek) {
+    var priorTerms = searchTermsData.filter(function(t){
+      return t.brand_classified === brandId &&
+             t.week_start === priorWeek &&
+             (t.top_clicked_category||'').toLowerCase().indexOf('toy') >= 0 &&
+             t.rank;
+    });
+    if (priorTerms.length) {
+      priorRank = Math.min.apply(null, priorTerms.map(function(t){ return t.rank; }));
+    }
+  }
+
+  // For rank: improvement = lower number = up arrow (green)
+  var rankChange = priorRank ? priorRank - bestRank : null; // positive = improved
+  return { rank: bestRank, priorRank: priorRank, change: rankChange };
+}
+
 function getSentiment(d){
   var revDown=d.revenueYoy!==null&&d.revenueYoy<-0.02;
   var revUp=d.revenueYoy!==null&&d.revenueYoy>0.02;
@@ -642,6 +681,17 @@ function renderBrandCards(){
       '<div class="bm-row"><span class="bm-label">Conversion</span><span class="bm-right"><span class="bm-value '+cvrClass(d.conv)+'">'+d.conv.toFixed(2)+'%</span></span></div>'+
       '<div class="bm-row"><span class="bm-label">ASP</span><span class="bm-right"><span class="bm-value">'+fmtCur(d.asp)+'</span></span></div>'+
       '<div class="bm-row"><span class="bm-label">OOS</span><span class="bm-right"><span class="bm-value '+oosClass(d.avgOos)+'">'+d.avgOos.toFixed(1)+'%</span></span></div>'+
+      (function(){
+        var tr=getToysRank(id);
+        if(!tr)return'';
+        var changeHtml='';
+        if(tr.change!==null){
+          var cls=tr.change>0?'yoy-up':tr.change<0?'yoy-down':'yoy-na';
+          var arr=tr.change>0?'▲':tr.change<0?'▼':'';
+          changeHtml='<span class="yoy '+cls+'">'+arr+Math.abs(tr.change)+'</span>';
+        }
+        return'<div class="bm-row"><span class="bm-label">🔍 Toys Rank</span><span class="bm-right"><span class="bm-value">#'+tr.rank.toLocaleString()+'</span>'+changeHtml+'</span></div>';
+      })()+
       '<div class="brand-divider"></div>'+
       '<div class="bm-row"><span class="bm-label">Repeat Rate</span><span class="bm-right"><span class="bm-value">'+(d.repeatRate!==null?(d.repeatRate*100).toFixed(1)+'%':'<span style="color:var(--text3);font-size:9px">No data</span>')+'</span></span></div>'+
       '<div class="bm-row"><span class="bm-label">Est. LTV</span><span class="bm-right"><span class="ltv-badge" style="'+(d.ltv?'':'opacity:0.35')+'">'+(d.ltv?fmtCur(d.ltv):'—')+'</span></span></div>'+
@@ -855,14 +905,16 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFix
       var latestWs=weeks[0].week_start,wLabel=weeks[0].week_label||latestWs;
       var weekStarts=weeks.map(function(w){return w.week_start;});
 
+      var adamHeaders={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Range':'0-19999','Range-Unit':'items','Prefer':'count=none'};
+
       // Fetch current week full snapshot
-      var sRes=await fetch(SUPABASE_URL+'/rest/v1/brand_health_snapshots?week_start=eq.'+latestWs+'&select=brand_classified,market,asin,product_title,dispatched_revenue,ordered_revenue,dispatched_units,ordered_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+      var sRes=await fetch(SUPABASE_URL+'/rest/v1/brand_health_snapshots?week_start=eq.'+latestWs+'&select=brand_classified,market,asin,product_title,dispatched_revenue,ordered_revenue,dispatched_units,ordered_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy',{headers:adamHeaders});
       var snaps=await sRes.json();
 
       // Fetch prior 3 weeks ASIN-level glance views for trend context
       var priorSnaps=[];
       for(var wi=1;wi<weekStarts.length;wi++){
-        var pr=await fetch(SUPABASE_URL+'/rest/v1/brand_health_snapshots?week_start=eq.'+weekStarts[wi]+'&select=week_start,asin,market,glance_views,dispatched_revenue,ordered_revenue',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+        var pr=await fetch(SUPABASE_URL+'/rest/v1/brand_health_snapshots?week_start=eq.'+weekStarts[wi]+'&select=week_start,asin,market,glance_views,dispatched_revenue,ordered_revenue',{headers:adamHeaders});
         var prData=await pr.json();
         if(Array.isArray(prData))priorSnaps=priorSnaps.concat(prData);
       }
