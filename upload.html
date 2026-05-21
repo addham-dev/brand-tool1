@@ -1656,6 +1656,8 @@ function aggregateCampaignToAds(campaignRows) {
     agg[k].ad_clicks     += r.ad_clicks;
     agg[k].ad_impressions+= r.ad_impressions;
   });
+  // Apply 1.4x proxy for ad glance views (clicks × 1.4 — toys category standard)
+  Object.values(agg).forEach(r => { r.ad_glance_views = Math.round(r.ad_clicks * 1.4); });
   return Object.values(agg);
 }
 
