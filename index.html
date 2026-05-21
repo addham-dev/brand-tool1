@@ -390,7 +390,11 @@ function sbFetch(path){
   .catch(function(e){console.warn('sbFetch error:',e.message);return[];});
 }
 
+var _initRunning = false;
+
 async function init(){
+  if (_initRunning) return;
+  _initRunning = true;
   try{
     // Phase 1 — critical path only (parallel, fast)
     var results=await Promise.all([
@@ -416,6 +420,8 @@ async function init(){
 
   }catch(err){
     document.getElementById('loading-screen').innerHTML='<div style="color:var(--red);font-size:12px;text-align:center;padding:40px">Error: '+err.message+'</div>';
+  } finally {
+    _initRunning = false;
   }
 }
 
@@ -1233,11 +1239,17 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFix
 
 init();
 
-// Re-initialise when user returns to this tab from another page
+// Re-render when returning to tab — only re-init if data was lost
 document.addEventListener('visibilitychange', function() {
   if (!document.hidden) {
-    // Always re-init — data doesn't persist across navigation
-    init();
+    if (!allWeeks.length || !allRows.length) {
+      // Data genuinely missing — full reinit
+      init();
+    } else {
+      // Data intact — just re-render
+      var main = document.getElementById('main-content');
+      if (main) { main.style.display = 'grid'; buildDashboard(); }
+    }
   }
 });
 </script>
