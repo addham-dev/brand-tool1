@@ -342,19 +342,20 @@ async function loadPreOrders(){
 
   try{
     // Use the pre_order_analysis view — aggregated in SQL, no row limit issues
-    const [summary, recentSnaps, latestWeeks] = await Promise.all([
-      sbFetch('/rest/v1/pre_order_analysis?select=*', 50000),
-      sbFetch('/rest/v1/brand_health_snapshots?select=asin,market,week_start,ordered_revenue,dispatched_revenue,oos_pct&order=week_start.desc&limit=30000'),
-      sbFetch('/rest/v1/brand_health_weeks?select=week_start&order=week_start.desc&limit=5')
-    ]);
+    // Fetch latest weeks first, then use for targeted queries
+    const latestWeeks = await sbFetch('/rest/v1/brand_health_weeks?select=week_start&order=week_start.desc&limit=5');
 
     const latestDbWeek = latestWeeks[0]?.week_start;
     const twelveWeeksAgo = new Date(latestDbWeek);
     twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
     const cutoff = twelveWeeksAgo.toISOString().split('T')[0];
-
-    // Get last 4 weeks
     const recentWeeks = latestWeeks.slice(0,4).map(w=>w.week_start);
+
+    // Only need last 4 weeks of snapshots for ordered/oos data
+    const [summary, recentSnaps] = await Promise.all([
+      sbFetch('/rest/v1/pre_order_analysis?select=*', 50000),
+      sbFetch(`/rest/v1/brand_health_snapshots?select=asin,market,week_start,ordered_revenue,dispatched_revenue,oos_pct&week_start=in.(${recentWeeks.join(',')})`, 30000)
+    ]);
 
     // Build recent ordered/oos per ASIN from snapshot
     const recentMap = {};
@@ -372,7 +373,8 @@ async function loadPreOrders(){
     summary.forEach(a=>{
       const k = a.asin+'||'+(a.market||'');
       const recent = recentMap[k]||{ordered:0,dispatched:0,oosSum:0,oosCount:1};
-      const totalOrdered = recent.ordered;
+      const recentOrdered = recent.ordered;
+      const totalOrdered = recentOrdered > 0 ? recentOrdered : parseFloat(a.total_ever_ordered)||0;
       const totalDispatched = recent.dispatched;
       const gap = Math.max(0,totalOrdered-totalDispatched);
       const avgOos = recent.oosCount>0 ? recent.oosSum/recent.oosCount : 0;
