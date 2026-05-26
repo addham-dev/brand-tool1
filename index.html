@@ -842,6 +842,150 @@ function renderSupplyTab(rows,wrap){
   var data=Object.values(m).filter(function(r){return r.oos>0||r.unfilled>0;}).map(function(r){return Object.assign({},r,{risk:r.oos>=10?r.rev*(r.oos/100):0});}).sort(function(a,b){return b.risk-a.risk||b.unfilled-a.unfilled;}).slice(0,30);
   wrap.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text2);"><b style="color:var(--red)">OOS Thresholds:</b> ≤6% green ✅ · 7–9% amber ⚠️ · ≥10% red 🔴</div>'+buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'oos',label:'OOS %',r:true},{k:'unfilled',label:'Unfilled',r:true},{k:'rev',label:'Revenue',r:true},{k:'risk',label:'Rev at Risk',r:true,dir:'desc'}],data,'risk','desc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name">'+r.name+'</span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val"><span class="'+oosClass(r.oos)+'">'+r.oos.toFixed(1)+'%</span></td><td class="td-val" style="color:'+(r.unfilled>100?'var(--red)':r.unfilled>50?'var(--amber)':'var(--text)')+'">'+Math.round(r.unfilled).toLocaleString()+'</td><td class="td-val">'+fmtCur(r.rev)+'</td><td class="td-val" style="color:var(--red);font-weight:700">'+(r.risk>0?fmtCur(r.risk):'—')+'</td>';},'supply');
 }
+async function renderPreOrderTab(brandId,wrap){
+  wrap.innerHTML='<div style="color:var(--text3);font-size:12px;padding:20px">Loading pre-order analysis...</div>';
+
+  try{
+    // Fetch all historical snapshots for this brand — ordered vs dispatched gap + OOS
+    var mktFilter=currentMarket!=='ALL'?'&market=eq.'+currentMarket:'';
+    var brandFilter=brandId?'&brand_classified=eq.'+brandId:'';
+    var history=await sbFetch('/rest/v1/brand_health_snapshots?select=asin,product_title,market,week_start,ordered_revenue,dispatched_revenue,ordered_units,dispatched_units,oos_pct,unfilled_units'+brandFilter+mktFilter+'&order=week_start.asc');
+
+    if(!history.length){wrap.innerHTML='<div style="color:var(--text3);font-size:12px;padding:20px">No data available.</div>';return;}
+
+    // Build per-ASIN history
+    var asinMap={};
+    history.forEach(function(r){
+      var k=r.asin+'||'+(r.market||'');
+      if(!asinMap[k])asinMap[k]={asin:r.asin,title:r.product_title,market:r.market,weeks:[],everHadStock:false};
+      var hasStock=(r.oos_pct||0)<100&&(r.unfilled_units||0)===0;
+      if(hasStock||(r.dispatched_units||0)>0)asinMap[k].everHadStock=true;
+      asinMap[k].weeks.push({
+        week:r.week_start,
+        ordered:r.ordered_revenue||0,
+        dispatched:r.dispatched_revenue||0,
+        gap:Math.max(0,(r.ordered_revenue||0)-(r.dispatched_revenue||0)),
+        oos:r.oos_pct||0,
+        unfilled:r.unfilled_units||0,
+        hasStock:hasStock
+      });
+    });
+
+    // Get current week only for display
+    var currentWeeks=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){return periodKey(ws)===currentPeriod;});
+    var currentWs=currentWeeks[0];
+
+    // Classify ASINs with gaps in current period
+    var results=[];
+    Object.values(asinMap).forEach(function(a){
+      var currentWeek=a.weeks.filter(function(w){return currentWeeks.indexOf(w.week)>=0;});
+      var totalGap=currentWeek.reduce(function(s,w){return s+w.gap;},0);
+      var totalOrdered=currentWeek.reduce(function(s,w){return s+w.ordered;},0);
+      var avgOos=currentWeek.length?currentWeek.reduce(function(s,w){return s+w.oos;},0)/currentWeek.length:0;
+
+      if(totalOrdered<1)return; // skip ASINs with no ordered revenue
+
+      // Classification logic
+      var classification,confidence,reason;
+      if(!a.everHadStock){
+        classification='PRE-ORDER';
+        confidence='High';
+        reason='No stock ever received — ordered revenue without prior on-hand history';
+      } else if(avgOos>=80){
+        classification='OOS';
+        confidence='High';
+        reason='Previously stocked ('+avgOos.toFixed(0)+'% OOS this period) — stock exhausted';
+      } else if(avgOos>=30){
+        classification='OOS';
+        confidence='Medium';
+        reason='Partial OOS ('+avgOos.toFixed(0)+'%) — may be OOS-driven gap';
+      } else if(totalGap<totalOrdered*0.1){
+        return; // gap too small to classify, skip
+      } else {
+        classification='UNCLEAR';
+        confidence='Low';
+        reason='Has prior stock history, low OOS — gap origin unclear';
+      }
+
+      results.push({
+        asin:a.asin,
+        title:a.title,
+        market:a.market,
+        ordered:totalOrdered,
+        dispatched:currentWeek.reduce(function(s,w){return s+w.dispatched;},0),
+        gap:totalGap,
+        oos:avgOos,
+        classification:classification,
+        confidence:confidence,
+        reason:reason,
+        everHadStock:a.everHadStock
+      });
+    });
+
+    if(!results.length){
+      wrap.innerHTML='<div style="color:var(--text3);font-size:12px;padding:20px;text-align:center">✅ No significant ordered vs dispatched gaps this period.</div>';
+      return;
+    }
+
+    // Sort by gap size
+    results.sort(function(a,b){return b.gap-a.gap;});
+
+    var preOrders=results.filter(function(r){return r.classification==='PRE-ORDER';});
+    var oosItems=results.filter(function(r){return r.classification==='OOS';});
+    var unclear=results.filter(function(r){return r.classification==='UNCLEAR';});
+
+    var totalPreOrderRev=preOrders.reduce(function(s,r){return s+r.ordered;},0);
+    var totalOosGap=oosItems.reduce(function(s,r){return s+r.gap;},0);
+
+    function fC(v){return v>=1000?'€'+(v/1000).toFixed(1)+'K':'€'+v.toFixed(0);}
+    function mkBadge(cls,conf){
+      var col=cls==='PRE-ORDER'?'var(--purple)':cls==='OOS'?'var(--red)':'var(--text3)';
+      var bg=cls==='PRE-ORDER'?'var(--purple-bg)':cls==='OOS'?'var(--red-bg)':'var(--bg)';
+      return'<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;background:'+bg+';color:'+col+'">'+cls+'</span> <span style="font-size:9px;color:var(--text3)">'+conf+' confidence</span>';
+    }
+
+    var html='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">';
+    html+='<div style="background:var(--purple-bg);border-radius:8px;padding:12px;border:1px solid var(--purple);"><div style="font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;margin-bottom:4px">Likely Pre-Order</div><div style="font-size:20px;font-weight:800;color:var(--purple)">'+preOrders.length+' ASINs</div><div style="font-size:11px;color:var(--text2)">'+fC(totalPreOrderRev)+' ordered revenue</div></div>';
+    html+='<div style="background:var(--red-bg);border-radius:8px;padding:12px;border:1px solid var(--red);"><div style="font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;margin-bottom:4px">Likely OOS Gap</div><div style="font-size:20px;font-weight:800;color:var(--red)">'+oosItems.length+' ASINs</div><div style="font-size:11px;color:var(--text2)">'+fC(totalOosGap)+' revenue gap</div></div>';
+    html+='<div style="background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--border);"><div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:4px">Unclear</div><div style="font-size:20px;font-weight:800;color:var(--text2)">'+unclear.length+' ASINs</div><div style="font-size:11px;color:var(--text3)">Gap present, origin unknown</div></div>';
+    html+='</div>';
+
+    html+='<div style="font-size:10px;color:var(--text3);background:var(--blue-light);border-radius:6px;padding:8px 12px;margin-bottom:12px;">🤖 <b>Logic:</b> ASINs with no prior on-hand history = Pre-Order. ASINs previously stocked now OOS = Supply Gap. Updates automatically each week as new data is uploaded.</div>';
+
+    html+='<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+    html+='<thead><tr>';
+    html+='<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase">ASIN</th>';
+    html+='<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase">Product</th>';
+    html+='<th style="padding:6px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase">Mkt</th>';
+    html+='<th style="text-align:right;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase">Ordered</th>';
+    html+='<th style="text-align:right;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase">Dispatched</th>';
+    html+='<th style="text-align:right;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase">Gap</th>';
+    html+='<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase">Classification</th>';
+    html+='</tr></thead><tbody>';
+
+    results.slice(0,50).forEach(function(r){
+      var rowBg=r.classification==='PRE-ORDER'?'background:rgba(155,89,182,0.04)':r.classification==='OOS'?'background:rgba(232,66,63,0.04)':'';
+      html+='<tr style="'+rowBg+'">';
+      html+='<td style="padding:6px 8px;border-bottom:1px solid var(--border);font-family:\'DM Mono\',monospace;font-size:10px;color:var(--blue)">'+r.asin+'</td>';
+      html+='<td style="padding:6px 8px;border-bottom:1px solid var(--border);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)" title="'+r.title+'">'+r.title+'</td>';
+      html+='<td style="padding:6px 8px;border-bottom:1px solid var(--border)"><span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--blue-light);color:var(--blue-dark)">'+r.market+'</span></td>';
+      html+='<td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+fC(r.ordered)+'</td>';
+      html+='<td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+fC(r.dispatched)+'</td>';
+      html+='<td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace;font-weight:700;color:'+(r.gap>100?'var(--red)':'var(--text2)')+'">'+fC(r.gap)+'</td>';
+      html+='<td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+mkBadge(r.classification,r.confidence)+'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+r.reason+'</div></td>';
+      html+='</tr>';
+    });
+
+    html+='</tbody></table>';
+    if(results.length>50)html+='<div style="font-size:11px;color:var(--text3);padding:8px 0">Showing 50 of '+results.length+' ASINs</div>';
+
+    wrap.innerHTML=html;
+
+  }catch(e){
+    wrap.innerHTML='<div style="color:var(--red);font-size:12px;padding:20px">Error loading pre-order analysis: '+e.message+'</div>';
+  }
+}
+
 async function renderAdsTab(brandId,d,ads,wrap){
   if(!ads||(!ads.ad_revenue&&!ads.ad_spend)){wrap.innerHTML='<div class="empty">📊 No ads data uploaded for this brand/period.</div>';return;}
 
