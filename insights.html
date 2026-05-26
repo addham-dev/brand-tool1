@@ -370,7 +370,6 @@ async function loadPreOrders(){
       a.weeks.sort((x,y)=>x.week.localeCompare(y.week));
 
       const firstWeekEver = a.weeks[0]?.week;
-      const totalWeeksInDb = a.weeks.length;
       const totalEverDispatched = a.weeks.reduce((s,w)=>s+(w.dispatched||0),0);
       const firstDispatchWeek = a.weeks.find(w=>w.dispatchedUnits>0||w.dispatched>0);
       const firstDispatchDate = firstDispatchWeek?.week||null;
@@ -385,13 +384,18 @@ async function loadPreOrders(){
 
       let classification, confidence, reason;
 
-      // PRE-ORDER: genuinely new ASIN (first seen <=12 weeks ago) AND never dispatched anything ever
-      const isNewAsin = totalWeeksInDb <= 12;
+      // PRE-ORDER: ASIN first appeared within last 12 weeks of the LATEST week in DB
+      // AND has never dispatched anything across ALL history
+      const latestDbWeek = allWeeks[0]; // most recent week in full dataset
+      const twelveWeeksAgo = new Date(latestDbWeek);
+      twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84); // 12 weeks = 84 days
+      const twelveWeeksAgoStr = twelveWeeksAgo.toISOString().split('T')[0];
+      const isNewAsin = firstWeekEver >= twelveWeeksAgoStr;
       const neverDispatched = totalEverDispatched < 1;
 
       if(isNewAsin && neverDispatched && totalOrdered > 0){
         classification='PRE-ORDER'; confidence='High';
-        reason='New ASIN first seen '+firstWeekEver+', never dispatched — genuine pre-order';
+        reason='First seen '+firstWeekEver+' — never dispatched, genuine pre-order';
       } else if(firstDispatchDate && avgOos>=80 && gap>0){
         classification='OOS GAP'; confidence='High';
         reason='Previously dispatched, now '+avgOos.toFixed(0)+'% OOS — stock exhausted';
@@ -403,6 +407,7 @@ async function loadPreOrders(){
       }
 
       results.push({asin:a.asin,title:a.title,brand:a.brand,market:a.market,ordered:totalOrdered,dispatched:totalDispatched,gap,oos:avgOos,classification,confidence,reason});
+
     });
 
     results.sort((a,b)=>b.ordered-a.ordered);
