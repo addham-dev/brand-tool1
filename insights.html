@@ -187,12 +187,10 @@ async function init(){
 function sbFetch(path, limit=10000){
   const sep=path.indexOf('?')>=0?'&':'?';
   const url = SUPABASE_URL+path+sep+'limit='+limit;
-  return fetch(url,{
-    headers:{'apikey':SUPABASE_KEY}
-  }).then(r=>{
-    if(!r.ok) throw new Error('Supabase '+r.status);
-    return r.json();
-  }).then(d=>Array.isArray(d)?d:[]).catch(e=>{console.warn('sbFetch:',e.message);return[];});
+  return fetch(url,{headers:{'apikey':SUPABASE_KEY}})
+  .then(r=>{if(!r.ok)throw new Error('Supabase '+r.status);return r.json();})
+  .then(d=>Array.isArray(d)?d:[])
+  .catch(e=>{console.warn('sbFetch:',e.message);return[];});
 }
 
 function buildBrandFilters(){
