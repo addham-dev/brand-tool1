@@ -185,11 +185,18 @@ async function init(){
 }
 
 function sbFetch(path, limit=10000){
+  const isRpc = path.includes('/rpc/');
   const sep=path.indexOf('?')>=0?'&':'?';
-  return fetch(SUPABASE_URL+path+sep+'limit='+limit,{headers:{
-    'apikey':SUPABASE_KEY,
-    'Authorization':'Bearer '+SUPABASE_KEY
-  }}).then(r=>{
+  const url = isRpc ? SUPABASE_URL+path : SUPABASE_URL+path+sep+'limit='+limit;
+  return fetch(url,{
+    method: isRpc ? 'POST' : 'GET',
+    headers:{
+      'apikey':SUPABASE_KEY,
+      'Authorization':'Bearer '+SUPABASE_KEY,
+      'Content-Type': isRpc ? 'application/json' : 'text/plain'
+    },
+    body: isRpc ? '{}' : undefined
+  }).then(r=>{
     if(!r.ok) throw new Error('Supabase '+r.status);
     return r.json();
   }).then(d=>Array.isArray(d)?d:[]).catch(e=>{console.warn('sbFetch:',e.message);return[];});
@@ -352,7 +359,7 @@ async function loadPreOrders(){
 
     // Only need last 4 weeks of snapshots for ordered/oos data
     const [summary, recentSnaps] = await Promise.all([
-      sbFetch('/rest/v1/pre_order_analysis?select=*&total_ever_ordered=gt.0', 50000),
+      sbFetch('/rest/v1/rpc/get_pre_order_analysis', 50000),
       sbFetch(`/rest/v1/brand_health_snapshots?select=asin,market,week_start,ordered_revenue,dispatched_revenue,oos_pct&week_start=in.(${recentWeeks.join(',')})`, 30000)
     ]);
 
