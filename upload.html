@@ -3,82 +3,128 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <title>Hasbro EU — Insights</title>
+  <title>Hasbro Brand Health — Data Upload</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
-    :root{
-      --blue:#009CDE;--blue-dark:#0077A8;--blue-light:#E5F6FF;
-      --bg:#F0F8FC;--white:#fff;--text:#003A54;--text2:#5A8DA0;
-      --text3:#A0C8D8;--border:#D0EAF5;
-      --green:#00B388;--green-bg:#E5FFF6;
-      --red:#E8423F;--red-bg:#FFF0F0;
-      --amber:#F5A623;--amber-bg:#FFF8EC;
-      --purple:#9B59B6;--purple-bg:#F5EEF8;
-      --ad-color:#4F46E5;--ad-bg:#EEF2FF;
+    :root {
+      --blue:#009CDE; --blue-dark:#0077A8; --blue-light:#E5F6FF;
+      --bg:#F0F8FC; --white:#fff; --text:#003A54; --text2:#5A8DA0;
+      --text3:#A0C8D8; --border:#D0EAF5;
+      --green:#00B388; --green-bg:#E5FFF6;
+      --red:#E8423F; --red-bg:#FFF0F0;
+      --amber:#F5A623; --amber-bg:#FFF8EC;
+      --purple:#9B59B6; --purple-bg:#F5EEF8;
+      --ad-color:#4F46E5; --ad-bg:#EEF2FF;
       --shadow:0 2px 16px rgba(0,156,222,0.08);
     }
     *{margin:0;padding:0;box-sizing:border-box;}
     body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;}
+
     header{background:#1F1646;padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:68px;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
     .logo{display:flex;align-items:center;gap:16px;}
     .logo-img{height:36px;width:auto;display:block;}
     .logo-divider{width:1px;height:32px;background:rgba(255,255,255,0.2);}
     .logo-text{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:white;}
     .logo-sub{font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;}
+    .admin-badge{background:rgba(255,255,255,0.12);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.8);letter-spacing:1px;}
     .nav-links{display:flex;gap:4px;}
     .nav-link{padding:6px 16px;border-radius:6px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:rgba(255,255,255,0.65);text-decoration:none;transition:all 0.2s;}
     .nav-link:hover{background:rgba(255,255,255,0.1);color:white;}
     .nav-link.active{background:var(--blue);color:white;}
-    .sub-nav{background:white;padding:0 40px;display:flex;align-items:center;gap:0;border-bottom:2px solid var(--border);box-shadow:var(--shadow);}
-    .sub-tab{padding:14px 20px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:3px solid transparent;transition:all 0.2s;white-space:nowrap;}
-    .sub-tab:hover{color:var(--blue);}
-    .sub-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
-    main{padding:28px 40px;max-width:1400px;margin:0 auto;}
-    .section-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
-    .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
-    .filter-row{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
-    .filter-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;}
-    .filter-btn{padding:6px 14px;border-radius:6px;border:2px solid var(--border);background:var(--blue-light);color:var(--blue-dark);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;}
-    .filter-btn.active{background:var(--blue);color:white;border-color:var(--blue);}
-    .divider{width:1px;height:24px;background:var(--border);flex-shrink:0;}
-    .info-box{background:var(--blue-light);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6;}
-    .data-table{width:100%;border-collapse:collapse;}
-    .data-table th{text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:10px 14px;border-bottom:2px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;background:white;position:sticky;top:0;}
-    .data-table th:hover{color:var(--blue);}
-    .data-table th.r{text-align:right;}
-    .data-table td{padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;}
-    .data-table tr:hover td{background:var(--blue-light);}
-    .data-table tr.hasbro-row td{background:#F0FAFF;}
-    .data-table tr.hasbro-row:hover td{background:var(--blue-light);}
-    .td-rank{font-family:'DM Mono',monospace;font-size:12px;font-weight:700;}
-    .td-term{font-weight:600;color:var(--text);}
-    .td-val{font-family:'DM Mono',monospace;font-size:12px;text-align:right;}
-    .td-cat{font-size:10px;color:var(--text2);background:var(--bg);padding:2px 7px;border-radius:4px;border:1px solid var(--border);white-space:nowrap;}
-    .td-prod{font-size:11px;color:var(--text2);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-    .brand-badge{font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:5px;background:var(--blue-light);color:var(--blue-dark);}
-    .hasbro-badge{background:var(--green-bg);color:var(--green);}
-    .rank-top{color:var(--blue);}
-    .rank-mid{color:var(--green);}
-    .rank-low{color:var(--text2);}
-    .est-high{color:var(--green);font-weight:700;}
-    .est-mid{color:var(--amber);font-weight:700;}
-    .est-low{color:var(--text2);}
-    .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
-    .stat-card{background:white;border-radius:12px;padding:16px;box-shadow:var(--shadow);border:2px solid var(--border);transition:all 0.2s;}
-    .stat-label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
-    .stat-value{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--blue);}
-    .stat-sub{font-size:11px;color:var(--text2);margin-top:3px;}
-    .table-wrap{background:white;border-radius:14px;box-shadow:var(--shadow);border:2px solid var(--border);overflow:hidden;}
-    .table-scroll{overflow-x:auto;max-height:680px;overflow-y:auto;}
-    .loading{text-align:center;padding:80px;color:var(--text3);font-family:'Syne',sans-serif;font-size:16px;font-weight:700;}
-    .empty{text-align:center;padding:60px;color:var(--text3);font-size:13px;}
-    .week-badge-small{background:var(--blue-light);border-radius:6px;padding:4px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--blue-dark);border:1px solid var(--border);}
+
+    #login-section{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 64px);}
+    .login-box{background:white;border-radius:16px;padding:40px;width:360px;box-shadow:var(--shadow);border:2px solid var(--border);text-align:center;}
+    .login-icon{font-size:48px;margin-bottom:16px;}
+    .login-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;margin-bottom:6px;}
+    .login-sub{font-size:13px;color:var(--text2);margin-bottom:24px;}
+    .login-input{width:100%;padding:12px 16px;border:2px solid var(--border);border-radius:8px;font-family:'Inter',sans-serif;font-size:14px;outline:none;margin-bottom:12px;transition:border-color 0.2s;}
+    .login-input:focus{border-color:var(--blue);}
+    .login-btn{width:100%;background:var(--blue);color:white;border:none;border-radius:8px;padding:12px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
+    .login-btn:hover{background:var(--blue-dark);}
+    .login-error{color:var(--red);font-size:12px;margin-top:8px;display:none;}
+
+    #main-section{display:none;}
+    main{padding:32px 40px;max-width:1000px;margin:0 auto;display:grid;gap:24px;}
+    .page-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;}
+    .page-sub{font-size:14px;color:var(--text2);margin-top:4px;}
+
+    .section-card{background:white;border-radius:14px;padding:24px;box-shadow:var(--shadow);border:2px solid var(--border);}
+    .section-card.amber-border{border-color:var(--amber);}
+    .section-card.ad-border{border-color:var(--ad-color);}
+    .card-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:16px;}
+    .card-title.amber{color:var(--amber);}
+    .card-title.ad{color:var(--ad-color);}
+
+    .week-inputs{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;}
+    .input-group{display:flex;flex-direction:column;gap:6px;}
+    .input-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;}
+    .date-input{padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color 0.2s;}
+    .date-input:focus{border-color:var(--blue);}
+
+    .upload-card-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+    .upload-card-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+    .upload-card{background:white;border:2px dashed var(--border);border-radius:14px;padding:20px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;}
+    .upload-card:hover{border-color:var(--blue);background:var(--blue-light);}
+    .upload-card.loaded{border-color:var(--green);border-style:solid;background:var(--green-bg);}
+    .upload-card.ad-style{border-color:rgba(79,70,229,0.3);background:var(--ad-bg);}
+    .upload-card.ad-style:hover{border-color:var(--ad-color);}
+    .upload-card.ad-style.loaded{border-color:var(--green);border-style:solid;background:var(--green-bg);}
+    .uc-icon{font-size:28px;margin-bottom:8px;}
+    .uc-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text);margin-bottom:3px;}
+    .uc-sub{font-size:10px;color:var(--text2);line-height:1.5;}
+    .upload-card.loaded .uc-sub{color:var(--green);font-weight:600;}
+    .uc-check{position:absolute;top:8px;right:8px;font-size:14px;display:none;}
+    .upload-card.loaded .uc-check{display:block;}
+    input[type="file"]{display:none;}
+
+    .process-btn{background:var(--blue);color:white;border:none;border-radius:10px;padding:14px 32px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 12px rgba(0,156,222,0.3);}
+    .process-btn:hover:not(:disabled){background:var(--blue-dark);transform:translateY(-1px);}
+    .process-btn:disabled{background:var(--text3);cursor:not-allowed;transform:none;box-shadow:none;}
+    .ad-btn{background:var(--ad-color);box-shadow:0 4px 12px rgba(79,70,229,0.3);}
+    .ad-btn:hover:not(:disabled){background:#4338CA;}
+
+    .log-area{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);height:180px;overflow-y:auto;margin-top:16px;line-height:1.8;}
+    .log-line{display:block;}
+    .log-line.ok{color:var(--green);}
+    .log-line.err{color:var(--red);}
+    .log-line.info{color:var(--blue);}
+
+    .history-table{width:100%;border-collapse:collapse;margin-top:12px;}
+    .history-table th{text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;border-bottom:2px solid var(--border);}
+    .history-table td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;font-family:'DM Mono',monospace;}
+    .history-table tr:last-child td{border-bottom:none;}
+    .del-btn{background:var(--red-bg);color:var(--red);border:1px solid var(--red);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:700;}
+
+    .nav-links{display:flex;gap:4px;}
+    .nav-link{padding:6px 16px;border-radius:6px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:rgba(255,255,255,0.75);text-decoration:none;transition:all 0.2s;}
+    .nav-link:hover{background:rgba(255,255,255,0.15);color:white;}
+    .nav-link.active{background:white;color:var(--blue-dark);}
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,58,84,0.88);z-index:1000;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+    .overlay.on{display:flex;}
+    .overlay-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:white;}
+    .overlay-sub{font-size:12px;color:rgba(255,255,255,0.6);font-family:'DM Mono',monospace;}
+    .overlay-bar{width:300px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;overflow:hidden;}
+    .overlay-bar::after{content:'';display:block;height:100%;width:40%;background:var(--blue);border-radius:2px;animation:lb 1.2s ease infinite;}
+    @keyframes lb{0%{transform:translateX(-150%)}100%{transform:translateX(400%)}}
+    .overlay-progress{font-family:'DM Mono',monospace;font-size:13px;color:rgba(255,255,255,0.8);}
+
+    .note-box{background:var(--blue-light);border:1px solid var(--blue);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--text2);margin-bottom:16px;}
+    .note-box.ad-note{background:var(--ad-bg);border-color:var(--ad-color);}
   </style>
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-RF2D8HGXG0"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-RF2D8HGXG0");</script>
 </head>
 <body>
+
+<div class="overlay" id="overlay" onclick="document.getElementById('overlay').classList.remove('on')">
+  <div class="overlay-title" id="overlay-title">Uploading to Supabase...</div>
+  <div class="overlay-sub" id="overlay-sub">Processing files</div>
+  <div class="overlay-bar"></div>
+  <div class="overlay-progress" id="overlay-progress">0 / 0 rows</div>
+</div>
+
 <header>
   <div class="logo">
     <img src="https://corporate.hasbro.com/_next/image?url=%2Fimages%2Fhasbro_logo.png&w=256&q=75" alt="Hasbro" class="logo-img">
@@ -86,324 +132,2039 @@
     <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon" class="logo-img" style="height:22px;filter:brightness(0) invert(1);opacity:0.85;">
     <div class="logo-divider"></div>
     <div>
-      <div class="logo-text">Brand Health Dashboard</div>
-      <div class="logo-sub">EU5 Performance</div>
+      <div class="logo-text">Brand Health — Data Upload</div>
+      <div class="logo-sub">Admin Only</div>
     </div>
   </div>
-  <div class="nav-links">
-    <a class="nav-link" href="index.html">Dashboard</a>
-    <a class="nav-link active" href="insights.html">Insights</a>
-    <a class="nav-link" href="upload.html">Upload</a>
-    <a class="nav-link" href="https://addham-dev.github.io/hasbro-sales-ticker/" target="_blank">Live Sales ↗</a>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div class="nav-links">
+      <a class="nav-link" href="index.html">Dashboard</a>
+      <a class="nav-link" href="insights.html">Insights</a>
+      <a class="nav-link active" href="upload.html">Upload</a>
+    </div>
+    <div class="admin-badge">🔒 ADMIN</div>
   </div>
 </header>
 
-<div class="sub-nav">
-  <div class="sub-tab active" onclick="setSubTab('search',this)">🔍 Search Terms</div>
-  <div class="sub-tab" onclick="setSubTab('preorder',this)">📦 Pre-Order Tracker</div>
-  <div class="sub-tab" onclick="setSubTab('basket',this)">🛒 Market Basket <span style="font-size:9px;background:var(--amber-bg);color:var(--amber);padding:1px 5px;border-radius:10px;margin-left:4px">Coming soon</span></div>
-  <div class="sub-tab" onclick="setSubTab('loyalty',this)">🔄 Repeat Purchase <span style="font-size:9px;background:var(--amber-bg);color:var(--amber);padding:1px 5px;border-radius:10px;margin-left:4px">Coming soon</span></div>
+<!-- LOGIN -->
+<div id="login-section">
+  <div class="login-box">
+    <div class="login-icon">🔐</div>
+    <div class="login-title">Admin Access</div>
+    <div class="login-sub">Enter your password to access the data upload panel</div>
+    <input type="password" class="login-input" id="password-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkPassword()">
+    <button class="login-btn" onclick="checkPassword()">Sign In →</button>
+    <div class="login-error" id="login-error">Incorrect password. Try again.</div>
+  </div>
 </div>
 
-<main>
-  <div id="search-section">
-    <div id="search-loading" class="loading">Loading search terms data...</div>
-    <div id="search-content" style="display:none">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-        <div><div class="section-title">Amazon UK — Top Search Terms</div></div>
-        <span class="week-badge-small" id="week-label">—</span>
+<!-- MAIN -->
+<div id="main-section">
+  <main>
+    <div>
+      <div class="page-title">Weekly Data Upload</div>
+      <div class="page-sub">Upload Vendor Central reports to update the Brand Health Dashboard. Weekly snapshots are cumulative — all historical weeks are preserved for trend analysis.</div>
+    </div>
+
+    <!-- SMART UPLOAD -->
+    <div class="section-card">
+      <input type="hidden" id="week-start">
+      <input type="hidden" id="week-end">
+      <div class="card-title">Weekly Reports — Drop Files Here</div>
+      <div class="note-box">Drop any Vendor Central or Advertising Console files — Sales, Traffic, Inventory and Executive Summary are all auto-detected from the filename. Multiple files can be dropped at once.</div>
+
+      <!-- Drop zone -->
+      <div id="smart-dropzone"
+        ondragover="smartDOver(event)" ondragleave="smartDLeave()" ondrop="smartDrop(event)"
+        onclick="document.getElementById('smart-file-input').click()"
+        style="border:2px dashed var(--border);border-radius:14px;padding:40px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--blue-light);margin-bottom:16px;">
+        <div style="font-size:36px;margin-bottom:10px;">📂</div>
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue-dark);margin-bottom:4px;">Drop files or click to browse</div>
+        <div style="font-size:12px;color:var(--text2)">Sales · Traffic · Inventory · Executive Summary — auto-detected</div>
+        <input type="file" id="smart-file-input" accept=".csv,.xlsx" multiple style="display:none" onchange="smartFileSelect(event)">
       </div>
-      <div class="stat-grid" id="stat-grid"></div>
-      <div class="filter-row">
-        <span class="filter-label">View</span>
-        <button class="filter-btn active" id="view-brand" onclick="setView('brand',this)">🎯 Hasbro Brand Terms</button>
-        <button class="filter-btn" id="view-top500" onclick="setView('top500',this)">🌐 Top 500 Platform</button>
-        <button class="filter-btn" id="view-toys" onclick="setView('toys',this)">🧸 Toys Category Only</button>
-        <div class="divider"></div>
-        <span class="filter-label">Brand</span>
-        <div id="brand-filter-btns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+
+      <!-- Detected files list -->
+      <div id="detected-files" style="display:none;margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Detected files</div>
+        <div id="detected-list" style="display:grid;gap:8px;"></div>
       </div>
-      <div class="info-box" id="info-box"></div>
-      <div class="table-wrap">
-        <div class="table-scroll">
-          <table class="data-table" id="main-table">
-            <thead>
-              <tr>
-                <th onclick="sortBy('rank')" style="width:70px">Rank <span id="sort-rank"></span></th>
-                <th onclick="sortBy('term')">Search Term <span id="sort-term"></span></th>
-                <th onclick="sortBy('top_clicked_category')">Category <span id="sort-top_clicked_category"></span></th>
-                <th onclick="sortBy('est_weekly_searches')" class="r">Est. Searches/wk <span id="sort-est_weekly_searches"></span></th>
-                <th>Top Clicked Product</th>
-                <th onclick="sortBy('click_share_1')" class="r">Click Share <span id="sort-click_share_1"></span></th>
-                <th onclick="sortBy('cvr_1')" class="r">CVR % <span id="sort-cvr_1"></span></th>
-              </tr>
-            </thead>
-            <tbody id="table-body"></tbody>
-          </table>
+
+      <button class="process-btn" id="process-btn" onclick="processAndUpload()" disabled>
+        🚀 Process &amp; Push to Dashboard
+      </button>
+      <div class="log-area" id="log-area"><span class="log-line">Drop your weekly VC reports above to get started.</span></div>
+    </div>
+
+    <!-- ADS REPORTS -->
+    <div class="section-card ad-border">
+      <div class="card-title ad">🎯 Ads Reports — Pacvue & Executive Summary</div>
+      <div class="note-box ad-note">Drop any combination of Pacvue reports (Campaign, Placement, Query) or Datorama Executive Summary files. Report type and week are auto-detected.</div>
+      <div style="margin-bottom:16px;">
+        <div id="card-sp"
+          ondragover="dOver(event,'card-sp')" ondragleave="dLeave('card-sp')" ondrop="dDropMultiAds(event)"
+          onclick="document.getElementById('file-sp').click()"
+          style="border:2px dashed var(--border);border-radius:12px;padding:30px;text-align:center;cursor:pointer;background:var(--ad-bg);transition:all 0.2s;">
+          <div style="font-size:32px;margin-bottom:8px;">📊</div>
+          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--ad-color);margin-bottom:4px;">Drop Pacvue or Executive Summary files here</div>
+          <div style="font-size:12px;color:var(--text2)">Campaign · Placement · Query · Executive Summary — all auto-detected</div>
+          <input type="file" id="file-sp" accept=".xlsx" multiple style="display:none" onchange="onMultiAds(event)">
         </div>
-        <div id="table-footer" style="padding:10px 16px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);background:var(--bg);"></div>
+        <div id="ads-queue-list" style="margin-top:12px;display:none;flex-direction:column;gap:6px;"></div>
+      </div>
+      <div>
+        <button class="process-btn ad-btn" id="ads-btn" onclick="processAdsQueue()" disabled style="margin-bottom:8px;">
+          🎯 Process &amp; Upload All Ads Reports
+        </button>
+        <div class="log-area" id="ads-log" style="height:200px;"><span class="log-line">Drop Pacvue Campaign, Placement or Query reports above.</span></div>
       </div>
     </div>
-    <div id="search-empty" style="display:none" class="empty">
-      <div style="font-size:48px;margin-bottom:12px">🔍</div>
-      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text2);margin-bottom:8px">No search terms uploaded yet</div>
-      <div>Go to the <a href="upload.html" style="color:var(--blue)">Upload page</a> and upload the Amazon Brand Analytics Top Search Terms CSV</div>
+
+    <!-- INBOUND PO -->
+    <div class="section-card" style="border-left:4px solid #F59E0B;">
+      <div class="card-title" style="color:#92400E;">📦 Weekly Inbound Stock — PO Export</div>
+      <div class="note-box" style="background:#FEF3C7;border-color:#F59E0B;color:#92400E;">Drop the full catalogue PO Item Export from Vendor Central. Replaces previous week automatically.</div>
+      <div style="margin-bottom:16px;">
+        <div id="card-po"
+          ondragover="dOver(event,'card-po')" ondragleave="dLeave('card-po')" ondrop="dDropPO(event)"
+          onclick="document.getElementById('file-po').click()"
+          style="border:2px dashed #F59E0B;border-radius:12px;padding:30px;text-align:center;cursor:pointer;background:#FFFBEB;transition:all 0.2s;">
+          <div style="font-size:32px;margin-bottom:8px;">📦</div>
+          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:#92400E;margin-bottom:4px;">Drop PO Item Export here</div>
+          <div style="font-size:12px;color:#B45309;">POItemExport_YYYY-MM-DD.xls — full catalogue, no ASIN filter</div>
+          <input type="file" id="file-po" accept=".xls,.xlsx,.csv" style="display:none" onchange="onPOFile(event)">
+        </div>
+        <div id="po-detected" style="display:none;margin-top:8px;font-size:12px;color:var(--text2);"></div>
+      </div>
+      <div>
+        <button class="process-btn" id="po-btn" onclick="processAndUploadPO()" disabled style="margin-bottom:8px;background:#F59E0B;">
+          📦 Process &amp; Upload PO Data
+        </button>
+        <div class="log-area" id="po-log" style="height:120px;"><span class="log-line">Drop the PO Item Export above.</span></div>
+      </div>
     </div>
-  </div>
-  <div id="preorder-section" style="display:none">
-    <div id="preorder-loading" class="loading">Loading pre-order data...</div>
-    <div id="preorder-content" style="display:none"></div>
-  </div>
+
+    <!-- QUARTERLY LOYALTY -->
+    <div class="section-card amber-border">
+      <div class="card-title amber">Quarterly Loyalty Data — Upload Once Per Quarter</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">Upload the GB Repeat Purchase Behaviour report (Brand view). This data persists until you replace it — upload in Jan, Apr, Jul, Oct.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:start;margin-bottom:16px;">
+        <div class="input-group">
+          <label class="input-label">Quarter</label>
+          <select class="date-input" id="quarter-select" style="cursor:pointer;">
+            <option value="Q1-2026">Q1 2026 (Jan-Mar)</option>
+            <option value="Q2-2026" selected>Q2 2026 (Apr-Jun)</option>
+            <option value="Q3-2026">Q3 2026 (Jul-Sep)</option>
+            <option value="Q4-2026">Q4 2026 (Oct-Dec)</option>
+            <option value="Q1-2027">Q1 2027 (Jan-Mar)</option>
+          </select>
+        </div>
+        <div class="upload-card" id="card-loyalty" onclick="document.getElementById('file-loyalty').click()"
+          ondragover="dOver(event,'card-loyalty')" ondragleave="dLeave('card-loyalty')" ondrop="dDrop(event,'loyalty')"
+          style="border-color:var(--amber);background:var(--amber-bg);">
+          <div class="uc-icon">🔄</div>
+          <div class="uc-title">Repeat Purchase Report</div>
+          <div class="uc-sub" id="lbl-loyalty">GB Brand View CSV<br>Quarterly cadence</div>
+          <div class="uc-check">✅</div>
+          <input type="file" id="file-loyalty" accept=".csv,.xlsx" onchange="onFile(event,'loyalty')">
+        </div>
+        <button class="process-btn" id="loyalty-btn" onclick="uploadLoyalty()" disabled style="padding:12px 20px;font-size:13px;">
+          Upload Loyalty Data
+        </button>
+      </div>
+      <div class="log-area" id="loyalty-log" style="height:90px;"><span class="log-line">Upload the repeat purchase CSV to add loyalty metrics.</span></div>
+    </div>
+
+    <!-- QUARTERLY ADS PLAN -->
+    <div class="section-card" style="border-color:var(--ad-color);">
+      <div class="card-title" style="color:var(--ad-color);">📋 Quarterly Ads Plan — ASIN Coverage</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">Upload the EMEA AMZ Ads quarterly Excel file (one sheet per market: UK/DE/FR/IT/ES). Reads "Sponsored Product" ☑ and "Sponsored Brand" ☑ columns to calculate what % of the catalogue is being advertised per brand per market.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:start;margin-bottom:16px;">
+        <div class="input-group">
+          <label class="input-label">Quarter</label>
+          <select class="date-input" id="coverage-quarter-select" style="cursor:pointer;">
+            <option value="Q1-2026">Q1 2026 (Jan-Mar)</option>
+            <option value="Q2-2026" selected>Q2 2026 (Apr-Jun)</option>
+            <option value="Q3-2026">Q3 2026 (Jul-Sep)</option>
+            <option value="Q4-2026">Q4 2026 (Oct-Dec)</option>
+            <option value="Q1-2027">Q1 2027 (Jan-Mar)</option>
+          </select>
+        </div>
+        <div class="upload-card ad-style" id="card-coverage" onclick="document.getElementById('file-coverage').click()"
+          ondragover="dOver(event,'card-coverage')" ondragleave="dLeave('card-coverage')" ondrop="dDrop(event,'coverage')"
+          style="border-color:var(--ad-color);background:var(--ad-bg);">
+          <div class="uc-icon">📋</div>
+          <div class="uc-title">EMEA AMZ Ads Plan</div>
+          <div class="uc-sub" id="lbl-coverage">EMEA_AMZ_ads_Q?.xlsx<br>UK/DE/FR/IT/ES sheets</div>
+          <div class="uc-check">✅</div>
+          <input type="file" id="file-coverage" accept=".xlsx" onchange="onFile(event,'coverage')">
+        </div>
+        <button class="process-btn" id="coverage-btn" onclick="uploadCoverage()" disabled style="padding:12px 20px;font-size:13px;background:var(--ad-color);box-shadow:0 4px 12px rgba(79,70,229,0.3);">
+          Upload Coverage Data
+        </button>
+      </div>
+      <div class="log-area" id="coverage-log" style="height:120px;"><span class="log-line">Upload the EMEA AMZ Ads quarterly Excel file to populate ASIN coverage metrics.</span></div>
+    </div>
+
+    <!-- SEARCH TERMS -->
+    <div class="section-card" style="border-color:var(--purple);">
+      <div class="card-title" style="color:var(--purple);">🔍 Weekly Search Terms — Amazon Brand Analytics</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">Upload the <b>Top Search Terms</b> report from Amazon Brand Analytics (weekly, GB market). The parser reads Search Term, Search Frequency Rank, and the top 3 clicked ASINs with their Click Share and CVR.</div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;margin-bottom:16px;">
+        <div class="upload-card" id="card-search" onclick="document.getElementById('file-search').click()"
+          ondragover="dOver(event,'card-search')" ondragleave="dLeave('card-search')" ondrop="dDrop(event,'search')"
+          style="border-color:var(--purple);background:var(--purple-bg);">
+          <div class="uc-icon">🔍</div>
+          <div class="uc-title">Top Search Terms CSV</div>
+          <div class="uc-sub" id="lbl-search">Weekly Brand Analytics export<br>GB market, weekly view</div>
+          <div class="uc-check">✅</div>
+          <input type="file" id="file-search" accept=".csv,.xlsx" onchange="onFile(event,'search')">
+        </div>
+        <button class="process-btn" id="search-btn" onclick="uploadSearchTerms()" disabled style="padding:12px 20px;font-size:13px;background:var(--purple);box-shadow:0 4px 12px rgba(155,89,182,0.3);">
+          Upload Search Terms
+        </button>
+      </div>
+      <div class="log-area" id="search-log" style="height:100px;"><span class="log-line">Upload the Top Search Terms CSV to populate the Search Terms tab in the dashboard.</span></div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="section-card">
+      <div class="card-title">Upload History</div>
+      <table class="history-table">
+        <thead><tr><th>Week</th><th>Uploaded At</th><th>Rows</th><th>Ads</th><th></th></tr></thead>
+        <tbody id="history-tbody"><tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
 
 <script>
-const SUPABASE_URL='https://rycqfwzgvpzwhphgclpb.supabase.co';
-const SUPABASE_KEY='sb_publishable_CbKFhpN2dWI_UXhwGkclqw_AMPSprs4';
-const BRAND_LABELS={TRANSFORMERS:'Transformers',NERF:'Nerf',MONOPOLY:'Monopoly',PLAY_DOH:'Play-Doh',BEYBLADE:'Beyblade',PEPPA_PIG:'Peppa Pig',MARVEL:'Marvel',STAR_WARS:'Star Wars',GAMES:'Games',DISNEY_KIDS:'Disney Kids',HASBRO:'Hasbro'};
-const BRAND_ORDER=['TRANSFORMERS','NERF','MONOPOLY','PLAY_DOH','BEYBLADE','PEPPA_PIG','MARVEL','STAR_WARS','GAMES','DISNEY_KIDS','HASBRO'];
+const SUPABASE_URL = 'https://rycqfwzgvpzwhphgclpb.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_CbKFhpN2dWI_UXhwGkclqw_AMPSprs4';
+const ADMIN_PASSWORD = 'hasbro2026';
+const EU5 = ['GB','DE','FR','IT','ES'];
+const YOY_CAP = 50.0; // 5000% — handles new product launches and seasonal spikes
 
-let allData=[];
-let currentView='brand';
-let currentBrand='ALL';
-let sortKey='rank';
-let sortDir='asc';
+let files = { sales:null, traffic:null, inventory:null, sp:null, loyalty:null, coverage:null, search:null };
 
-async function init(){
-  try{
-    const data=await sbFetch('/rest/v1/brand_health_search_terms?select=week_start,term,rank,category,brand_classified,top_clicked_category,est_weekly_searches,product_title_1,asin1,click_share_1,cvr_1&order=rank.asc',20000);
-    document.getElementById('search-loading').style.display='none';
-    if(!data.length){document.getElementById('search-empty').style.display='block';return;}
-    allData=data;
-    const weeks=[...new Set(data.map(d=>d.week_start))].sort().reverse();
-    document.getElementById('week-label').textContent='Week of '+formatDate(weeks[0]);
-    buildBrandFilters();
-    renderStats();
-    renderTable();
-    document.getElementById('search-content').style.display='block';
-  }catch(e){
-    document.getElementById('search-loading').textContent='Error: '+e.message;
+// ─── LOGIN ────────────────────────────────────────────────────
+function checkPassword() {
+  const pw = document.getElementById('password-input').value;
+  if (pw === ADMIN_PASSWORD) {
+    document.getElementById('login-section').style.display = 'none';
+    document.getElementById('main-section').style.display = 'block';
+    document.getElementById('overlay').classList.remove('on');
+    loadHistory();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+    document.getElementById('password-input').value = '';
   }
 }
 
-function sbFetch(path, limit=10000){
-  const sep=path.indexOf('?')>=0?'&':'?';
-  const url = SUPABASE_URL+path+sep+'limit='+limit;
-  return fetch(url,{
-    headers:{'apikey':SUPABASE_KEY}
-  }).then(r=>{
-    if(!r.ok) throw new Error('Supabase '+r.status);
-    return r.json();
-  }).then(d=>Array.isArray(d)?d:[]).catch(e=>{console.warn('sbFetch:',e.message);return[];});
+function getAmazonWeeks(n) {
+  // Amazon VC week: Sunday to Saturday
+  // Find most recent completed Saturday first, then work backwards
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun, 1=Mon ... 6=Sat
+  // Most recent completed Saturday: if today is Sun(0), that's yesterday; else go back to last Sat
+  const daysToLastSat = day === 0 ? 1 : day + 1;
+  const lastSat = new Date(now);
+  lastSat.setDate(now.getDate() - daysToLastSat);
+  // Build n weeks going backwards from lastSat
+  const weeks = [];
+  for (let i = 0; i < n; i++) {
+    const sat = new Date(lastSat);
+    sat.setDate(lastSat.getDate() - i * 7);
+    const sun = new Date(sat);
+    sun.setDate(sat.getDate() - 6);
+    weeks.push({
+      start: sun.toISOString().split('T')[0],
+      end:   sat.toISOString().split('T')[0],
+      label: formatDate(sun.toISOString().split('T')[0]) + ' – ' + formatDate(sat.toISOString().split('T')[0])
+    });
+  }
+  return weeks;
 }
 
-function buildBrandFilters(){
-  const brands=BRAND_ORDER.filter(b=>allData.some(d=>d.brand_classified===b&&d.category==='BRAND'));
-  const wrap=document.getElementById('brand-filter-btns');
-  wrap.innerHTML=`<button class="filter-btn active" onclick="setBrand('ALL',this)">All</button>`+
-    brands.map(b=>`<button class="filter-btn" onclick="setBrand('${b}',this)">${BRAND_LABELS[b]}</button>`).join('');
+function buildWeekToggles() {
+  const container = document.getElementById('week-toggle-btns');
+  if (!container) return;
+  const weeks = getAmazonWeeks(6);
+  container.innerHTML = weeks.map((w, i) => `
+    <button onclick="selectWeek('${w.start}','${w.end}','${w.label}',this)"
+      style="padding:8px 18px;border-radius:8px;border:2px solid var(--border);background:var(--blue-light);color:var(--blue-dark);font-family:'Inter',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;${i===0?'background:var(--blue);color:white;border-color:var(--blue);':''}"
+    >${w.label}</button>
+  `).join('');
+  selectWeek(weeks[0].start, weeks[0].end, weeks[0].label, container.firstElementChild);
 }
 
-function renderStats(){
-  const weeks=[...new Set(allData.map(d=>d.week_start))].sort().reverse();
-  const latestWeek=weeks[0];
-  const priorWeek=weeks[1]||null;
-  const noLego=d=>!(d.term||'').toLowerCase().includes('lego');
-  // Stats use latest week for volume/count, all weeks for best rank
-  const brandTerms=allData.filter(d=>d.category==='BRAND'&&noLego(d)&&d.week_start===latestWeek);
-  const priorBrandTerms=priorWeek?allData.filter(d=>d.category==='BRAND'&&noLego(d)&&d.week_start===priorWeek):[];
-  const totalEst=brandTerms.reduce((s,t)=>s+(t.est_weekly_searches||0),0);
-  const priorEst=priorBrandTerms.reduce((s,t)=>s+(t.est_weekly_searches||0),0);
-  const wow=priorEst>0?((totalEst-priorEst)/priorEst):null;
-  // Best rank across ALL weeks — captures terms uploaded in different weeks
-  const allBrandTerms=allData.filter(d=>d.category==='BRAND'&&noLego(d)&&d.rank);
-  const topRanked=allBrandTerms.reduce((best,t)=>(!best||t.rank<best.rank)?t:best,null);
-  const topBrand=topRanked?.brand_classified||'ALL';
-  function fmtBig(n){return n>=1000000?(n/1000000).toFixed(1)+'M':n>=1000?Math.round(n/1000)+'K':n.toLocaleString();}
-  function fmtWow(v){if(v===null)return'No prior week';const p=(v*100).toFixed(1),col=v>0?'var(--green)':v<0?'var(--red)':'var(--text3)',arr=v>0?'▲':v<0?'▼':'';return`<span style="font-weight:700;color:${col}">${arr}${Math.abs(p)}% WoW</span>`;}
-  document.getElementById('stat-grid').innerHTML=`
-    <div class="stat-card" style="cursor:pointer" onmouseenter="this.style.borderColor='var(--blue)'" onmouseleave="this.style.borderColor='var(--border)'" onclick="setView('brand',document.getElementById('view-brand'))">
-      <div class="stat-label">Hasbro Brand Terms</div>
-      <div class="stat-value">${brandTerms.length.toLocaleString()}</div>
-      <div class="stat-sub">Across all brands & categories ↗</div>
-    </div>
-    <div class="stat-card" style="cursor:pointer" onmouseenter="this.style.borderColor='var(--green)'" onmouseleave="this.style.borderColor='var(--border)'" onclick="sortKey='est_weekly_searches';sortDir='desc';setView('brand',document.getElementById('view-brand'))">
-      <div class="stat-label">Est. Weekly Searches</div>
-      <div class="stat-value" style="color:var(--green)">${fmtBig(totalEst)}</div>
-      <div class="stat-sub">${fmtWow(wow)} vs last week</div>
-    </div>
-    <div class="stat-card" style="cursor:pointer" onmouseenter="this.style.borderColor='var(--purple)'" onmouseleave="this.style.borderColor='var(--border)'" onclick="setView('toys',document.getElementById('view-toys'));setTimeout(()=>setBrandByValue('${topBrand}'),50)">
-      <div class="stat-label">Highest Ranked Term</div>
-      <div class="stat-value" style="font-size:18px;color:var(--text)">${topRanked?.term||'—'}</div>
-      <div class="stat-sub">Rank #${topRanked?.rank?.toLocaleString()||'—'} · ${BRAND_LABELS[topRanked?.brand_classified]||''} ↗</div>
-    </div>
-    <div class="stat-card" style="cursor:pointer" onmouseenter="this.style.borderColor='var(--amber)'" onmouseleave="this.style.borderColor='var(--border)'" onclick="sortKey='est_weekly_searches';sortDir='desc';setView('brand',document.getElementById('view-brand'))">
-      <div class="stat-label">Top Term Searches</div>
-      <div class="stat-value" style="color:var(--amber)">${topRanked?.est_weekly_searches?.toLocaleString()||'—'}</div>
-      <div class="stat-sub">${topRanked?.term||'—'} per week ↗</div>
-    </div>
-  `;
-}
-
-function getFilteredData(){
-  let data=allData.filter(d=>!(d.term||'').toLowerCase().includes('lego'));
-  if(currentView==='top500') data=data.filter(d=>d.category==='TOP500');
-  else if(currentView==='brand') data=data.filter(d=>d.category==='BRAND');
-  else if(currentView==='toys') data=data.filter(d=>d.category==='BRAND'&&(d.top_clicked_category||'').toLowerCase().includes('toy'));
-  if(currentView!=='top500'&&currentBrand!=='ALL') data=data.filter(d=>d.brand_classified===currentBrand);
-  return data;
-}
-
-function renderTable(){
-  const data=getFilteredData();
-  const sorted=[...data].sort((a,b)=>{
-    const va=a[sortKey]??(sortDir==='asc'?Infinity:-Infinity);
-    const vb=b[sortKey]??(sortDir==='asc'?Infinity:-Infinity);
-    if(typeof va==='string') return sortDir==='asc'?va.localeCompare(vb):vb.localeCompare(va);
-    return sortDir==='asc'?va-vb:vb-va;
+function selectWeek(start, end, label, btn) {
+  document.getElementById('week-start').value = start;
+  document.getElementById('week-end').value = end;
+  document.getElementById('week-selected-label').textContent = label;
+  document.querySelectorAll('#week-toggle-btns button').forEach(b => {
+    b.style.background = 'var(--blue-light)';
+    b.style.color = 'var(--blue-dark)';
+    b.style.borderColor = 'var(--border)';
   });
-  const show=sorted.slice(0,200);
-  ['rank','term','top_clicked_category','est_weekly_searches','click_share_1','cvr_1'].forEach(k=>{
-    const el=document.getElementById('sort-'+k);
-    if(el) el.textContent=sortKey===k?(sortDir==='asc'?' ↑':' ↓'):' ↕';
-  });
-  const infoMap={
-    top500:`Showing the top 500 most-searched terms on Amazon UK this week. <b style="color:var(--blue)">Highlighted rows</b> are terms where a Hasbro brand appears in the top 3 clicked products.`,
-    brand:`All search terms containing Hasbro brand keywords across all Amazon categories.`,
-    toys:`Hasbro-related search terms where the top clicked product category is Toys. Most commercially relevant for the business.`
-  };
-  document.getElementById('info-box').innerHTML=infoMap[currentView]||'';
-  document.getElementById('brand-filter-btns').style.display=currentView==='top500'?'none':'flex';
-  const tbody=document.getElementById('table-body');
-  tbody.innerHTML=show.map(t=>{
-    const isHasbro=t.brand_classified&&t.brand_classified!=='PLATFORM';
-    const rankClass=t.rank<=500?'rank-top':t.rank<=5000?'rank-mid':'rank-low';
-    const estClass=(t.est_weekly_searches||0)>50000?'est-high':(t.est_weekly_searches||0)>5000?'est-mid':'est-low';
-    return`<tr class="${currentView==='top500'&&isHasbro?'hasbro-row':''}">
-      <td class="td-rank ${rankClass}">${t.rank?.toLocaleString()||'—'}</td>
-      <td class="td-term">${t.term}${currentView==='top500'&&isHasbro?`<span class="brand-badge hasbro-badge">${BRAND_LABELS[t.brand_classified]||t.brand_classified}</span>`:''}${currentView==='brand'&&t.brand_classified?`<span class="brand-badge">${BRAND_LABELS[t.brand_classified]||t.brand_classified}</span>`:''}</td>
-      <td><span class="td-cat">${(t.top_clicked_category||'—').replace(/_/g,' ')}</span></td>
-      <td class="td-val ${estClass}">${t.est_weekly_searches?.toLocaleString()||'—'}</td>
-      <td class="td-prod" title="${t.product_title_1||t.asin1||''}">${t.product_title_1||t.asin1||'—'}</td>
-      <td class="td-val">${t.click_share_1!=null?t.click_share_1.toFixed(1)+'%':'—'}</td>
-      <td class="td-val">${t.cvr_1!=null?t.cvr_1.toFixed(1)+'%':'—'}</td>
-    </tr>`;
-  }).join('');
-  document.getElementById('table-footer').textContent=`Showing ${show.length} of ${sorted.length} terms${sorted.length>200?' — top 200 shown':''}.`;
+  if (btn) {
+    btn.style.background = 'var(--blue)';
+    btn.style.color = 'white';
+    btn.style.borderColor = 'var(--blue)';
+  }
 }
 
-function setView(view,btn){
-  currentView=view;
-  document.querySelectorAll('.filter-btn[id^="view-"]').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  renderTable();
+function setCurrentWeek() { buildWeekToggles(); }
+
+// ─── FILE HANDLING ────────────────────────────────────────────
+function loadFile(f, type) {
+  files[type] = f;
+  const card = document.getElementById('card-'+type);
+  if (card) card.classList.add('loaded');
+  const lbl = document.getElementById('lbl-'+type);
+  if (lbl) lbl.textContent = '✓ ' + f.name;
+
+  // Auto-detect week from Executive Summary xlsx
+  if (type === 'sp') {
+    extractAdsWeekFromFile(f);
+  }
+
+  checkReady();
 }
 
-function setBrand(brand,btn){
-  currentBrand=brand;
-  document.querySelectorAll('#brand-filter-btns .filter-btn').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  renderTable();
+// ─── BULK ADS QUEUE ──────────────────────────────────────────
+let adsQueue = []; // [{file, weekStart, weekLabel}]
+let adsDetectedWeekStart = null;
+
+function dDropMultiAds(e) {
+  e.preventDefault();
+  dLeave('card-sp');
+  handleAdsFiles([...e.dataTransfer.files]);
+}
+function onMultiAds(e) {
+  handleAdsFiles([...e.target.files]);
+  e.target.value = '';
 }
 
-function setBrandByValue(brand){
-  const btns=document.querySelectorAll('#brand-filter-btns .filter-btn');
-  let found=false;
-  btns.forEach(b=>{
-    b.classList.remove('active');
-    if(b.textContent.trim()===BRAND_LABELS[brand]){b.classList.add('active');found=true;}
-  });
-  if(!found&&btns.length) btns[0].classList.add('active');
-  currentBrand=found?brand:'ALL';
-  renderTable();
+async function handleAdsFiles(fileList) {
+  const xlsx_files = fileList.filter(f => f.name.endsWith('.xlsx'));
+  if (!xlsx_files.length) { logA('No .xlsx files found.', 'err'); return; }
+
+  for (const file of xlsx_files) {
+    const week = await extractWeekFromAdsFile(file);
+    // Key by weekStart + filename to allow multiple files per week
+    const key = (week?.start||'unknown') + '||' + file.name;
+    const existing = adsQueue.findIndex(q => q.key === key);
+    const entry = { key, file, weekStart: week?.start, weekLabel: week?.label };
+    if (existing >= 0) adsQueue[existing] = entry;
+    else adsQueue.push(entry);
+  }
+
+  renderAdsQueue();
+  document.getElementById('ads-btn').disabled = adsQueue.length === 0;
 }
 
-function sortBy(key){
-  if(sortKey===key) sortDir=sortDir==='asc'?'desc':'asc';
-  else{sortKey=key;sortDir=key==='rank'?'asc':'desc';}
-  renderTable();
+async function extractWeekFromAdsFile(file) {
+  try {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, { type:'array', cellText:true });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+    for (const row of raw.slice(0, 20)) {
+      for (let i = 0; i < row.length; i++) {
+        const cell = String(row[i]).trim();
+        // Datorama: "Widget Date Range" | "30-03-2026 05-04-2026"
+        if (cell.includes('Widget Date Range') || cell.includes('Date Range')) {
+          const dateStr = String(row[i+1] || '').trim();
+          const m = dateStr.match(/(\d{2}-\d{2}-\d{4})\s+(\d{2}-\d{2}-\d{4})/);
+          if (m) {
+            const [d1,mo1,y1] = m[1].split('-');
+            const [d2,mo2,y2] = m[2].split('-');
+            return { start: `${y1}-${mo1}-${d1}`, label: `${d1}/${mo1}/${y1} – ${d2}/${mo2}/${y2}` };
+          }
+        }
+        // Pacvue: "Time Range" | "Mar-30-2026 - Apr-05-2026"
+        if (cell === 'Time Range') {
+          const dateStr = String(row[i+1] || '').trim();
+          const m = dateStr.match(/([A-Za-z]+-\d{2}-\d{4})\s*-\s*([A-Za-z]+-\d{2}-\d{4})/);
+          if (m) {
+            const months = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+            const parseDate = s => {
+              const [mon,dd,yyyy] = s.split('-');
+              return { y:yyyy, m:months[mon.toLowerCase()]||'01', d:dd.padStart(2,'0') };
+            };
+            const d1 = parseDate(m[1]); const d2 = parseDate(m[2]);
+            // Pacvue weeks start Monday — shift back 1 day to align with VC Sunday week
+            const startDate = new Date(`${d1.y}-${d1.m}-${d1.d}`);
+            startDate.setDate(startDate.getDate() - 1);
+            const sunStart = String(startDate.getFullYear())+'-'+String(startDate.getMonth()+1).padStart(2,'0')+'-'+String(startDate.getDate()).padStart(2,'0');
+            const [sy,sm,sd] = sunStart.split('-');
+            return { start:sunStart, label:`${sd}/${sm}/${sy} – ${d2.d}/${d2.m}/${d2.y}` };
+          }
+        }
+      }
+    }
+    return null;
+  } catch(e) { return null; }
 }
 
-function formatDate(d){if(!d)return'—';const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
-
-function setSubTab(tab,btn){
-  document.querySelectorAll('.sub-tab').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  document.getElementById('search-section').style.display = tab==='search'?'':'none';
-  document.getElementById('preorder-section').style.display = tab==='preorder'?'':'none';
-  if(tab==='preorder' && !preorderLoaded) loadPreOrders();
-}
-
-let preorderLoaded = false;
-
-async function loadPreOrders(){
-  const loading = document.getElementById('preorder-loading');
-  const content = document.getElementById('preorder-content');
-  loading.style.display='block';
-  try{
-    // Single SQL function call — does all aggregation server-side
-    const data = await sbFetch('/rest/v1/brand_health_preorders?select=*&order=ordered_revenue.desc', 5000);
-
-    const preOrders = data.filter(r=>r.classification==='PRE-ORDER').sort((a,b)=>b.ordered_revenue-a.ordered_revenue);
-    const fC = v => v>=1000000?'€'+(v/1000000).toFixed(1)+'M':v>=1000?'€'+(v/1000).toFixed(1)+'K':'€'+Math.round(v);
-    const fU = v => v>=1000?(v/1000).toFixed(1)+'K':Math.round(v).toLocaleString();
-    const totalPreRev = preOrders.reduce((s,r)=>s+(r.ordered_revenue||0),0);
-    const totalPreUnits = preOrders.reduce((s,r)=>s+(r.ordered_units||0),0);
-    const BL={GAMES:'Games',PLAY_DOH:'Play-Doh',MONOPOLY:'Monopoly',BEYBLADE:'Beyblade',NERF:'Nerf',TRANSFORMERS:'Transformers',MARVEL:'Marvel',STAR_WARS:'Star Wars',PEPPA_PIG:'Peppa Pig',DISNEY_KIDS:'Disney Kids'};
-
-    let html = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-        <div><div class="section-title">📦 Pre-Order Tracker</div></div>
-        <span class="week-badge-small">Last 4 weeks — auto-updated weekly</span>
+function renderAdsQueue() {
+  const list = document.getElementById('ads-queue-list');
+  if (!adsQueue.length) { list.style.display = 'none'; return; }
+  list.style.display = 'flex';
+  list.innerHTML = adsQueue.map((q, i) => `
+    <div style="display:flex;align-items:center;gap:10px;background:${q.weekStart?'var(--green-bg)':'var(--amber-bg)'};border:1px solid ${q.weekStart?'var(--green)':'var(--amber)'};border-radius:8px;padding:8px 12px;">
+      <span style="font-size:16px">📊</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${q.file.name}</div>
+        <div style="font-size:11px;color:${q.weekStart?'var(--green)':'var(--amber)'};">${q.weekStart ? '✓ Week: '+q.weekLabel : '⚠️ Could not detect week'}</div>
       </div>
-      <div style="background:var(--blue-light);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:12px;color:var(--text2);margin-bottom:20px;line-height:1.6;">
-        <b style="color:var(--text)">How this works:</b> Shows ASINs first seen within the last 12 weeks with ordered revenue but zero dispatch history — genuine pre-orders, revenue secured ahead of first shipment. Once an ASIN dispatches it automatically graduates off this list.
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
-        <div class="stat-card" style="border-color:var(--purple)">
-          <div class="stat-label">Pre-Order Revenue</div>
-          <div class="stat-value" style="color:var(--purple)">${fC(totalPreRev)}</div>
-          <div class="stat-sub">${preOrders.length} ASINs across EU5 ✅</div>
-        </div>
-        <div class="stat-card" style="border-color:var(--blue)">
-          <div class="stat-label">Pre-Order Units</div>
-          <div class="stat-value" style="color:var(--blue)">${fU(totalPreUnits)}</div>
-          <div class="stat-sub">Ordered, awaiting first shipment</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Avg. Revenue / ASIN</div>
-          <div class="stat-value" style="font-size:20px;color:var(--text)">${preOrders.length?fC(totalPreRev/preOrders.length):'—'}</div>
-          <div class="stat-sub">Across all pre-order lines</div>
-        </div>
-      </div>`;
+      <button onclick="removeAdsQueue(${i})" style="background:none;border:none;color:var(--red);font-size:14px;cursor:pointer;padding:2px 6px;">✕</button>
+    </div>
+  `).join('');
+}
 
-    if(preOrders.length){
-      html += `<div class="table-wrap"><div class="table-scroll"><table class="data-table">
-        <thead><tr>
-          <th>ASIN</th><th>Product</th><th>Brand</th><th>Mkt</th>
-          <th class="r">Ordered Rev</th><th class="r">Ordered Units</th><th>First Seen</th>
-        </tr></thead><tbody>
-        ${preOrders.map(r=>`<tr style="background:rgba(155,89,182,0.03)">
-          <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--blue)">${r.asin}</td>
-          <td style="font-size:11px;color:var(--text2);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.product_title||''}">${r.product_title||'—'}</td>
-          <td><span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--blue-light);color:var(--blue-dark)">${BL[r.brand_classified]||r.brand_classified||'—'}</span></td>
-          <td><span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--blue-light);color:var(--blue-dark)">${r.market}</span></td>
-          <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:700;color:var(--purple)">${fC(r.ordered_revenue||0)}</td>
-          <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:700;color:var(--blue)">${fU(r.ordered_units||0)}</td>
-          <td style="font-size:11px;color:var(--text2)">${r.first_week_ever||'—'}</td>
-        </tr>`).join('')}
-        </tbody></table></div></div>`;
+function removeAdsQueue(i) {
+  adsQueue.splice(i, 1);
+  renderAdsQueue();
+  document.getElementById('ads-btn').disabled = adsQueue.length === 0;
+}
+
+async function processAdsQueue() {
+  if (!adsQueue.length) return;
+  const valid = adsQueue.filter(q => q.weekStart);
+  if (!valid.length) { logA('No files with detectable week dates.', 'err'); return; }
+
+  document.getElementById('ads-btn').disabled = true;
+  document.getElementById('ads-log').innerHTML = '';
+  logA(`Processing ${valid.length} ads report(s)...`, 'info');
+
+  window._processingQueue = true;
+  let successCount = 0;
+
+  for (let i = 0; i < valid.length; i++) {
+    const q = valid[i];
+    logA(`[${i+1}/${valid.length}] Week ${q.weekLabel}...`, 'info');
+    files.sp = q.file;
+    adsDetectedWeekStart = q.weekStart;
+    try {
+      await processAndUploadAds();
+      successCount++;
+    } catch(e) {
+      logA(`❌ Week ${q.weekLabel} failed: ${e.message}`, 'err');
+    }
+  }
+
+  window._processingQueue = false;
+  logA(`✅ Complete — ${successCount}/${valid.length} weeks uploaded successfully.`, 'ok');
+  adsQueue = [];
+  renderAdsQueue();
+  document.getElementById('ads-btn').disabled = false;
+  loadHistory();
+}
+
+async function extractAdsWeekFromFile(file) {
+  try {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, { type:'array', cellText:true });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+    for (const row of raw.slice(0, 20)) {
+      for (let i = 0; i < row.length; i++) {
+        const cell = String(row[i]).trim();
+        // Datorama: "Widget Date Range" | "30-03-2026 05-04-2026"
+        if (cell.includes('Widget Date Range') || cell.includes('Date Range')) {
+          const dateStr = String(row[i+1] || '').trim();
+          const m = dateStr.match(/(\d{2}-\d{2}-\d{4})\s+(\d{2}-\d{2}-\d{4})/);
+          if (m) {
+            const [d1,mo1,y1] = m[1].split('-');
+            adsDetectedWeekStart = `${y1}-${mo1}-${d1}`;
+            console.log('Ads week detected (Datorama):', adsDetectedWeekStart);
+            return;
+          }
+        }
+        // Pacvue: "Time Range" | "Mar-30-2026 - Apr-05-2026"
+        if (cell === 'Time Range') {
+          const dateStr = String(row[i+1] || '').trim();
+          const m = dateStr.match(/([A-Za-z]+-\d{2}-\d{4})\s*-\s*([A-Za-z]+-\d{2}-\d{4})/);
+          if (m) {
+            const months = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+            const [mon,dd,yyyy] = m[1].split('-');
+            adsDetectedWeekStart = `${yyyy}-${months[mon.toLowerCase()]||'01'}-${dd.padStart(2,'0')}`;
+            console.log('Ads week detected (Pacvue):', adsDetectedWeekStart);
+            return;
+          }
+        }
+      }
+    }
+    adsDetectedWeekStart = null;
+  } catch(e) {
+    console.error('Could not extract ads week:', e);
+    adsDetectedWeekStart = null;
+  }
+}
+
+function dOver(e,id){e.preventDefault();document.getElementById(id).style.borderColor='var(--blue)';}
+function dLeave(id){document.getElementById(id).style.borderColor='';}
+function dDrop(e,type){e.preventDefault();const f=e.dataTransfer.files[0];if(f)loadFile(f,type);}
+function onFile(e,type){if(e.target.files[0])loadFile(e.target.files[0],type);}
+
+// ─── SMART DROP ZONE ─────────────────────────────────────────
+const smartFiles = {}; // { sales: {file, week}, traffic: {file, week}, inventory: {file, week}, sp: {file, week} }
+
+function detectFileType(filename) {
+  const f = filename.toLowerCase();
+  if (f.includes('sales_asin') || f.includes('sales_manufacturing')) return 'sales';
+  if (f.includes('traffic_asin') || f.includes('traffic_')) return 'traffic';
+  if (f.includes('inventory_health') || f.includes('inventory_')) return 'inventory';
+  if (f.includes('executive_summary') || f.includes('executive summary')) return 'sp';
+  return null;
+}
+
+function detectWeekFromFilename(filename) {
+  // Format: DD-MM-YYYY_DD-MM-YYYY
+  const m = filename.match(/(\d{2}-\d{2}-\d{4})_(\d{2}-\d{2}-\d{4})/);
+  if (m) {
+    const [d1,mo1,y1] = m[1].split('-');
+    const [d2,mo2,y2] = m[2].split('-');
+    return { start:`${y1}-${mo1}-${d1}`, end:`${y2}-${mo2}-${d2}`, label:`${d1}/${mo1}/${y1} – ${d2}/${mo2}/${y2}` };
+  }
+  // Format: YYYY-MM-DD_YYYY-MM-DD (underscore separator)
+  const m2 = filename.match(/(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})/);
+  if (m2) {
+    const fmt = d => { const [y,mo,dd] = d.split('-'); return `${dd}/${mo}/${y}`; };
+    return { start:m2[1], end:m2[2], label:`${fmt(m2[1])} – ${fmt(m2[2])}` };
+  }
+  // Format: YYYY-MM-DD-YYYY-MM-DD (hyphen separator between two ISO dates)
+  const m3 = filename.match(/(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})/);
+  if (m3) {
+    const fmt = d => { const [y,mo,dd] = d.split('-'); return `${dd}/${mo}/${y}`; };
+    return { start:m3[1], end:m3[2], label:`${fmt(m3[1])} – ${fmt(m3[2])}` };
+  }
+  return null;
+}
+
+function smartDOver(e) {
+  e.preventDefault();
+  document.getElementById('smart-dropzone').style.borderColor = 'var(--blue)';
+  document.getElementById('smart-dropzone').style.background = '#D0EEFF';
+}
+function smartDLeave() {
+  document.getElementById('smart-dropzone').style.borderColor = 'var(--border)';
+  document.getElementById('smart-dropzone').style.background = 'var(--blue-light)';
+}
+function smartDrop(e) {
+  e.preventDefault();
+  smartDLeave();
+  const files = [...e.dataTransfer.files];
+  setTimeout(() => handleSmartFiles(files), 10);
+}
+function smartFileSelect(e) {
+  const files = [...e.target.files];
+  if (!files.length) return;
+  const dz = document.getElementById('smart-dropzone');
+  const divs = dz ? dz.querySelectorAll('div') : [];
+  if (divs.length >= 2) divs[1].innerHTML = `<span style="color:var(--blue);font-weight:700">⏳ Grouping ${files.length} files...</span>`;
+  setTimeout(() => handleSmartFiles(files), 10);
+}
+
+// ─── BULK WEEK QUEUE ─────────────────────────────────────────
+let weekQueue = [];
+
+function handleSmartFiles(fileList) {
+  const byType = { sales:[], traffic:[], inventory:[], sp:[] };
+  const dropzone = document.getElementById('smart-dropzone');
+
+  // Process in chunks to keep browser responsive
+  let processed = 0;
+  const total = fileList.length;
+
+  function processChunk(start) {
+    const chunk = fileList.slice(start, start + 10);
+    chunk.forEach(f => {
+      const type = detectFileType(f.name);
+      const week = detectWeekFromFilename(f.name);
+      if (!type) return;
+      if (type === 'sp') {
+        files.sp = f;
+        document.getElementById('ads-btn').disabled = false;
+        return;
+      }
+      if (!week) return;
+      byType[type].push({ file:f, week });
+    });
+    processed += chunk.length;
+    if (dropzone) dropzone.innerHTML = `<div style="font-size:14px;color:var(--blue);font-weight:700">⏳ Grouping files... ${processed}/${total}</div>`;
+
+    if (processed < total) {
+      setTimeout(() => processChunk(start + 10), 0);
     } else {
-      html += '<div class="empty">✅ No active pre-orders detected in the last 4 weeks.</div>';
+      // All files processed — now group into weeks
+      groupAndRender(byType);
+    }
+  }
+
+  processChunk(0);
+}
+
+function groupAndRender(byType) {
+  const salesFiles = byType.sales;
+
+  if (salesFiles.length) {
+    salesFiles.forEach(s => {
+      const key = s.week.start;
+      const existing = weekQueue.findIndex(q => q.weekStart === key);
+      const entry = existing >= 0 ? weekQueue[existing] : { weekStart: s.week.start, weekEnd: s.week.end, weekLabel: s.week.label };
+      entry.sales = s.file;
+
+      const inv = byType.inventory.reduce((best, f) => {
+        const diff = Math.abs(new Date(f.week.start) - new Date(key));
+        const bestDiff = best ? Math.abs(new Date(best.week.start) - new Date(key)) : Infinity;
+        return diff < bestDiff ? f : best;
+      }, null);
+      if (inv) entry.inventory = inv.file;
+
+      const traffic = byType.traffic.reduce((best, f) => {
+        const diff = Math.abs(new Date(f.week.start) - new Date(key));
+        const bestDiff = best ? Math.abs(new Date(best.week.start) - new Date(key)) : Infinity;
+        return diff < bestDiff && diff <= 14*24*60*60*1000 ? f : best;
+      }, null);
+      if (traffic) entry.traffic = traffic.file;
+
+      if (existing >= 0) weekQueue[existing] = entry;
+      else weekQueue.push(entry);
+    });
+
+    weekQueue.sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+  }
+
+  renderDetectedFiles();
+  checkSmartReady();
+
+  // Restore dropzone text only — don't touch the input element
+  const dz = document.getElementById('smart-dropzone');
+  if (dz) {
+    dz.style.borderColor = 'var(--border)';
+    dz.style.background = 'var(--blue-light)';
+    // Only update the visible text elements, leave the hidden input alone
+    const divs = dz.querySelectorAll('div');
+    if (divs.length >= 2) {
+      divs[0].textContent = '📂';
+      divs[1].innerHTML = `<span style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue-dark);">✓ ${weekQueue.length} week(s) detected — drop more or hit Process</span>`;
+    }
+  }
+}
+
+function renderDetectedFiles() {
+  const container = document.getElementById('detected-files');
+  const list = document.getElementById('detected-list');
+  if (!weekQueue.length) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+  list.innerHTML = weekQueue.map((w, i) => {
+    const complete = w.sales && w.traffic && w.inventory;
+    const missing = [!w.sales&&'Sales', !w.traffic&&'Traffic', !w.inventory&&'Inventory'].filter(Boolean).join(', ');
+    const bg = complete ? 'var(--green-bg)' : 'var(--amber-bg)';
+    const border = complete ? 'var(--green)' : 'var(--amber)';
+    const status = complete ? '✅ Ready to upload' : `⚠️ Missing: ${missing}`;
+    return `<div style="display:flex;align-items:center;gap:12px;background:${bg};border:1px solid ${border};border-radius:8px;padding:10px 14px;margin-bottom:6px;">
+      <span style="font-size:16px">📅</span>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:700;color:var(--text);">${w.weekLabel}</div>
+        <div style="font-size:11px;color:${complete?'var(--green)':'var(--amber)'};">${status}</div>
+      </div>
+      <button onclick="removeWeekQueue(${i})" style="background:none;border:none;color:var(--red);font-size:14px;cursor:pointer;padding:2px 6px;">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function removeWeekQueue(i) {
+  weekQueue.splice(i, 1);
+  renderDetectedFiles();
+  checkSmartReady();
+}
+
+function removeSmartFile(type) {
+  // Legacy — no-op in bulk mode
+}
+
+function checkSmartReady() {
+  const hasReady = weekQueue.some(w => w.sales && w.traffic && w.inventory);
+  document.getElementById('process-btn').disabled = !hasReady;
+}
+
+function showManualDate() {
+  const row = document.getElementById('manual-date-row');
+  row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+}
+
+function manualDateChanged() {
+  const start = document.getElementById('manual-start').value;
+  const end = document.getElementById('manual-end').value;
+  if (start && end) {
+    document.getElementById('week-start').value = start;
+    document.getElementById('week-end').value = end;
+    const label = formatDate(start) + ' – ' + formatDate(end) + ' (manual)';
+    document.getElementById('week-selected-label').textContent = label;
+    document.querySelectorAll('#week-toggle-btns button').forEach(b => {
+      b.style.background = 'var(--blue-light)';
+      b.style.color = 'var(--blue-dark)';
+      b.style.borderColor = 'var(--border)';
+    });
+  }
+}
+
+function autoDetectWeek(filename) {
+  // Match patterns like 26-04-2026_02-05-2026 or 2026-04-26_2026-05-02
+  const m1 = filename.match(/(\d{2}-\d{2}-\d{4})_(\d{2}-\d{2}-\d{4})/);
+  const m2 = filename.match(/(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})/);
+
+  let startISO = null, endISO = null;
+
+  if (m1) {
+    // DD-MM-YYYY format
+    const [d1,m1_,y1] = m1[1].split('-');
+    const [d2,m2_,y2] = m2 ? m2[1].split('-') : m1[2].split('-');
+    startISO = `${y1}-${m1_}-${d1}`;
+    const [d2b,m2b,y2b] = m1[2].split('-');
+    endISO = `${y2b}-${m2b}-${d2b}`;
+  } else if (m2) {
+    startISO = m2[1];
+    endISO = m2[2];
+  }
+
+  if (startISO && endISO) {
+    document.getElementById('week-start').value = startISO;
+    document.getElementById('week-end').value = endISO;
+    const label = formatDate(startISO) + ' – ' + formatDate(endISO);
+    document.getElementById('week-selected-label').textContent = label + ' (auto-detected from filename)';
+    // Highlight the matching week button if visible
+    document.querySelectorAll('#week-toggle-btns button').forEach(btn => {
+      btn.style.background = 'var(--blue-light)';
+      btn.style.color = 'var(--blue-dark)';
+      btn.style.borderColor = 'var(--border)';
+      if (btn.textContent.includes(formatDate(startISO))) {
+        btn.style.background = 'var(--blue)';
+        btn.style.color = 'white';
+        btn.style.borderColor = 'var(--blue)';
+      }
+    });
+  }
+}
+
+function checkReady() {
+  document.getElementById('process-btn').disabled = !(files.sales && files.traffic && files.inventory);
+  document.getElementById('ads-btn').disabled = !files.sp;
+  if (files.loyalty) document.getElementById('loyalty-btn').disabled = false;
+  if (files.coverage) document.getElementById('coverage-btn').disabled = false;
+  if (files.search) document.getElementById('search-btn').disabled = false;
+}
+
+// ─── BRAND CLASSIFICATION ─────────────────────────────────────
+const BRANDS = [
+  { id:'DISNEY_KIDS', titleKeys:['spidey and his amazing friends','spidey and amazing friends','iron man and his awesome friends','iron man and friends','spidey and his'], brandKeys:['hasbro spidey','iron man and his awesome','hasbro iron man and his','spidey and his amazing'] },
+  { id:'MARVEL', titleKeys:['marvel','spider-man','spiderman','avengers','black widow','captain america','iron man','thor ','hulk','x-men','eternals','shang chi','daredevil','dr. strange','dr strange','ghost rider'], brandKeys:['marvel','hasbro marvel','avengers','hasbro avengers','spider-man','spiderman','hasbro marvel avengers','marvel avengers','marvel legends','marvel spider-man','marvel classic','black widow','shang chi','the eternals','overwatch'] },
+  { id:'STAR_WARS', titleKeys:['star wars','mandalorian','grogu','jedi','sith','darth','clone wars','boba fett','lightsaber','stormtrooper','scout trooper','bb-8','han solo'], brandKeys:['star wars','hasbro star wars','hasbro star wars the black series','star wars han solo movie'] },
+  { id:'MONOPOLY', titleKeys:['monopoly'], brandKeys:['monopoly','hasbro monopoly'] },
+  { id:'GAMES', titleKeys:['guess who','game of life','operation ','trivial pursuit','yahtzee','buckaroo','mousetrap','mouse trap','battleship','cluedo','clue ','boggle','connect 4','connect4','jenga','twister','looping louie','hungry hungry','cranium','taboo','pictionary','heroquest','dungeons & dragons','dungeons and dragons','avalon hill'], brandKeys:['hasbro gaming','hasbro games','hasbro spiele','games (excl. monopoly)','clue','twister','dungeons & dragons','hasbro dungeons & dragons','avalon hill','ghostbusters','hasbro ghostbusters','hasbro indiana jones'] },
+  { id:'PLAY_DOH', titleKeys:['play-doh','play doh','playdoh','pate a modeler','pâte à modeler','knete','plastilina'], brandKeys:['play-doh','play doh','playdoh','hasbro play-doh','hasbro pt','play doh'] },
+  { id:'PEPPA_PIG', titleKeys:['peppa pig','peppa'], brandKeys:['peppa pig'] },
+  { id:'TRANSFORMERS', titleKeys:['transformers','optimus prime','megatron','autobot','decepticon'], brandKeys:['transformers','hasbro transformers','transfromers'] },
+  { id:'BEYBLADE', titleKeys:['beyblade','bey blade'], brandKeys:['beyblade','hasbro beyblade'] },
+  { id:'NERF', titleKeys:['nerf','super soaker','supersoaker'], brandKeys:['nerf','hasbro nerf','super soaker','supersoaker'] },
+  { id:'OTHER', titleKeys:[], brandKeys:[] }
+];
+
+// ─── ASIN OVERRIDES — always wins regardless of title/brand ──
+const ASIN_OVERRIDES = {
+  // Jenga Maker — product title contains 'Monopoly' but is a GAMES product
+  'B09C8NH9HT': 'GAMES', 'B09PYQR2X1': 'GAMES', 'B09C8PD6GD': 'GAMES',
+  // Monopoly Grab and Go — classified as MONOPOLY but belongs in GAMES
+  'B0CBKTHQW2': 'GAMES', 'B0CBQ1N91P': 'GAMES', 'B0CBPMMZGL': 'GAMES',
+  'B0CBMNR1YY': 'GAMES', 'B0CBSKB23Y': 'GAMES', 'B0CSG3QQXG': 'GAMES',
+  'B0CZ7HYRK7': 'GAMES', 'B0CSPVLPR7': 'GAMES',
+  // Hungry Hungry Hippos Launchers — was in MONOPOLY
+  'B0862Z2NVB': 'GAMES',
+  // Speak Out — was in OTHER
+  'B071XTR46P': 'GAMES', 'B01J3KSDXI': 'GAMES',
+  // Pie Face — was in OTHER
+  'B01FDIWEI4': 'GAMES', 'B07CK86RVZ': 'GAMES',
+  // Simon — was in OTHER
+  'B06X9SG9VB': 'GAMES',
+  // Rummikub — was in OTHER
+  'B000NIJ6UY': 'GAMES',
+  // Kerplunk
+  'B00005N5P6': 'GAMES',
+  // Big Taboo
+  'B000I1TDA4': 'GAMES',
+  // Battleship Grab and Go
+  'B0BDHYT2KL': 'GAMES',
+  // Bop It Marvel Hulk — title contains Marvel but is a GAMES product
+  'B0FJBXSZLK': 'GAMES',
+};
+
+function classifyBrand(title, brandCol, asin) {
+  // ASIN override takes highest priority
+  if (asin && ASIN_OVERRIDES[String(asin).trim()]) return ASIN_OVERRIDES[String(asin).trim()];
+  const t=(title||'').toLowerCase(), b=(brandCol||'').toLowerCase().trim();
+  const dk=BRANDS[0];
+  if(dk.titleKeys.some(k=>t.includes(k))||dk.brandKeys.some(k=>b===k||b.includes(k))) return dk.id;
+  for(let i=1;i<BRANDS.length-1;i++){
+    const br=BRANDS[i];
+    if(br.titleKeys.some(k=>t.includes(k))||br.brandKeys.some(k=>b===k||b.includes(k))) return br.id;
+  }
+  return 'OTHER';
+}
+
+// classify from brand name only (for ads reports)
+function classifyBrandName(brandName) {
+  const b=(brandName||'').toLowerCase().trim();
+  for(const br of BRANDS.slice(0,-1)){
+    if(br.brandKeys.some(k=>b===k||b.includes(k))||br.titleKeys.some(k=>b.includes(k))) return br.id;
+  }
+  return 'OTHER';
+}
+
+// ─── PARSING ─────────────────────────────────────────────────
+function normaliseKey(s){return String(s).trim().replace(/\u2013|\u2014|\u2212/g,'–').replace(/\s+/g,' ');}
+
+function parseVCFile(file) {
+  return new Promise(resolve => {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext==='xlsx') {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const wb = XLSX.read(e.target.result,{type:'array',cellText:false,cellDates:true});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+        let hi = raw.findIndex(r=>r.some(c=>String(c).trim()==='ASIN'));
+        if(hi===-1) hi=1;
+        const headers = raw[hi].map(h=>normaliseKey(h));
+        const rows = raw.slice(hi+1).filter(r=>r.some(c=>c!=='')).map(r=>{
+          const o={};headers.forEach((h,i)=>{o[h]=(r[i]!==undefined&&r[i]!==null)?r[i]:'';});return o;
+        }).filter(r=>r['ASIN']&&String(r['ASIN']).trim().length>5);
+        resolve(rows);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = e => {
+        let text = e.target.result.replace(/^\uFEFF/,'');
+        const lines = text.split('\n');
+        let hi = -1;
+        for(let i=0;i<Math.min(lines.length,10);i++){
+          const t=lines[i].trim().replace(/^\uFEFF/,'');
+          if(t.startsWith('ASIN,')||t==='ASIN'){hi=i;break;}
+        }
+        if(hi===-1) hi=1;
+        const result = Papa.parse(lines.slice(hi).join('\n'),{header:true,skipEmptyLines:true,dynamicTyping:false});
+        const fields = result.meta.fields||[];
+        const asinKey = fields.find(f=>f.trim().replace(/^\uFEFF/,'')==='ASIN')||'ASIN';
+        const rows = result.data.filter(r=>r[asinKey]&&String(r[asinKey]).trim().length>5).map(r=>{
+          const o={};Object.keys(r).forEach(k=>{o[normaliseKey(k.replace(/^\uFEFF/,''))]=r[k];});return o;
+        });
+        resolve(rows);
+      };
+      reader.readAsText(file,'UTF-8');
+    }
+  });
+}
+
+// Generic CSV/XLSX parser (no ASIN requirement, for ads reports)
+function parseGenericFile(file) {
+  return new Promise(resolve => {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext==='xlsx') {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const wb = XLSX.read(e.target.result,{type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+        // Find first non-empty row as header
+        let hi = raw.findIndex(r=>r.some(c=>String(c).trim().length>0));
+        if(hi===-1) hi=0;
+        const headers = raw[hi].map(h=>normaliseKey(String(h)));
+        const rows = raw.slice(hi+1).filter(r=>r.some(c=>c!=='')).map(r=>{
+          const o={};headers.forEach((h,i)=>{o[h]=(r[i]!==undefined&&r[i]!==null)?r[i]:'';});return o;
+        });
+        resolve(rows);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const text = e.target.result.replace(/^\uFEFF/,'');
+        const result = Papa.parse(text,{header:true,skipEmptyLines:true,dynamicTyping:false});
+        const rows = result.data.map(r=>{
+          const o={};Object.keys(r).forEach(k=>{o[normaliseKey(k.replace(/^\uFEFF/,''))]=r[k];});return o;
+        });
+        resolve(rows);
+      };
+      reader.readAsText(file,'UTF-8');
+    }
+  });
+}
+
+function cleanNum(v){
+  if(v===null||v===undefined||v==='') return null;
+  if(typeof v==='number') return isNaN(v)?null:v;
+  const s=String(v).replace(/[^0-9.\-]/g,'').trim();
+  if(s===''||s==='-') return null;
+  const n=parseFloat(s);
+  return isNaN(n)?null:n;
+}
+function parseYoy(v,isPercentStr){
+  if(v===null||v===undefined||v===''||v==='-') return null;
+  let n;
+  if(isPercentStr){const s=String(v).replace(/,/g,'').replace(/%/g,'').trim();if(s===''||s==='nan')return null;n=parseFloat(s)/100;}
+  else{n=typeof v==='number'?v:parseFloat(String(v).replace(/,/g,'').trim());}
+  if(isNaN(n)) return null;
+  if(n<=-0.99) return null;
+  if(Math.abs(n)>YOY_CAP) return null;
+  return n;
+}
+function col(row,name){
+  if(row[name]!==undefined) return row[name];
+  const norm=name.replace(/[-\u2013\u2014\u2212]/g,'–').toLowerCase();
+  for(const k of Object.keys(row)){if(k.replace(/[-\u2013\u2014\u2212]/g,'–').toLowerCase()===norm)return row[k];}
+  return undefined;
+}
+
+// ─── LOGGING ─────────────────────────────────────────────────
+function log(msg,type='',areaId='log-area'){
+  const area=document.getElementById(areaId);
+  const line=document.createElement('span');
+  line.className='log-line '+type;
+  line.textContent=new Date().toLocaleTimeString('en-GB')+' → '+msg;
+  area.appendChild(line);
+  area.scrollTop=area.scrollHeight;
+}
+
+// ─── MAIN PROCESS ────────────────────────────────────────────
+// ─── MAIN PROCESS (BULK MULTI-WEEK) ──────────────────────────
+async function processAndUpload() {
+  const ready = weekQueue.filter(w => w.sales && w.traffic && w.inventory);
+  if (!ready.length) { alert('No complete weeks to upload. Each week needs Sales, Traffic and Inventory files.'); return; }
+  // Deduplicate ready list by weekStart to prevent double uploads
+  const seen = new Set();
+  const deduped = ready.filter(w => { if(seen.has(w.weekStart)) return false; seen.add(w.weekStart); return true; });
+
+  document.getElementById('overlay').classList.add('on');
+  document.getElementById('log-area').innerHTML = '';
+  log(`Starting bulk upload — ${deduped.length} week(s)...`, 'info');
+
+  let successCount = 0;
+  for (let wi = 0; wi < deduped.length; wi++) {
+    const w = deduped[wi];
+    log(`[${wi+1}/${ready.length}] Processing ${w.weekLabel}...`, 'info');
+    try {
+      document.getElementById('overlay-sub').textContent = `Reading Sales — ${w.weekLabel}`;
+      const salesRaw = await parseVCFile(w.sales);
+      log(`✓ Sales: ${salesRaw.length} rows`, 'ok');
+
+      document.getElementById('overlay-sub').textContent = `Reading Traffic — ${w.weekLabel}`;
+      const trafficRaw = await parseVCFile(w.traffic);
+      log(`✓ Traffic: ${trafficRaw.length} rows`, 'ok');
+
+      document.getElementById('overlay-sub').textContent = `Reading Inventory — ${w.weekLabel}`;
+      const invRaw = await parseVCFile(w.inventory);
+      log(`✓ Inventory: ${invRaw.length} rows`, 'ok');
+
+      const sales   = salesRaw.filter(r => EU5.includes(String(col(r,'Store code')||'').trim().toUpperCase()));
+      const traffic = trafficRaw.filter(r => EU5.includes(String(col(r,'Store code')||'').trim().toUpperCase()));
+      const inv     = invRaw.filter(r => EU5.includes(String(col(r,'Store code')||'').trim().toUpperCase()));
+      log(`EU5: ${sales.length} sales, ${traffic.length} traffic, ${inv.length} inventory`, 'info');
+
+      const trafficMap = {};
+      traffic.forEach(r => {
+        const k = String(r['ASIN']).trim()+'_'+String(col(r,'Store code')||'').trim().toUpperCase();
+        if (!trafficMap[k]) trafficMap[k] = { gviews:0, gviewsYoy:null };
+        trafficMap[k].gviews += cleanNum(col(r,'Featured offer page views'))||0;
+        const yoy = parseYoy(col(r,'Featured offer page views – Same Period Last Year (%)'),true);
+        if (yoy !== null) trafficMap[k].gviewsYoy = yoy;
+      });
+
+      const invMap = {};
+      inv.forEach(r => {
+        const k = String(r['ASIN']).trim()+'_'+String(col(r,'Store code')||'').trim().toUpperCase();
+        if (!invMap[k]) invMap[k] = { oos:0, unfilled:0 };
+        invMap[k].oos = cleanNum(col(r,'Sourceable product OOS %'))||0;
+        invMap[k].unfilled += cleanNum(col(r,'Unfilled Customer Ordered Units'))||0;
+      });
+
+      log('Building rows...', 'info');
+      const rows = [];
+      sales.forEach(r => {
+        const asin   = String(r['ASIN']).trim();
+        const market = String(col(r,'Store code')||'').trim().toUpperCase();
+        const k = asin+'_'+market;
+        const t  = trafficMap[k]||{ gviews:0, gviewsYoy:null };
+        const iv = invMap[k]||{ oos:0, unfilled:0 };
+        rows.push({
+          week_start: w.weekStart, asin,
+          product_title: String(col(r,'Product title')||'').trim().substring(0,500),
+          brand_raw: String(col(r,'Brand')||'').trim(),
+          brand_classified: classifyBrand(col(r,'Product title'), col(r,'Brand'), String(r['ASIN']).trim()),
+          market,
+          dispatched_revenue: cleanNum(col(r,'Dispatched revenue')),
+          ordered_revenue: cleanNum(col(r,'Ordered revenue')),
+          dispatched_units: cleanNum(col(r,'Dispatched units')) ? Math.round(cleanNum(col(r,'Dispatched units'))) : null,
+          ordered_units: cleanNum(col(r,'Ordered units')) ? Math.round(cleanNum(col(r,'Ordered units'))) : null,
+          revenue_yoy: parseYoy(col(r,'Dispatched Revenue – Same Period Last Year (%)'),true) ?? parseYoy(col(r,'Ordered Revenue – Same Period Last Year (%)'),true),
+          units_yoy: parseYoy(col(r,'Dispatched Units – Same Period Last Year (%)'),true) ?? parseYoy(col(r,'Ordered Units – Same Period Last Year (%)'),true),
+          glance_views: t.gviews ? Math.round(t.gviews) : null,
+          glance_views_yoy: t.gviewsYoy,
+          oos_pct: iv.oos,
+          unfilled_units: Math.round(iv.unfilled)
+        });
+      });
+      log(`✓ Built ${rows.length} rows`, 'ok');
+
+      document.getElementById('overlay-sub').textContent = `Uploading — ${w.weekLabel}`;
+      await sbDelete(`/rest/v1/brand_health_snapshots?week_start=eq.${w.weekStart}`);
+      const BATCH = 500; let uploaded = 0;
+      for(let i=0;i<rows.length;i+=BATCH){
+        const r=await fetch(SUPABASE_URL+'/rest/v1/brand_health_snapshots',{
+          method:'POST',
+          headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+          body:JSON.stringify(rows.slice(i,i+BATCH))
+        });
+        if(!r.ok){const e=await r.text();throw new Error('Upload failed: '+e);}
+        uploaded+=Math.min(BATCH,rows.length-i);
+        document.getElementById('overlay-progress').textContent=`Week ${wi+1}/${deduped.length} — ${uploaded}/${rows.length} rows`;
+      }
+      await sbDelete(`/rest/v1/brand_health_weeks?week_start=eq.${w.weekStart}`);
+      await sbPost('/rest/v1/brand_health_weeks', { week_start:w.weekStart, week_label:w.weekLabel }, { prefer:'resolution=merge-duplicates' });
+      log(`✅ Week ${w.weekLabel} — ${rows.length} rows uploaded`, 'ok');
+      successCount++;
+      // Remove from queue immediately after success
+      weekQueue = weekQueue.filter(q => q.weekStart !== w.weekStart);
+    } catch(err) {
+      log(`❌ Week ${w.weekLabel} failed: ${err.message}`, 'err');
+      console.error(err);
+    }
+  }
+
+  document.getElementById('overlay').classList.remove('on');
+  log(`✅ Complete — ${successCount}/${deduped.length} weeks uploaded.`, 'ok');
+
+  // Refresh pre-order tracker table
+  if(successCount > 0){
+    log('Refreshing pre-order tracker...', 'info');
+    try{
+      await sbDelete('/rest/v1/brand_health_preorders?ordered_revenue=gte.0');
+      // Re-insert via RPC
+      await fetch(SUPABASE_URL+'/rest/v1/rpc/refresh_preorders',{
+        method:'POST',
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'},
+        body:'{}'
+      });
+      log('✅ Pre-order tracker refreshed.', 'ok');
+    }catch(e){ log('⚠ Pre-order refresh skipped: '+e.message, 'warn'); }
+  }
+  weekQueue = weekQueue.filter(w => !ready.find(r => r.weekStart === w.weekStart));
+  renderDetectedFiles();
+  loadHistory();
+}
+
+// ─── ADS BRAND CLASSIFICATION ────────────────────────────────
+// Maps the advertising console brand names to our brand_classified IDs.
+// Collector's Corner is split by Free Form (Marvel / Star Wars).
+// DSP brand names like "Gaming", "PlayDoh Always On", "Hasbro Gaming Brand Week" are also handled.
+const ADS_BRAND_MAP = [
+  // Disney Kids / Spidey
+  { id:'DISNEY_KIDS', match: b => /spidey|iron man and his awesome|iron man and friends|disney kids/i.test(b) },
+  // Collector's Corner Marvel → MARVEL
+  // Collector's Corner Star Wars → STAR_WARS
+  // (handled separately using Free Form column)
+  // Monopoly
+  { id:'MONOPOLY', match: b => /^monopoly$/i.test(b.trim()) },
+  // Games — catches "Hasbro Gaming", "Gaming" (DSP), "Hasbro Gaming Brand Week", board/video sub-types
+  { id:'GAMES', match: b => /hasbro gaming|^gaming$|hasbro gaming brand week/i.test(b) },
+  // Play-Doh — catches "PlayDoh", "PlayDoh Always On"
+  { id:'PLAY_DOH', match: b => /playdoh|play-doh|play doh/i.test(b) },
+  // Peppa Pig
+  { id:'PEPPA_PIG', match: b => /peppa/i.test(b) },
+  // Transformers
+  { id:'TRANSFORMERS', match: b => /transformers/i.test(b) },
+  // Beyblade
+  { id:'BEYBLADE', match: b => /beyblade|bey blade/i.test(b) },
+  // Nerf
+  { id:'NERF', match: b => /nerf|super soaker/i.test(b) },
+  // Marvel (direct)
+  { id:'MARVEL', match: b => /^marvel$/i.test(b.trim()) },
+  // Star Wars (direct)
+  { id:'STAR_WARS', match: b => /star wars/i.test(b) },
+];
+
+// Country name → market code
+const COUNTRY_MAP = {
+  'united kingdom':'GB','uk':'GB',
+  'germany':'DE','deutschland':'DE',
+  'france':'FR',
+  'italy':'IT','italia':'IT',
+  'spain':'ES','españa':'ES'
+};
+
+function classifyAdsBrand(brandName, freeForm) {
+  const b = (brandName||'').trim();
+  const ff = (freeForm||'').trim().toLowerCase();
+
+  // Collector's Corner — split by Free Form
+  if (/collector'?s corner/i.test(b)) {
+    if (/marvel|spider|avengers/i.test(ff)) return 'MARVEL';
+    if (/star wars/i.test(ff)) return 'STAR_WARS';
+    return 'MARVEL'; // default Collector's Corner to Marvel
+  }
+
+  for (const rule of ADS_BRAND_MAP) {
+    if (rule.match(b)) return rule.id;
+  }
+  return null; // null = skip this row
+}
+
+function countryToMarket(country) {
+  return COUNTRY_MAP[(country||'').toLowerCase().trim()] || null;
+}
+
+// ─── DETECT FILE FORMAT ──────────────────────────────────────
+// Returns 'pacvue' or 'datorama' based on sheet/header structure
+function detectAdsFileFormat(wb) {
+  // Datorama: has a 'Performance Detail by Platform' sheet name
+  if (wb.SheetNames.some(n => /performance detail/i.test(n))) return 'datorama';
+  // Pacvue: scan first sheet for Campaign Name + Portfolio Name header row
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+  for (const row of raw.slice(0, 15)) {
+    const strs = row.map(c => String(c).trim().toLowerCase());
+    if (strs.some(s => s === 'campaign name') && strs.some(s => s === 'portfolio name')) return 'pacvue';
+    if (strs.some(s => s === 'placement') && strs.some(s => s === 'spend')) return 'pacvue';
+    if ((strs.some(s => s === 'query') || strs.some(s => s === 'keyword text')) && strs.some(s => s === 'spend')) return 'pacvue';
+  }
+  return 'datorama'; // fallback
+}
+
+// ─── PACVUE BRAND FROM PORTFOLIO ─────────────────────────────
+function classifyPacvueBrand(portfolioName) {
+  const p = (portfolioName||'').toUpperCase();
+  if (p.includes('GAME')) return 'GAMES';
+  if (p.includes('PLAY')) return 'PLAY_DOH';
+  if (p.includes('MONO')) return 'MONOPOLY';
+  if (p.includes('BEYB')) return 'BEYBLADE';
+  if (p.includes('TRNF')) return 'TRANSFORMERS';
+  if (p.includes('NERF')) return 'NERF';
+  if (p.includes('PEPP')) return 'PEPPA_PIG';
+  if (p.includes('DISK')) return 'DISNEY_KIDS';
+  if (p.includes('MARV')) return 'MARVEL';
+  if (p.includes('COLL')) return 'MARVEL'; // Collector's Corner → MARVEL
+  if (p.includes('MLPY')) return 'MY_LITTLE_PONY';
+  if (p.includes('PWRR')) return 'POWER_RANGERS';
+  return null;
+}
+
+// ─── PACVUE MARKET FROM PROFILE ──────────────────────────────
+function marketFromProfile(profileName) {
+  const p = (profileName||'').toUpperCase();
+  if (p.includes('UK')) return 'GB';
+  if (p.includes('DE')) return 'DE';
+  if (p.includes('FR')) return 'FR';
+  if (p.includes('ES')) return 'ES';
+  if (p.includes('IT')) return 'IT';
+  return null;
+}
+
+// ─── PARSE ADS FILE (PACVUE OR DATORAMA) ─────────────────────
+// Returns array of { brand_classified, market, ad_revenue, ad_spend, ad_impressions, ad_clicks }
+async function parseExecSummary(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type:'array', cellText:true, cellDates:true });
+        const format = detectAdsFileFormat(wb);
+        console.log('Detected file format:', format);
+
+        // ── PACVUE FORMAT ──────────────────────────────────────
+        if (format === 'pacvue') {
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+
+          // Find header row (contains 'Campaign Name' and 'Portfolio Name')
+          const hi = raw.findIndex(r => {
+            const strs = r.map(c => String(c).trim().toLowerCase());
+            return strs.includes('campaign name') && strs.includes('portfolio name');
+          });
+          if (hi === -1) throw new Error('Pacvue: Could not find header row');
+
+          const headers = raw[hi].map(h => String(h).trim());
+          console.log('Pacvue headers:', JSON.stringify(headers));
+
+          const rows = raw.slice(hi + 1)
+            .filter(r => r.some(c => c !== '' && c !== null && c !== undefined))
+            .map(r => {
+              const o = {};
+              headers.forEach((h, i) => { o[h] = (r[i] !== undefined && r[i] !== null) ? r[i] : ''; });
+              return o;
+            })
+            .filter(r => {
+              // Skip total/summary rows — they have no campaign name or have 'total' in it
+              const cn = String(r['Campaign Name']||'').trim().toLowerCase();
+              return cn && cn !== 'total' && cn !== 'totals';
+            });
+
+          const results = [];
+          rows.forEach(r => {
+            const market = marketFromProfile(r['Profile Name']);
+            if (!market) return;
+            const brandId = classifyPacvueBrand(r['Portfolio Name']);
+            if (!brandId) return;
+            const spend   = parseFloat(String(r['Spend']||0).replace(/[^0-9.\-]/g,'')) || 0;
+            const revenue = parseFloat(String(r['Sales 14d']||r['Sales 7d']||r['Sales 30d']||0).replace(/[^0-9.\-]/g,'')) || 0;
+            const impr    = parseFloat(String(r['Impression']||r['Impressions']||0).replace(/[^0-9.\-]/g,'')) || 0;
+            const clicks  = parseFloat(String(r['Click']||r['Clicks']||0).replace(/[^0-9.\-]/g,'')) || 0;
+            if (spend === 0 && revenue === 0) return; // skip zero rows
+            results.push({ brand_classified:brandId, market, ad_revenue:revenue, ad_spend:spend, ad_impressions:impr, ad_clicks:clicks });
+          });
+
+          console.log('Pacvue parsed rows:', results.length);
+          resolve(results);
+          return;
+        }
+
+        // ── DATORAMA FORMAT ───────────────────────────────────
+        const sheetName = wb.SheetNames.find(n => /performance detail/i.test(n));
+        console.log('Sheets found:', wb.SheetNames, '| Matched:', sheetName);
+        if (!sheetName) throw new Error('Could not find "Performance Detail by Platform & Brand" sheet. Sheets: '+wb.SheetNames.join(', '));
+
+        const ws = wb.Sheets[sheetName];
+        const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
+        console.log('Total rows:', raw.length);
+
+        let hi = raw.findIndex(r => {
+          const strs = r.map(c => String(c).trim().toLowerCase());
+          return strs.includes('brand') && strs.includes('spend');
+        });
+        if (hi === -1) throw new Error('Datorama: Could not find header row');
+
+        const headers = raw[hi].map(h => String(h).trim());
+        console.log('Datorama headers:', JSON.stringify(headers));
+
+        const rows = raw.slice(hi + 1)
+          .filter(r => r.some(c => c !== '' && c !== null && c !== undefined))
+          .filter(r => String(r[0]).trim() !== '' && String(r[0]).trim() !== 'Totals')
+          .map(r => {
+            const o = {};
+            headers.forEach((h, i) => { o[h] = (r[i] !== undefined && r[i] !== null) ? r[i] : ''; });
+            return o;
+          })
+          .filter(r => (parseFloat(String(r['Spend']||0).replace(/[^0-9.\-]/g,''))||0) > 0);
+
+        const results = [];
+        rows.forEach(r => {
+          const country = String(r['Marketing Geography']||r['Country']||'').trim();
+          const market = countryToMarket(country);
+          if (!market) return;
+          const brandId = classifyAdsBrand(r['Brand'], r['Free Form']);
+          if (!brandId) return;
+          const revenue = parseFloat(String(r['Nominal POS']||r['Sales']||0).replace(/[^0-9.\-]/g,'')) || 0;
+          const spend   = parseFloat(String(r['Spend']||0).replace(/[^0-9.\-]/g,'')) || 0;
+          const impr    = parseFloat(String(r['Impressions']||0).replace(/[^0-9.\-]/g,'')) || 0;
+          const clicks  = parseFloat(String(r['Clicks']||0).replace(/[^0-9.\-]/g,'')) || 0;
+          results.push({ brand_classified:brandId, market, ad_revenue:revenue, ad_spend:spend, ad_impressions:impr, ad_clicks:clicks });
+        });
+
+        console.log('Datorama parsed rows:', results.length);
+        resolve(results);
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// Aggregate rows into { brand+market → totals }
+function aggregateAdsRows(rows) {
+  const agg = {};
+  rows.forEach(r => {
+    const k = r.brand_classified+'_'+r.market;
+    if (!agg[k]) agg[k] = { brand_classified:r.brand_classified, market:r.market, ad_revenue:0, ad_spend:0, ad_impressions:0, ad_clicks:0 };
+    agg[k].ad_revenue    += r.ad_revenue;
+    agg[k].ad_spend      += r.ad_spend;
+    agg[k].ad_impressions+= r.ad_impressions;
+    agg[k].ad_clicks     += r.ad_clicks;
+  });
+  return Object.values(agg);
+}
+
+// ─── ADS UPLOAD ──────────────────────────────────────────────
+// ─── PO FILE HANDLER ─────────────────────────────────────────
+let poFile = null;
+
+function dDropPO(e) {
+  e.preventDefault();
+  document.getElementById('card-po').style.border = '2px dashed #F59E0B';
+  const files = [...e.dataTransfer.files];
+  if (files.length) onPOFile({ target: { files } });
+}
+
+function onPOFile(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  poFile = f;
+  document.getElementById('po-detected').style.display = 'block';
+  document.getElementById('po-detected').innerHTML = `✓ ${f.name} — ready to upload`;
+  document.getElementById('po-btn').disabled = false;
+}
+
+async function processAndUploadPO() {
+  if (!poFile) return;
+  document.getElementById('po-log').innerHTML = '';
+  logPO('Reading PO export...', 'info');
+  try {
+    const rows = await parsePOFile(poFile);
+    logPO(`✓ ${rows.length} open PO lines parsed`, 'ok');
+    if (!rows.length) throw new Error('No open PO lines found');
+
+    const pullDate = new Date().toISOString().split('T')[0];
+    await sbDelete(`/rest/v1/brand_health_inbound?week_pulled=eq.${pullDate}`);
+    // Delete all previous — only keep latest
+    await sbFetch('/rest/v1/brand_health_inbound?select=week_pulled&order=week_pulled.desc&limit=1').then(async res => {
+      if (res.length && res[0].week_pulled !== pullDate) {
+        await sbDelete(`/rest/v1/brand_health_inbound?week_pulled=neq.${pullDate}`);
+      }
+    });
+
+    const BATCH = 500; let uploaded = 0;
+    const finalRows = rows.map(r => ({ ...r, week_pulled: pullDate }));
+    for (let i = 0; i < finalRows.length; i += BATCH) {
+      await sbPost('/rest/v1/brand_health_inbound', finalRows.slice(i, i + BATCH));
+      uploaded += Math.min(BATCH, finalRows.length - i);
+    }
+    logPO(`✅ Done! ${finalRows.length} PO lines uploaded for ${pullDate}`, 'ok');
+  } catch(err) {
+    logPO('❌ Error: ' + err.message, 'err');
+    console.error(err);
+  }
+}
+
+async function parsePOFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+        const locationMarket = {
+          'BHX4':'GB','BHX2':'GB','VETY':'GB','LBA2':'GB','BHX1':'GB','MAN1':'GB',
+          'DTM1':'DE','DTM2':'DE','HAM2':'DE','FRA3':'DE','LEJ1':'DE','MUC3':'DE',
+          'TRN3':'IT','MXP6':'IT','FCO2':'IT','VCE2':'IT',
+          'ZAZ1':'ES','MAD4':'ES','XAR1':'ES','MAD9':'ES','BCN2':'ES',
+          'CDG7':'FR','CDG4':'FR','VETV':'FR','LYS5':'FR','XOR1':'FR',
+          'WRO5':'PL','KTW1':'PL','KTW5':'PL'
+        };
+
+        const rows = raw
+          .filter(r => {
+            const status = String(r['Status']||'').trim().toLowerCase();
+            const remaining = parseFloat(String(r['Remaining quantity']||'0').replace(/[^0-9.]/g,''))||0;
+            const requested = parseFloat(String(r['Requested quantity']||'0').replace(/[^0-9.]/g,''))||0;
+            // Include confirmed with remaining qty OR unconfirmed with requested qty
+            return (status === 'confirmed' && remaining > 0) ||
+                   (status === 'unconfirmed' && requested > 0);
+          })
+          .map(r => {
+            const loc = String(r['Ship-to location']||'').trim();
+            const market = locationMarket[loc] || null;
+            if (!market) return null;
+
+            const parseDate = v => {
+              if (!v) return null;
+              const d = new Date(v);
+              return isNaN(d) ? null : d.toISOString().split('T')[0];
+            };
+
+            const status = String(r['Status']||'').trim().toLowerCase();
+            const units = status === 'unconfirmed'
+              ? Math.round(parseFloat(String(r['Requested quantity']||'0').replace(/[^0-9.]/g,''))||0)
+              : Math.round(parseFloat(String(r['Remaining quantity']||'0').replace(/[^0-9.]/g,''))||0);
+
+            return {
+              asin: String(r['ASIN']||'').trim(),
+              market,
+              po_number: String(r['PO']||'').trim(),
+              status: String(r['Status']||'').trim(),
+              open_units: units,
+              expected_delivery: parseDate(r['Expected date']),
+              window_start: parseDate(r['Window start']),
+              window_end: parseDate(r['Window end'])
+            };
+          })
+          .filter(r => r && r.asin && r.open_units > 0);
+
+        resolve(rows);
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = () => reject(new Error('Failed to read PO file'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function logPO(msg, type='') { log(msg, type, 'po-log'); }
+
+// ─── PACVUE REPORT TYPE DETECTION ────────────────────────────
+function detectPacvueReportType(wb) {
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+  for (const row of raw.slice(0, 15)) {
+    const strs = row.map(c => String(c).trim().toLowerCase());
+    if (strs.includes('placement')) return 'placement';
+    if (strs.includes('query') || strs.includes('keyword text')) return 'query';
+    if (strs.includes('campaign name') && strs.includes('portfolio name') && !strs.includes('placement') && !strs.includes('query')) return 'campaign';
+  }
+  return null;
+}
+
+// ─── PACVUE CAMPAIGN PARSER ───────────────────────────────────
+async function parsePacvueCampaign(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type:'array', cellDates:true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+        const hi = raw.findIndex(r => {
+          const s = r.map(c => String(c).trim().toLowerCase());
+          return s.includes('campaign name') && s.includes('spend');
+        });
+        if (hi === -1) throw new Error('Campaign: header row not found');
+        const headers = raw[hi].map(h => String(h).trim());
+        const rows = raw.slice(hi+1)
+          .filter(r => r.some(c => c !== '' && c !== null))
+          .map(r => { const o={}; headers.forEach((h,i) => o[h] = r[i]??''); return o; })
+          .filter(r => { const t = r['Time']; return t && (String(t).startsWith('2026') || (t instanceof Date && t.getFullYear() >= 2024)); });
+
+        const results = [];
+        rows.forEach(r => {
+          const market = marketFromProfile(r['Profile Name']);
+          if (!market) return;
+          const brand = classifyPacvueBrand(r['Portfolio Name']);
+          if (!brand) return;
+          const date = new Date(r['Time']);
+          const weekStart = new Date(date);
+          weekStart.setDate(date.getDate() - date.getDay()); // Sunday (matches VC)
+          const ws = String(weekStart.getFullYear())+'-'+String(weekStart.getMonth()+1).padStart(2,'0')+'-'+String(weekStart.getDate()).padStart(2,'0');
+          results.push({
+            week_start: ws,
+            brand_classified: brand,
+            market,
+            campaign_name: String(r['Campaign Name']||'').trim(),
+            ad_spend: parseFloat(String(r['Spend']||0).replace(/[^0-9.\-]/g,''))||0,
+            ad_revenue: parseFloat(String(r['Sales 14d']||r['Sales 7d']||0).replace(/[^0-9.\-]/g,''))||0,
+            ad_clicks: Math.round(parseFloat(String(r['Click']||r['Clicks']||0))||0),
+            ad_impressions: Math.round(parseFloat(String(r['Impression']||r['Impressions']||0))||0),
+            ad_orders: Math.round(parseFloat(String(r['Order 14d']||0))||0)
+          });
+        });
+        resolve(results);
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = () => reject(new Error('Failed to read Campaign file'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ─── PACVUE PLACEMENT PARSER ──────────────────────────────────
+async function parsePacvuePlacement(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type:'array', cellDates:true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+        const hi = raw.findIndex(r => {
+          const s = r.map(c => String(c).trim().toLowerCase());
+          return s.includes('placement') && s.includes('spend');
+        });
+        if (hi === -1) throw new Error('Placement: header row not found');
+        const headers = raw[hi].map(h => String(h).trim());
+        const rows = raw.slice(hi+1)
+          .filter(r => r.some(c => c !== '' && c !== null))
+          .map(r => { const o={}; headers.forEach((h,i) => o[h] = r[i]??''); return o; })
+          .filter(r => { const t = r['Time']; return t && (String(t).startsWith('2026') || (t instanceof Date && t.getFullYear() >= 2024)); });
+
+        const results = [];
+        rows.forEach(r => {
+          const market = marketFromProfile(r['Profile Name']);
+          if (!market) return;
+          const brand = classifyPacvueBrand(r['Campaign Name']);
+          const date = new Date(r['Time']);
+          const weekStart = new Date(date);
+          weekStart.setDate(date.getDate() - date.getDay()); // Sunday (matches VC)
+          const ws = String(weekStart.getFullYear())+'-'+String(weekStart.getMonth()+1).padStart(2,'0')+'-'+String(weekStart.getDate()).padStart(2,'0');
+          const spend = parseFloat(String(r['Spend']||0).replace(/[^0-9.\-]/g,''))||0;
+          if (spend === 0) return;
+          results.push({
+            week_start: ws,
+            brand_classified: brand || 'OTHER',
+            market,
+            placement: String(r['Placement']||'').trim(),
+            ad_spend: spend,
+            ad_revenue: parseFloat(String(r['Sales 14d']||0).replace(/[^0-9.\-]/g,''))||0,
+            ad_clicks: Math.round(parseFloat(String(r['Click']||0))||0),
+            ad_impressions: Math.round(parseFloat(String(r['Impression']||0))||0),
+            ctr: parseFloat(String(r['CTR']||0))||0,
+            cpc: parseFloat(String(r['CPC']||0))||0
+          });
+        });
+        resolve(results);
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = () => reject(new Error('Failed to read Placement file'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ─── PACVUE QUERY PARSER ──────────────────────────────────────
+async function parsePacvueQuery(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type:'array', cellDates:true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+        const hi = raw.findIndex(r => {
+          const s = r.map(c => String(c).trim().toLowerCase());
+          return (s.includes('query') || s.includes('keyword text')) && s.includes('spend');
+        });
+        if (hi === -1) throw new Error('Query: header row not found');
+        const headers = raw[hi].map(h => String(h).trim());
+        const rows = raw.slice(hi+1)
+          .filter(r => r.some(c => c !== '' && c !== null))
+          .map(r => { const o={}; headers.forEach((h,i) => o[h] = r[i]??''); return o; })
+          .filter(r => { const t = r['Time']; return t && (String(t).startsWith('2026') || (t instanceof Date && t.getFullYear() >= 2024)); });
+
+        const results = [];
+        rows.forEach(r => {
+          const market = marketFromProfile(r['Profile Name']);
+          if (!market) return;
+          const brand = classifyPacvueBrand(r['Campaign Name']);
+          const date = new Date(r['Time']);
+          const weekStart = new Date(date);
+          weekStart.setDate(date.getDate() - date.getDay()); // Sunday (matches VC)
+          const ws = String(weekStart.getFullYear())+'-'+String(weekStart.getMonth()+1).padStart(2,'0')+'-'+String(weekStart.getDate()).padStart(2,'0');
+          const spend = parseFloat(String(r['Spend']||0).replace(/[^0-9.\-]/g,''))||0;
+          if (spend === 0) return;
+          results.push({
+            week_start: ws,
+            brand_classified: brand || 'OTHER',
+            market,
+            query: String(r['Query']||'').trim().toLowerCase(),
+            keyword: String(r['Keyword Text']||'').trim().toLowerCase(),
+            ad_spend: spend,
+            ad_revenue: parseFloat(String(r['Sales 14d']||0).replace(/[^0-9.\-]/g,''))||0,
+            ad_clicks: Math.round(parseFloat(String(r['Click']||0))||0),
+            ad_impressions: Math.round(parseFloat(String(r['Impression']||0))||0),
+            roas: parseFloat(String(r['ROAS 14d']||0))||0,
+            orders: Math.round(parseFloat(String(r['Order 14d']||0))||0)
+          });
+        });
+        resolve(results);
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = () => reject(new Error('Failed to read Query file'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ─── AGGREGATE CAMPAIGN DATA INTO brand_health_ads ───────────
+function aggregateCampaignToAds(campaignRows) {
+  const agg = {};
+  campaignRows.forEach(r => {
+    const k = `${r.week_start}||${r.brand_classified}||${r.market}`;
+    if (!agg[k]) agg[k] = { week_start:r.week_start, brand_classified:r.brand_classified, market:r.market, ad_spend:0, ad_revenue:0, ad_clicks:0, ad_impressions:0, ad_glance_views:0 };
+    agg[k].ad_spend      += r.ad_spend;
+    agg[k].ad_revenue    += r.ad_revenue;
+    agg[k].ad_clicks     += r.ad_clicks;
+    agg[k].ad_impressions+= r.ad_impressions;
+  });
+  // Apply 1.4x proxy for ad glance views (clicks × 2.2 — toys category standard)
+  Object.values(agg).forEach(r => { r.ad_glance_views = Math.round(r.ad_clicks * 2.2); });
+  return Object.values(agg);
+}
+
+
+async function processAndUploadAds() {
+  document.getElementById('ads-log').innerHTML = '';
+  logA('Starting ads processing...', 'info');
+
+  try {
+    const wb = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(XLSX.read(e.target.result, { type:'array', cellDates:true }));
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsArrayBuffer(files.sp);
+    });
+
+    const format = detectAdsFileFormat(wb);
+    const reportType = format === 'pacvue' ? detectPacvueReportType(wb) : 'datorama';
+    logA(`Format: ${format === 'pacvue' ? 'Pacvue — ' + reportType : 'Datorama Executive Summary'}`, 'info');
+
+    if (format === 'pacvue' && reportType === 'campaign') {
+      const campaignRows = await parsePacvueCampaign(files.sp);
+      logA(`✓ ${campaignRows.length} campaign-day rows parsed`, 'ok');
+      const weeks = [...new Set(campaignRows.map(r => r.week_start))].sort();
+      logA(`Processing ${weeks.length} weeks...`, 'info');
+      for (const ws of weeks) {
+        const weekRows = campaignRows.filter(r => r.week_start === ws);
+        await sbDelete(`/rest/v1/brand_health_ads_campaigns?week_start=eq.${ws}`);
+        const BATCH = 500;
+        for (let i = 0; i < weekRows.length; i += BATCH) {
+          await sbPost('/rest/v1/brand_health_ads_campaigns', weekRows.slice(i, i+BATCH));
+        }
+        const aggRows = aggregateCampaignToAds(weekRows);
+        await sbDelete(`/rest/v1/brand_health_ads?week_start=eq.${ws}`);
+        await sbPost('/rest/v1/brand_health_ads', aggRows);
+        logA(`✅ Week ${ws} — ${weekRows.length} campaign rows, ${aggRows.length} brand-market aggregates`, 'ok');
+      }
+
+    } else if (format === 'pacvue' && reportType === 'placement') {
+      const placementRows = await parsePacvuePlacement(files.sp);
+      logA(`✓ ${placementRows.length} placement rows parsed`, 'ok');
+      const weeks = [...new Set(placementRows.map(r => r.week_start))].sort();
+      for (const ws of weeks) {
+        const weekRows = placementRows.filter(r => r.week_start === ws);
+        await sbDelete(`/rest/v1/brand_health_ads_placement?week_start=eq.${ws}`);
+        const BATCH = 500;
+        for (let i = 0; i < weekRows.length; i += BATCH) await sbPost('/rest/v1/brand_health_ads_placement', weekRows.slice(i, i+BATCH));
+        logA(`✅ Week ${ws} — ${weekRows.length} placement rows`, 'ok');
+      }
+
+    } else if (format === 'pacvue' && reportType === 'query') {
+      const queryRows = await parsePacvueQuery(files.sp);
+      logA(`✓ ${queryRows.length} query rows parsed`, 'ok');
+      const weeks = [...new Set(queryRows.map(r => r.week_start))].sort();
+      for (const ws of weeks) {
+        const weekRows = queryRows.filter(r => r.week_start === ws);
+        await sbDelete(`/rest/v1/brand_health_ads_queries?week_start=eq.${ws}`);
+        const BATCH = 500;
+        for (let i = 0; i < weekRows.length; i += BATCH) await sbPost('/rest/v1/brand_health_ads_queries', weekRows.slice(i, i+BATCH));
+        logA(`✅ Week ${ws} — ${weekRows.length} query rows`, 'ok');
+      }
+
+    } else {
+      // Datorama Executive Summary — existing flow
+      const weekStart = adsDetectedWeekStart;
+      if (!weekStart) throw new Error('Could not detect week from file');
+      const parsedRows = await parseExecSummary(files.sp);
+      logA(`✓ ${parsedRows.length} brand-market rows parsed`, 'ok');
+      const agg = aggregateAdsRows(parsedRows);
+      const vcRows = await sbFetch(`/rest/v1/brand_health_snapshots?week_start=eq.${weekStart}&select=brand_classified,market,dispatched_revenue,ordered_revenue,glance_views`);
+      const vcMap = {};
+      vcRows.forEach(r => {
+        const k = r.brand_classified + '||' + r.market;
+        if (!vcMap[k]) vcMap[k] = { revenue:0, gviews:0 };
+        vcMap[k].revenue += (r.dispatched_revenue || r.ordered_revenue || 0);
+        vcMap[k].gviews  += (r.glance_views || 0);
+      });
+      const finalRows = agg.map(r => {
+        const k = r.brand_classified + '||' + r.market;
+        const vc = vcMap[k] || { revenue:0, gviews:0 };
+        return {
+          week_start: weekStart, brand_classified: r.brand_classified, market: r.market,
+          ad_revenue: Math.round(r.ad_revenue*100)/100, ad_spend: Math.round(r.ad_spend*100)/100,
+          ad_impressions: Math.round(r.ad_impressions), ad_clicks: Math.round(r.ad_clicks),
+          ad_glance_views: Math.round(r.ad_clicks * 2.2),
+          organic_revenue: Math.max(0, Math.round((vc.revenue - r.ad_revenue)*100)/100),
+          organic_glance_views: Math.max(0, Math.round(vc.gviews - (r.ad_clicks * 2.2)))
+        };
+      });
+      if (!finalRows.length) throw new Error('0 rows built — check file parsed correctly');
+      await sbDelete(`/rest/v1/brand_health_ads?week_start=eq.${weekStart}`);
+      await sbPost('/rest/v1/brand_health_ads', finalRows);
+      logA(`✅ Done! ${finalRows.length} rows for week ${weekStart}`, 'ok');
     }
 
-    loading.style.display='none';
-    content.innerHTML=html;
-    content.style.display='block';
-    preorderLoaded=true;
-  }catch(e){
-    loading.textContent='Error: '+e.message;
+    if (!window._processingQueue) loadHistory();
+
+  } catch(err) {
+    logA('❌ Error: ' + err.message, 'err');
+    console.error(err);
   }
 }
 
-init();
+function logA(msg,type=''){log(msg,type,'ads-log');}
+
+// ─── LOYALTY ─────────────────────────────────────────────────
+function parseLoyaltyFile(file){
+  return new Promise(resolve=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      let text=e.target.result.replace(/^\uFEFF/,'');
+      const lines=text.split('\n');
+      let hi=-1;
+      for(let i=0;i<Math.min(lines.length,10);i++){
+        const t=lines[i].trim().replace(/^\uFEFF/,'');
+        if(t.startsWith('Brand,')||t.startsWith('"Brand"')){hi=i;break;}
+      }
+      if(hi===-1) hi=1;
+      const result=Papa.parse(lines.slice(hi).join('\n'),{header:true,skipEmptyLines:true,dynamicTyping:false});
+      resolve(result.data.filter(r=>(r['Brand']||'').trim().length>0));
+    };
+    reader.readAsText(file,'UTF-8');
+  });
+}
+
+async function uploadLoyalty(){
+  const quarter=document.getElementById('quarter-select').value;
+  if(!files.loyalty){alert('Please select the repeat purchase file.');return;}
+  document.getElementById('loyalty-btn').disabled=true;
+  document.getElementById('loyalty-log').innerHTML='';
+  log('Reading repeat purchase file...','info','loyalty-log');
+  try{
+    const raw=await parseLoyaltyFile(files.loyalty);
+    log(`✓ Parsed ${raw.length} rows`,'ok','loyalty-log');
+    const TOTAL_CUST='Unique Customer Count',REPEAT_CUST='Repeat Customer Count: Count',REPEAT_SALES='Repeat Ordered Product Sales: Sales';
+    const BRAND_MAP={DISNEY_KIDS:['spidey and his amazing friends','iron man and his awesome friends','hasbro spidey'],MARVEL:['marvel','avengers','hasbro avengers','spider-man','spiderman','x-men','the eternals','marvel legends','hasbro marvel'],STAR_WARS:['star wars','hasbro star wars'],MONOPOLY:['monopoly','hasbro monopoly'],GAMES:['hasbro gaming','hasbro games','avalon hill','clue','hasbro indiana jones'],PLAY_DOH:['play-doh','play doh','playdoh','hasbro play-doh'],PEPPA_PIG:['peppa pig','peppa'],TRANSFORMERS:['transformers','hasbro transformers'],BEYBLADE:['beyblade','hasbro beyblade'],NERF:['nerf','hasbro nerf','super soaker','supersoaker']};
+    function clf(n){const b=(n||'').toLowerCase().trim();for(const[id,keys]of Object.entries(BRAND_MAP)){if(keys.some(k=>b.includes(k)))return id;}return'OTHER';}
+    const agg={};
+    raw.forEach(r=>{
+      const bid=clf(r['Brand']);if(bid==='OTHER')return;
+      const tc=parseFloat((r[TOTAL_CUST]||'0').replace(/[^0-9.]/g,''))||0;
+      const rc=parseFloat((r[REPEAT_CUST]||'0').replace(/[^0-9.]/g,''))||0;
+      const rs=parseFloat((r[REPEAT_SALES]||'0').replace(/[^0-9.]/g,''))||0;
+      if(!agg[bid])agg[bid]={tc:0,rc:0,rs:0};
+      agg[bid].tc+=tc;agg[bid].rc+=rc;agg[bid].rs+=rs;
+    });
+    const rows=Object.entries(agg).map(([brand_classified,d])=>({brand_classified,repeat_rate:d.tc>0?d.rc/d.tc:0,repeat_customers:Math.round(d.rc),total_customers:Math.round(d.tc),repeat_sales:d.rs,quarter}));
+    log(`✓ ${rows.length} brands built`,'ok','loyalty-log');
+    if(!rows.length) throw new Error('No matching brands found');
+    await sbDelete(`/rest/v1/brand_health_loyalty?quarter=eq.${quarter}`);
+    await sbPost('/rest/v1/brand_health_loyalty',rows);
+    log(`✅ Done! ${rows.length} brands uploaded for ${quarter}`,'ok','loyalty-log');
+  }catch(err){log('❌ Error: '+err.message,'err','loyalty-log');console.error(err);}
+  document.getElementById('loyalty-btn').disabled=false;
+}
+
+// ─── HISTORY ─────────────────────────────────────────────────
+async function loadHistory(){
+  const [weeks, adsWeeks] = await Promise.all([
+    sbFetch('/rest/v1/brand_health_weeks?select=*&order=week_start.desc&limit=52'),
+    sbFetch('/rest/v1/brand_health_ads?select=week_start&order=week_start.desc&limit=1000')
+  ]);
+  const adsSet = new Set(adsWeeks.map(r => r.week_start?.slice(0,10)));
+  console.log('Ads weeks found:', [...adsSet]);
+  const tbody = document.getElementById('history-tbody');
+  if(!weeks.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">No uploads yet</td></tr>';return;}
+  tbody.innerHTML=weeks.map(w=>`<tr>
+    <td>${w.week_label||w.week_start}</td>
+    <td>${new Date(w.uploaded_at||w.created_at).toLocaleString('en-GB')}</td>
+    <td>—</td>
+    <td>${adsSet.has(w.week_start?.slice(0,10))?'<span style="color:var(--ad-color);font-weight:700">✅ Ads</span>':'<span style="color:var(--text3);font-size:11px">No ads</span>'}</td>
+    <td><button class="del-btn" onclick="deleteWeek('${w.week_start}')">Delete</button></td>
+  </tr>`).join('');
+}
+
+async function deleteWeek(weekStart){
+  if(!confirm(`Delete all data for week ${weekStart}? This cannot be undone.`)) return;
+  await Promise.all([
+    sbDelete(`/rest/v1/brand_health_snapshots?week_start=eq.${weekStart}`),
+    sbDelete(`/rest/v1/brand_health_ads?week_start=eq.${weekStart}`),
+    sbDelete(`/rest/v1/brand_health_weeks?week_start=eq.${weekStart}`)
+  ]);
+  log(`Deleted data for week ${weekStart}`,'info');
+  loadHistory();
+}
+
+// ─── ADS PLAN COVERAGE ───────────────────────────────────────
+async function uploadCoverage() {
+  const quarter = document.getElementById('coverage-quarter-select').value;
+  if (!files.coverage) { alert('Please select the EMEA AMZ Ads file.'); return; }
+  document.getElementById('coverage-btn').disabled = true;
+  document.getElementById('coverage-log').innerHTML = '';
+  logC('Reading EMEA AMZ Ads file...', 'info');
+
+  try {
+    const XLSX_LIB = window.XLSX;
+    const data = await files.coverage.arrayBuffer();
+    const wb = XLSX_LIB.read(data, { type:'array' });
+
+    const MARKET_SHEET = { UK:'GB', DE:'DE', FR:'FR', IT:'IT', ES:'ES' };
+    const rows = [];
+
+    for (const [sheetName, market] of Object.entries(MARKET_SHEET)) {
+      const ws = wb.Sheets[sheetName];
+      if (!ws) { logC(`⚠️ Sheet "${sheetName}" not found — skipping`, 'err'); continue; }
+
+      const raw = XLSX_LIB.utils.sheet_to_json(ws, { header:1, defval:'' });
+      if (raw.length < 2) continue;
+
+      const headers = raw[0].map(h => String(h).trim());
+      const brandCol    = headers.indexOf('brand');
+      const spCol       = headers.indexOf('Sponsored Product');
+      const sbCol       = headers.indexOf('Sponsored Brand');
+      const asinCol     = headers.indexOf('ASIN');
+
+      if (brandCol === -1 || spCol === -1 || asinCol === -1) {
+        logC(`⚠️ ${sheetName}: missing expected columns. Found: ${headers.filter(h=>h).join(', ')}`, 'err');
+        continue;
+      }
+
+      // Aggregate per brand
+      const brandAgg = {};
+      raw.slice(1).forEach(r => {
+        const asin = String(r[asinCol]||'').trim();
+        if (!asin || asin.length < 5) return;
+        const brand = String(r[brandCol]||'').trim().toUpperCase();
+        if (!brand) return;
+        const sp = String(r[spCol]||'').includes('☑');
+        const sb = sbCol >= 0 ? String(r[sbCol]||'').includes('☑') : false;
+
+        // Map brand column values to brand_classified IDs
+        const bid = mapAdsPlanBrand(brand);
+        if (!bid) return;
+
+        if (!brandAgg[bid]) brandAgg[bid] = { total:0, sp:0, sb:0 };
+        brandAgg[bid].total++;
+        if (sp) brandAgg[bid].sp++;
+        if (sb) brandAgg[bid].sb++;
+      });
+
+      Object.entries(brandAgg).forEach(([brand_classified, counts]) => {
+        rows.push({ quarter, brand_classified, market, ...counts });
+        logC(`  ${market} ${brand_classified}: ${counts.sp}/${counts.total} SP (${Math.round(counts.sp/counts.total*100)}%) ${counts.sb} SB`, 'ok');
+      });
+    }
+
+    if (!rows.length) throw new Error('No data extracted — check brand column values match expected names');
+
+    // Delete existing for this quarter and insert
+    await sbDelete(`/rest/v1/brand_health_ads_coverage?quarter=eq.${quarter}`);
+    await sbPost('/rest/v1/brand_health_ads_coverage', rows);
+    logC(`✅ Done! ${rows.length} brand-market rows uploaded for ${quarter}`, 'ok');
+
+  } catch(err) {
+    logC('❌ Error: ' + err.message, 'err');
+    console.error(err);
+  }
+  document.getElementById('coverage-btn').disabled = false;
+}
+
+function mapAdsPlanBrand(brand) {
+  // brand column values from the EMEA sheet → brand_classified IDs
+  const map = {
+    'MARVEL':'MARVEL', 'AVENGERS':'MARVEL',
+    'STAR WARS':'STAR_WARS', 'STARWARS':'STAR_WARS',
+    'MONOPOLY':'MONOPOLY',
+    'GAMES':'GAMES', 'HASBRO GAMING':'GAMES',
+    'PLAY-DOH':'PLAY_DOH', 'PLAYDOH':'PLAY_DOH', 'PLAY DOH':'PLAY_DOH',
+    'PEPPA PIG':'PEPPA_PIG', 'PEPPA':'PEPPA_PIG',
+    'TRANSFORMERS':'TRANSFORMERS',
+    'BEYBLADE':'BEYBLADE',
+    'NERF':'NERF',
+    'SPIDEY':'DISNEY_KIDS', 'DISNEY KIDS':'DISNEY_KIDS',
+  };
+  // Direct match first
+  if (map[brand]) return map[brand];
+  // Partial match
+  for (const [key, val] of Object.entries(map)) {
+    if (brand.includes(key)) return val;
+  }
+  return null; // skip unknowns
+}
+
+function logC(msg, type='') { log(msg, type, 'coverage-log'); }
+
+// ─── SEARCH TERMS UPLOAD ─────────────────────────────────────
+// ─── SEARCH TERMS UPLOAD ─────────────────────────────────────
+// Keywords used to identify Hasbro-relevant search terms
+const HASBRO_SEARCH_KEYWORDS = {
+  TRANSFORMERS: ['transformers','optimus prime','megatron','autobot','decepticon','bumblebee transformer'],
+  NERF:         ['nerf','super soaker','supersoaker'],
+  MONOPOLY:     ['monopoly'],
+  PLAY_DOH:     ['play-doh','play doh','playdoh'],
+  BEYBLADE:     ['beyblade','bey blade'],
+  PEPPA_PIG:    ['peppa pig','peppa'],
+  MARVEL:       ['marvel','spider-man','spiderman','spidey','avengers','iron man toy','thor toy','hulk toy','marvel legends','captain america toy'],
+  STAR_WARS:    ['star wars','lightsaber','mandalorian','darth vader','yoda toy','stormtrooper toy','boba fett','grogu'],
+  GAMES:        ['monopoly','cluedo','hasbro game','jenga','battleship game','connect 4','operation game','guess who','trivial pursuit','hasbro gaming'],
+  DISNEY_KIDS:  ['spidey and his','spidey amazing friends'],
+  HASBRO:       ['hasbro']
+};
+
+// Estimate weekly search volume from rank using power law approximation
+// Based on Amazon search data patterns: rank 1 ≈ 500K/week, rank 1000 ≈ 5K/week
+function estimateSearchVolume(rank) {
+  if (!rank || rank <= 0) return null;
+  return Math.round(500000 / Math.pow(rank, 0.7));
+}
+
+function classifySearchTerm(term) {
+  const t = term.toLowerCase();
+  for (const [brand, keywords] of Object.entries(HASBRO_SEARCH_KEYWORDS)) {
+    if (keywords.some(k => t.includes(k))) return brand;
+  }
+  return null;
+}
+
+async function uploadSearchTerms() {
+  let weekStart = document.getElementById('week-start').value;
+
+  // Auto-detect week from filename if not set
+  if (!weekStart && files.search) {
+    const fname = files.search.name || '';
+    const m = fname.match(/(\d{4}[-_]\d{2}[-_]\d{2})/);
+    if (m) {
+      // Find the Sunday of that week
+      const d = new Date(m[1].replace(/_/g,'-'));
+      d.setDate(d.getDate() - d.getDay());
+      weekStart = d.toISOString().split('T')[0];
+      document.getElementById('week-start').value = weekStart;
+      logS(`Auto-detected week: ${weekStart}`, 'info');
+    }
+  }
+
+  // If still no week, use last Monday as a sensible default
+  if (!weekStart) {
+    const d = new Date();
+    d.setDate(d.getDate() - d.getDay()); // Sunday
+    weekStart = d.toISOString().split('T')[0];
+    document.getElementById('week-start').value = weekStart;
+    logS(`Using current week: ${weekStart}`, 'info');
+  }
+  document.getElementById('search-log').innerHTML = '';
+  logS('Reading Search Terms report...', 'info');
+
+  try {
+    const text = await files.search.text();
+    const clean = text.replace(/^\uFEFF/, '');
+    const lines = clean.split('\n');
+
+    // Row 0 = metadata, Row 1 = headers
+    const result = Papa.parse(lines.slice(1).join('\n'), {
+      header: true,
+      skipEmptyLines: true,
+      dynamicTyping: false
+    });
+
+    const headers = result.meta.fields || [];
+    logS(`${result.data.length.toLocaleString()} total terms in file`, 'info');
+
+    const rankKey  = headers.find(h => h.includes('Search Frequency Rank'));
+    const termKey  = headers.find(h => h.includes('Search Term') && !h.includes('Rank'));
+    const cat1Key  = headers.find(h => h.includes('Top Clicked Category No. 1'));
+    const cat2Key  = headers.find(h => h.includes('Top Clicked Category No. 2'));
+    const asin1Key = headers.find(h => h.includes('Product No. 1: ASIN'));
+    const title1Key= headers.find(h => h.includes('Product No. 1: Product Title'));
+    const cs1Key   = headers.find(h => h.includes('Product No. 1: Click Share'));
+    const cvr1Key  = headers.find(h => h.includes('Product No. 1: Conversion Share'));
+    const asin2Key = headers.find(h => h.includes('Product No. 2: ASIN'));
+    const asin3Key = headers.find(h => h.includes('Product No. 3: ASIN'));
+
+    // Filter to Hasbro-relevant terms only + top 500 platform terms
+    const rows = [];
+    const top500 = [];
+
+    result.data.forEach(r => {
+      const rank = parseInt(r[rankKey]) || null;
+      const term = String(r[termKey]||'').trim();
+      if (!rank || !term) return;
+
+      // Always include top 500 platform terms
+      if (rank <= 500) {
+        top500.push({
+          week_start: weekStart,
+          term,
+          rank,
+          brand_classified: classifySearchTerm(term) || 'PLATFORM',
+          category: 'TOP500',
+          top_clicked_category: String(r[cat1Key]||'').replace('_',' '),
+          asin1: String(r[asin1Key]||'').trim()||null,
+          product_title_1: String(r[title1Key]||'').trim().substring(0,200)||null,
+          click_share_1: parseFloat(r[cs1Key])||null,
+          cvr_1: parseFloat(r[cvr1Key])||null,
+          asin2: String(r[asin2Key]||'').trim()||null,
+          asin3: String(r[asin3Key]||'').trim()||null,
+          est_weekly_searches: estimateSearchVolume(rank)
+        });
+        return;
+      }
+
+      // For remaining terms, filter to Hasbro-relevant only
+      const brand = classifySearchTerm(term);
+      if (!brand) return;
+
+      rows.push({
+        week_start: weekStart,
+        term,
+        rank,
+        brand_classified: brand,
+        category: 'BRAND',
+        top_clicked_category: String(r[cat1Key]||'').replace('_',' '),
+        asin1: String(r[asin1Key]||'').trim()||null,
+        product_title_1: String(r[title1Key]||'').trim().substring(0,200)||null,
+        click_share_1: parseFloat(r[cs1Key])||null,
+        cvr_1: parseFloat(r[cvr1Key])||null,
+        asin2: String(r[asin2Key]||'').trim()||null,
+        asin3: String(r[asin3Key]||'').trim()||null,
+        est_weekly_searches: estimateSearchVolume(rank)
+      });
+    });
+
+    const allRows = [...top500, ...rows];
+    logS(`✓ ${top500.length} top-500 platform terms + ${rows.length} Hasbro brand terms = ${allRows.length} total`, 'ok');
+
+    // Brand breakdown
+    const brandCounts = {};
+    rows.forEach(r => { brandCounts[r.brand_classified] = (brandCounts[r.brand_classified]||0)+1; });
+    Object.entries(brandCounts).sort((a,b)=>b[1]-a[1]).forEach(([b,n]) => logS(`  ${b}: ${n} terms`, 'ok'));
+
+    if (!allRows.length) throw new Error('No rows parsed');
+
+    // Delete existing and upload
+    await sbDelete(`/rest/v1/brand_health_search_terms?week_start=eq.${weekStart}`);
+    const BATCH = 500;
+    for (let i = 0; i < allRows.length; i += BATCH) {
+      await sbPost('/rest/v1/brand_health_search_terms', allRows.slice(i, i + BATCH));
+      logS(`Uploaded ${Math.min(i+BATCH, allRows.length)}/${allRows.length}...`);
+    }
+    logS(`✅ Done! ${allRows.length} terms uploaded for week ${weekStart}`, 'ok');
+
+  } catch(err) {
+    logS('❌ Error: ' + err.message, 'err');
+    console.error(err);
+  }
+}
+function logS(msg, type='') { log(msg, type, 'search-log'); }
+
+// ─── SUPABASE HELPERS ─────────────────────────────────────────
+function sbFetch(path){return fetch(SUPABASE_URL+path,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Range':'0-1999','Prefer':'count=none'}}).then(r=>r.json()).then(d=>Array.isArray(d)?d:[]);}
+async function sbDelete(path){
+  const r=await fetch(SUPABASE_URL+path,{method:'DELETE',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Prefer':'return=minimal'}});
+  if(r.ok||r.status===204)return;
+  if(r.status===500){
+    const match=path.match(/\/rest\/v1\/(\w+)\?week_start=eq\.([0-9-]+)/);
+    if(match){
+      const rpc=await fetch(SUPABASE_URL+'/rest/v1/rpc/delete_by_week',{
+        method:'POST',
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({p_table:match[1],p_week:match[2]})
+      });
+      if(rpc.ok||rpc.status===204)return;
+    }
+  }
+  throw new Error('Delete failed: '+r.status);
+}
+async function sbPost(path,body,opts={}){
+  const r=await fetch(SUPABASE_URL+path,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Prefer':opts.prefer||'return=minimal'},body:JSON.stringify(body)});
+  if(!r.ok){const e=await r.text();throw new Error('Upload failed: '+e);}
+}
+
+function formatDate(d){const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 </script>
-</main>
+</body>
+</html>
