@@ -352,7 +352,7 @@ async function loadPreOrders(){
 
     // Only need last 4 weeks of snapshots for ordered/oos data
     const [summary, recentSnaps] = await Promise.all([
-      sbFetch('/rest/v1/pre_order_analysis?select=*', 50000),
+      sbFetch('/rest/v1/pre_order_analysis?select=*&total_ever_ordered=gt.0', 50000),
       sbFetch(`/rest/v1/brand_health_snapshots?select=asin,market,week_start,ordered_revenue,dispatched_revenue,oos_pct&week_start=in.(${recentWeeks.join(',')})`, 30000)
     ]);
 
