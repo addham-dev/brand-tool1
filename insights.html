@@ -369,6 +369,9 @@ async function loadPreOrders(){
     });
 
     const results = [];
+    console.log('Summary rows:', summary.length, 'RecentSnaps:', recentSnaps.length, 'RecentWeeks:', recentWeeks, 'Cutoff:', cutoff);
+    // Log first few summary rows for debugging
+    summary.slice(0,3).forEach(a=>console.log('Sample view row:', JSON.stringify(a)));
     summary.forEach(a=>{
       const k = a.asin+'||'+(a.market||'');
       const recent = recentMap[k]||{ordered:0,dispatched:0,oosSum:0,oosCount:1};
