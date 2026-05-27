@@ -340,7 +340,7 @@ async function loadPreOrders(){
     // Single SQL function call — does all aggregation server-side
     const data = await sbFetch('/rest/v1/brand_health_preorders?select=*&order=ordered_revenue.desc', 5000);
 
-    const preOrders = data.filter(r=>r.classification==='PRE-ORDER').sort((a,b)=>b.ordered_revenue-a.ordered_revenue);
+    const preOrders = data.sort((a,b)=>b.ordered_revenue-a.ordered_revenue);
     const fC = v => v>=1000000?'€'+(v/1000000).toFixed(1)+'M':v>=1000?'€'+(v/1000).toFixed(1)+'K':'€'+Math.round(v);
     const fU = v => v>=1000?(v/1000).toFixed(1)+'K':Math.round(v).toLocaleString();
     const totalPreRev = preOrders.reduce((s,r)=>s+(r.ordered_revenue||0),0);
