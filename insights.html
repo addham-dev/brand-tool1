@@ -106,7 +106,8 @@
 </div>
 
 <main>
-  <div id="search-section">
+  <div id="search-section" style="display:block">
+    <div id="search-loading" class="loading">Loading search terms data...</div>
     <div id="search-loading" class="loading">Loading search terms data...</div>
     <div id="search-content" style="display:none">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
@@ -186,13 +187,10 @@ async function init(){
 
 function sbFetch(path, limit=10000){
   const sep=path.indexOf('?')>=0?'&':'?';
-  const url = SUPABASE_URL+path+sep+'limit='+limit;
-  return fetch(url,{
-    headers:{
-      'apikey':SUPABASE_KEY,
-      'Authorization':'Bearer '+SUPABASE_KEY
-    }
-  }).then(r=>{
+  return fetch(SUPABASE_URL+path+sep+'limit='+limit,{headers:{
+    'apikey':SUPABASE_KEY,
+    'Authorization':'Bearer '+SUPABASE_KEY
+  }}).then(r=>{
     if(!r.ok) throw new Error('Supabase '+r.status);
     return r.json();
   }).then(d=>Array.isArray(d)?d:[]).catch(e=>{console.warn('sbFetch:',e.message);return[];});
@@ -329,9 +327,9 @@ function formatDate(d){if(!d)return'—';const p=d.split('-');return p[2]+'/'+p[
 
 function setSubTab(tab,btn){
   document.querySelectorAll('.sub-tab').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  document.getElementById('search-section').style.display = tab==='search'?'':'none';
-  document.getElementById('preorder-section').style.display = tab==='preorder'?'':'none';
+  btn.classList.add('active');
+  document.getElementById('search-section').style.display = tab==='search'?'block':'none';
+  document.getElementById('preorder-section').style.display = tab==='preorder'?'block':'none';
   if(tab==='preorder' && !preorderLoaded) loadPreOrders();
 }
 
@@ -341,72 +339,148 @@ async function loadPreOrders(){
   const loading = document.getElementById('preorder-loading');
   const content = document.getElementById('preorder-content');
   loading.style.display='block';
-  try{
-    // Single SQL function call — does all aggregation server-side
-    const data = await sbFetch('/rest/v1/brand_health_preorders?select=*&order=ordered_revenue.desc', 5000);
 
-    const preOrders = data.filter(r=>r.classification==='PRE-ORDER').sort((a,b)=>b.ordered_revenue-a.ordered_revenue);
-    const fC = v => v>=1000000?'€'+(v/1000000).toFixed(1)+'M':v>=1000?'€'+(v/1000).toFixed(1)+'K':'€'+Math.round(v);
-    const fU = v => v>=1000?(v/1000).toFixed(1)+'K':Math.round(v).toLocaleString();
-    const totalPreRev = preOrders.reduce((s,r)=>s+(r.ordered_revenue||0),0);
-    const totalPreUnits = preOrders.reduce((s,r)=>s+(r.ordered_units||0),0);
-    const BL={GAMES:'Games',PLAY_DOH:'Play-Doh',MONOPOLY:'Monopoly',BEYBLADE:'Beyblade',NERF:'Nerf',TRANSFORMERS:'Transformers',MARVEL:'Marvel',STAR_WARS:'Star Wars',PEPPA_PIG:'Peppa Pig',DISNEY_KIDS:'Disney Kids'};
+  try{
+    // Fetch all snapshots with ordered vs dispatched data
+    const data = await sbFetch('/rest/v1/brand_health_snapshots?select=asin,product_title,brand_classified,market,week_start,ordered_revenue,dispatched_revenue,dispatched_units,oos_pct,unfilled_units&order=week_start.asc', 50000);
+
+    // Build ASIN history
+    const asinMap = {};
+    data.forEach(r=>{
+      const k = r.asin+'||'+(r.market||'');
+      if(!asinMap[k]) asinMap[k]={asin:r.asin,title:r.product_title,brand:r.brand_classified,market:r.market,weeks:[],everHadStock:false};
+      const hasStock = (r.oos_pct||0)<100 && (r.dispatched_units||0)>0;
+      if(hasStock) asinMap[k].everHadStock=true;
+      asinMap[k].weeks.push({week:r.week_start,ordered:r.ordered_revenue||0,dispatched:r.dispatched_revenue||0,oos:r.oos_pct||0,unfilled:r.unfilled_units||0});
+    });
+
+    // Get latest 4 weeks
+    const allWeeks = [...new Set(data.map(r=>r.week_start))].sort().reverse();
+    const recentWeeks = allWeeks.slice(0,4);
+
+    // Classify each ASIN
+    const results = [];
+    Object.values(asinMap).forEach(a=>{
+      const recentRows = a.weeks.filter(w=>recentWeeks.includes(w.week));
+      const totalOrdered = recentRows.reduce((s,w)=>s+w.ordered,0);
+      const totalDispatched = recentRows.reduce((s,w)=>s+w.dispatched,0);
+      const gap = Math.max(0,totalOrdered-totalDispatched);
+      const avgOos = recentRows.length ? recentRows.reduce((s,w)=>s+w.oos,0)/recentRows.length : 0;
+
+      if(totalOrdered < 10) return;
+
+      let classification, confidence, reason;
+      if(!a.everHadStock && gap > 0){
+        classification='PRE-ORDER'; confidence='High';
+        reason='No prior stock history — ordered revenue ahead of first shipment';
+      } else if(a.everHadStock && avgOos>=80 && gap>0){
+        classification='OOS GAP'; confidence='High';
+        reason='Previously stocked, now '+avgOos.toFixed(0)+'% OOS — supply gap';
+      } else if(a.everHadStock && avgOos>=30 && gap>0){
+        classification='OOS GAP'; confidence='Medium';
+        reason='Partial OOS ('+avgOos.toFixed(0)+'%) driving gap';
+      } else if(gap < totalOrdered*0.05) return;
+      else { classification='NORMAL'; return; }
+
+      results.push({asin:a.asin,title:a.title,brand:a.brand,market:a.market,ordered:totalOrdered,dispatched:totalDispatched,gap,oos:avgOos,classification,confidence,reason});
+    });
+
+    results.sort((a,b)=>b.ordered-a.ordered);
+
+    const preOrders = results.filter(r=>r.classification==='PRE-ORDER');
+    const oosGaps = results.filter(r=>r.classification==='OOS GAP');
+    const fC = v => v>=1000000?'€'+(v/1000000).toFixed(1)+'M':v>=1000?'€'+(v/1000).toFixed(1)+'K':'€'+v.toFixed(0);
+    const totalPreRev = preOrders.reduce((s,r)=>s+r.ordered,0);
+    const totalOosGap = oosGaps.reduce((s,r)=>s+r.gap,0);
+
+    const BRAND_LABELS={GAMES:'Games',PLAY_DOH:'Play-Doh',MONOPOLY:'Monopoly',BEYBLADE:'Beyblade',NERF:'Nerf',TRANSFORMERS:'Transformers',MARVEL:'Marvel',STAR_WARS:'Star Wars',PEPPA_PIG:'Peppa Pig',DISNEY_KIDS:'Disney Kids'};
 
     let html = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-        <div><div class="section-title">📦 Pre-Order Tracker</div></div>
-        <span class="week-badge-small">Last 4 weeks — auto-updated weekly</span>
+        <div><div class="section-title">Pre-Order Tracker & OOS Revenue Gap</div></div>
+        <span class="week-badge-small">Last 4 weeks</span>
       </div>
       <div style="background:var(--blue-light);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:12px;color:var(--text2);margin-bottom:20px;line-height:1.6;">
-        <b style="color:var(--text)">How this works:</b> Shows ASINs first seen within the last 12 weeks with ordered revenue but zero dispatch history — genuine pre-orders, revenue secured ahead of first shipment. Once an ASIN dispatches it automatically graduates off this list.
+        <b style="color:var(--text)">How this works:</b> ASINs with no prior stock history showing ordered revenue = pre-orders (positive — revenue in advance of shipment). ASINs that previously had stock now OOS = supply gap revenue at risk. Updates automatically each week.
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
         <div class="stat-card" style="border-color:var(--purple)">
           <div class="stat-label">Pre-Order Revenue</div>
           <div class="stat-value" style="color:var(--purple)">${fC(totalPreRev)}</div>
-          <div class="stat-sub">${preOrders.length} ASINs across EU5 ✅</div>
+          <div class="stat-sub">${preOrders.length} ASINs — secured ahead of shipment ✅</div>
         </div>
-        <div class="stat-card" style="border-color:var(--blue)">
-          <div class="stat-label">Pre-Order Units</div>
-          <div class="stat-value" style="color:var(--blue)">${fU(totalPreUnits)}</div>
-          <div class="stat-sub">Ordered, awaiting first shipment</div>
+        <div class="stat-card" style="border-color:var(--red)">
+          <div class="stat-label">OOS Revenue Gap</div>
+          <div class="stat-value" style="color:var(--red)">${fC(totalOosGap)}</div>
+          <div class="stat-sub">${oosGaps.length} ASINs — ordered but can't ship ⚠️</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Avg. Revenue / ASIN</div>
-          <div class="stat-value" style="font-size:20px;color:var(--text)">${preOrders.length?fC(totalPreRev/preOrders.length):'—'}</div>
-          <div class="stat-sub">Across all pre-order lines</div>
+          <div class="stat-label">Data window</div>
+          <div class="stat-value" style="font-size:16px;color:var(--text)">${recentWeeks[recentWeeks.length-1]?.slice(5).replace('-','/')}</div>
+          <div class="stat-sub">to ${recentWeeks[0]?.slice(5).replace('-','/')} (4 weeks)</div>
         </div>
       </div>`;
 
+    // Pre-orders table
     if(preOrders.length){
-      html += `<div class="table-wrap"><div class="table-scroll"><table class="data-table">
-        <thead><tr>
-          <th>ASIN</th><th>Product</th><th>Brand</th><th>Mkt</th>
-          <th class="r">Ordered Rev</th><th class="r">Ordered Units</th><th>First Seen</th>
-        </tr></thead><tbody>
-        ${preOrders.map(r=>`<tr style="background:rgba(155,89,182,0.03)">
+      html += `<div style="margin-bottom:24px;"><div class="section-title">📦 Pre-Order ASINs — Revenue Secured Ahead of Shipment</div>
+        <div class="table-wrap"><div class="table-scroll"><table class="data-table">
+          <thead><tr>
+            <th>ASIN</th><th>Product</th><th>Brand</th><th>Market</th>
+            <th class="r">Ordered Rev</th><th class="r">Dispatched</th><th>Confidence</th>
+          </tr></thead><tbody>`;
+      preOrders.forEach(r=>{
+        html+=`<tr style="background:rgba(155,89,182,0.03)">
           <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--blue)">${r.asin}</td>
-          <td style="font-size:11px;color:var(--text2);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.product_title||''}">${r.product_title||'—'}</td>
-          <td><span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--blue-light);color:var(--blue-dark)">${BL[r.brand_classified]||r.brand_classified||'—'}</span></td>
+          <td style="font-size:11px;color:var(--text2);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.title}">${r.title}</td>
+          <td><span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--blue-light);color:var(--blue-dark)">${BRAND_LABELS[r.brand]||r.brand}</span></td>
           <td><span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--blue-light);color:var(--blue-dark)">${r.market}</span></td>
-          <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:700;color:var(--purple)">${fC(r.ordered_revenue||0)}</td>
-          <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:700;color:var(--blue)">${fU(r.ordered_units||0)}</td>
-          <td style="font-size:11px;color:var(--text2)">${r.first_week_ever||'—'}</td>
-        </tr>`).join('')}
-        </tbody></table></div></div>`;
-    } else {
-      html += '<div class="empty">✅ No active pre-orders detected in the last 4 weeks.</div>';
+          <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:700;color:var(--purple)">${fC(r.ordered)}</td>
+          <td style="text-align:right;font-family:'DM Mono',monospace">${fC(r.dispatched)}</td>
+          <td><span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--purple-bg);color:var(--purple)">${r.confidence}</span></td>
+        </tr>`;
+      });
+      html+=`</tbody></table></div></div></div>`;
+    }
+
+    // OOS gaps table
+    if(oosGaps.length){
+      html += `<div><div class="section-title">⚠️ OOS Revenue Gap — Ordered But Cannot Ship</div>
+        <div class="table-wrap"><div class="table-scroll"><table class="data-table">
+          <thead><tr>
+            <th>ASIN</th><th>Product</th><th>Brand</th><th>Market</th>
+            <th class="r">OOS %</th><th class="r">Ordered Rev</th><th class="r">Gap</th><th>Confidence</th>
+          </tr></thead><tbody>`;
+      oosGaps.forEach(r=>{
+        html+=`<tr style="background:rgba(232,66,63,0.03)">
+          <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--blue)">${r.asin}</td>
+          <td style="font-size:11px;color:var(--text2);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.title}">${r.title}</td>
+          <td><span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--blue-light);color:var(--blue-dark)">${BRAND_LABELS[r.brand]||r.brand}</span></td>
+          <td><span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--blue-light);color:var(--blue-dark)">${r.market}</span></td>
+          <td style="text-align:right;font-weight:700;color:var(--red)">${r.oos.toFixed(0)}%</td>
+          <td style="text-align:right;font-family:'DM Mono',monospace">${fC(r.ordered)}</td>
+          <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:700;color:var(--red)">${fC(r.gap)}</td>
+          <td><span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--red-bg);color:var(--red)">${r.confidence}</span></td>
+        </tr>`;
+      });
+      html+=`</tbody></table></div></div></div>`;
+    }
+
+    if(!preOrders.length && !oosGaps.length){
+      html += '<div class="empty">✅ No significant pre-orders or OOS gaps detected in the last 4 weeks.</div>';
     }
 
     loading.style.display='none';
     content.innerHTML=html;
     content.style.display='block';
     preorderLoaded=true;
+
   }catch(e){
-    loading.textContent='Error: '+e.message;
+    loading.textContent='Error loading data: '+e.message;
   }
 }
 
 init();
 </script>
-</main>
+</body>
+</html>
