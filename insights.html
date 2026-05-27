@@ -359,7 +359,7 @@ async function loadPreOrders(){
 
     // Step 1: Get recent 4 weeks snapshots for ordered/oos data (small targeted query)
     const recentSnaps = await sbFetch(
-      `/rest/v1/brand_health_snapshots?select=asin,product_title,brand_classified,market,week_start,ordered_revenue,dispatched_revenue,dispatched_units,oos_pct&week_start=in.(${recentWeeks.join(',')})`,
+      `/rest/v1/brand_health_snapshots?select=asin,product_title,brand_classified,market,week_start,ordered_revenue,dispatched_revenue,dispatched_units,oos_pct&week_start=in.(${recentWeeks.join(',')})&order=week_start.desc`,
       30000
     );
 
@@ -415,6 +415,10 @@ async function loadPreOrders(){
 
     const results = [];
     console.log('Candidates:', candidateAsins.length, 'HistoryRows:', historyRows.length);
+    // Debug specific ASIN
+    const debugKey = 'B0GWRFD7GJ||GB';
+    if(recentMap[debugKey]) console.log('RecentMap F1:', JSON.stringify(recentMap[debugKey]));
+    if(dispatchHistory[debugKey]) console.log('DispatchHistory F1:', JSON.stringify(dispatchHistory[debugKey]));
 
     Object.entries(recentMap).forEach(([k, r])=>{
       if(r.ordered < 10) return;
