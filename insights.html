@@ -247,10 +247,13 @@ function getFilteredData(){
   else if(currentView==='brand') data=data.filter(d=>d.category==='BRAND');
   else if(currentView==='toys') data=data.filter(d=>d.category==='BRAND'&&(d.top_clicked_category||'').toLowerCase().includes('toy'));
   if(currentView!=='top500'&&currentBrand!=='ALL') data=data.filter(d=>d.brand_classified===currentBrand);
-  // Deduplicate by term — keep first occurrence (highest click share row)
-  const seen=new Set();
-  data=data.filter(d=>{if(seen.has(d.term))return false;seen.add(d.term);return true;});
-  return data;
+  // Deduplicate by term — keep row with highest search volume (lowest rank number)
+  const termMap={};
+  data.forEach(d=>{
+    const t=d.term;
+    if(!termMap[t]||d.rank<termMap[t].rank) termMap[t]=d;
+  });
+  return Object.values(termMap);
 }
 
 function renderTable(){
