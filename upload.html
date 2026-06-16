@@ -208,17 +208,17 @@
 
   <!-- ADS BULK UPLOAD -->
   <div class="section-card ad-border">
-    <div class="card-title ad">🎯 Weekly Ads Reports — Executive Summary</div>
-    <div class="note-box ad-note">Drop one or more Executive Summary .xlsx files. Week dates are auto-detected from inside each file — works with both Advertising Console and Pacvue exports.</div>
+    <div class="card-title ad">🎯 Weekly Ads Report — Pacvue Query Report</div>
+    <div class="note-box ad-note">Drop your weekly Pacvue <b>Query report</b> .xlsx file. Week is auto-detected from the filename. Drop multiple files to bulk upload multiple weeks at once.</div>
     <div class="ads-drop" id="ads-dropzone" ondragover="adsDragOver(event)" ondragleave="adsDragLeave()" ondrop="adsDrop(event)" onclick="document.getElementById('ads-file-input').click()">
       <div style="font-size:32px;margin-bottom:8px;">📊</div>
-      <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--ad-color);margin-bottom:4px;">Drop Executive Summary files here</div>
+      <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--ad-color);margin-bottom:4px;">Drop Pacvue Query report files here</div>
       <div style="font-size:12px;color:var(--text2);">Multiple files supported — week auto-detected from each file</div>
       <input type="file" id="ads-file-input" accept=".xlsx" multiple onchange="adsFileSelect(event)">
     </div>
     <div id="ads-queue-list" style="margin-top:8px;"></div>
     <button class="process-btn ad-btn" id="ads-process-btn" onclick="processAdsQueue()" disabled style="margin-top:16px;">🎯 Process & Upload All Ads Reports</button>
-    <div class="log-area" id="ads-log" style="height:200px;"><span class="log-line">Drop Executive Summary files above.</span></div>
+    <div class="log-area" id="ads-log" style="height:200px;"><span class="log-line">Drop your weekly Pacvue Query report above.</span></div>
   </div>
 
   <!-- QUARTERLY LOYALTY -->
