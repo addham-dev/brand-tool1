@@ -551,7 +551,7 @@ const ADS_BRAND_RULES = [
   { id:'BEYBLADE',    fn: b=>/beyblade|bey blade/i.test(b) },
   { id:'NERF',        fn: b=>/nerf|super soaker/i.test(b) },
   { id:'MARVEL',      fn: b=>/^marvel$/i.test(b.trim()) },
-  { id:'STAR_WARS',   fn: b=>/star wars/i.test(b) },
+  { id:'STAR_WARS',   fn: b=>/star wars|star_wars|_star_|star brand/i.test(b) },
 ];
 
 const COUNTRY_MAP = {
@@ -639,7 +639,8 @@ async function parseExecSummary(file) {
         if (hi===-1) throw new Error('Could not find header row in Performance Detail sheet');
         const headers = raw[hi].map(h=>String(h).trim());
         const gc = (...names) => headers.findIndex(h=>names.some(n=>h.toLowerCase().includes(n.toLowerCase())));
-        const brandCol = gc('Brand');
+        const brandCol = gc('Portfolio name','Brand');
+        const portfolioCol = gc('Portfolio name');
         const geoCol   = gc('Marketing Geography','Geography');
         const posCol   = gc('Nominal POS','Sales');
         const spendCol = gc('Spend');
@@ -656,6 +657,7 @@ async function parseExecSummary(file) {
           if (!market) continue;
           const brand = get(brandCol);
           const freeForm = get(ffCol);
+          // Use portfolio name as primary classifier if it contains brand info
           const bid = classifyAdsBrand(brand, freeForm);
           if (!bid) continue;
           results.push({brand_classified:bid, market, ad_revenue:num(posCol), ad_spend:num(spendCol), ad_impressions:num(impCol), ad_clicks:num(clkCol)});
