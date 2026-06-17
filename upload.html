@@ -356,8 +356,8 @@ function detectWeekFromFilename(name) {
     const [y2,mo2,d2] = m[2].split('-');
     return { start:m[1], end:m[2], label:`${d1}/${mo1}/${y1} – ${d2}/${mo2}/${y2}` };
   }
-  // Pacvue: YYYY-MM-DD-YYYY-MM-DD (Pacvue weeks start Monday, Amazon VC weeks start Sunday — subtract 1 day)
-  m = name.match(/(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})/);
+  // Pacvue: _YYYY-MM-DD-YYYY-MM-DD (Pacvue weeks start Monday, Amazon VC weeks start Sunday — subtract 1 day)
+  m = name.match(/_(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})/);
   if (m) {
     const startD = new Date(m[1] + 'T12:00:00');
     startD.setDate(startD.getDate() - 1);
