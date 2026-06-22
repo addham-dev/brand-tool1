@@ -163,7 +163,6 @@
     .cvr-green{color:var(--green);font-weight:700;}
     .cvr-amber{color:var(--amber);font-weight:700;}
     .cvr-red{color:var(--red);font-weight:700;}
-    /* ADAM */
     #adam-fab{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;align-items:flex-end;font-family:'Inter',sans-serif;}
     #adam-trigger{display:flex;align-items:center;gap:8px;background:#1F1646;color:#fff;border:none;border-radius:999px;padding:8px 16px 8px 8px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.22);font-size:13px;font-weight:600;transition:transform 0.15s,box-shadow 0.15s;position:relative;font-family:'Inter',sans-serif;}
     #adam-trigger:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(0,0,0,0.28);}
@@ -322,7 +321,6 @@
   </div>
 </main>
 
-<!-- ADAM — remove this block and END ADAM to revert -->
 <div id="adam-fab">
   <div id="adam-panel">
     <div id="adam-header">
@@ -353,7 +351,6 @@
     <span id="adam-pulse"></span>
   </button>
 </div>
-<!-- END ADAM -->
 
 <script>
 var SUPABASE_URL='https://rycqfwzgvpzwhphgclpb.supabase.co';
@@ -363,7 +360,7 @@ var BRAND_COLORS={DISNEY_KIDS:'#9B59B6',MARVEL:'#E8423F',STAR_WARS:'#1a1a2e',MON
 var BRAND_LABELS={DISNEY_KIDS:'Disney Kids',MARVEL:'Marvel / Spider-Man',STAR_WARS:'Star Wars',MONOPOLY:'Monopoly',GAMES:'Games',PLAY_DOH:'Play-Doh',PEPPA_PIG:'Peppa Pig',TRANSFORMERS:'Transformers',BEYBLADE:'Beyblade',NERF:'Nerf',OTHER:'Other'};
 var BRAND_ORDER=['DISNEY_KIDS','MARVEL','STAR_WARS','MONOPOLY','GAMES','PLAY_DOH','PEPPA_PIG','TRANSFORMERS','BEYBLADE','NERF','OTHER'];
 var currency='eur',currentMarket='ALL',currentSort='revenue',selectedBrand=null,currentTab='revenue';
-var allRows=[],loyaltyData={},adsData={},allWeeks=[],allRowsAllWeeks=[],adsDataAllWeeks={},adsCoverageData={},searchTermsData=[];
+var allRows=[],loyaltyData={},adsData={},allWeeks=[],adsDataAllWeeks={},adsCoverageData={},searchTermsData=[];
 var periodMode='week',currentPeriod=null;
 
 function oosClass(p){return p<=6?'oos-green':p<=9?'oos-amber':'oos-red';}
@@ -376,11 +373,14 @@ function getYearKey(d){return String(new Date(d).getFullYear());}
 function periodKey(d){if(periodMode==='week')return d;if(periodMode==='month')return getMonthKey(d);if(periodMode==='quarter')return getQuarterKey(d);return getYearKey(d);}
 function periodLabel(k){if(periodMode==='week'){var p=k.split('-');return p[2]+'/'+p[1]+'/'+p[0];}return k;}
 
+// THE FIX: Range header forces Supabase to return up to 50000 rows
 function sbFetch(path){
   var sep=path.indexOf('?')>=0?'&':'?';
   return fetch(SUPABASE_URL+path+sep+'limit=15000',{headers:{
     'apikey':SUPABASE_KEY,
-    'Authorization':'Bearer '+SUPABASE_KEY
+    'Authorization':'Bearer '+SUPABASE_KEY,
+    'Range':'0-49999',
+    'Prefer':'count=none'
   }})
   .then(function(r){
     if(!r.ok) throw new Error('Supabase '+r.status+': '+path.split('?')[0]);
@@ -390,13 +390,12 @@ function sbFetch(path){
   .catch(function(e){console.warn('sbFetch error:',e.message);return[];});
 }
 
-var _initRunning = false;
+var _initRunning=false;
 
 async function init(){
-  if (_initRunning) return;
-  _initRunning = true;
+  if(_initRunning)return;
+  _initRunning=true;
   try{
-    // Phase 1 — critical path only (parallel, fast)
     var results=await Promise.all([
       sbFetch('/rest/v1/brand_health_weeks?select=*&order=week_start.desc'),
       sbFetch('/rest/v1/brand_health_loyalty?select=*&order=uploaded_at.desc'),
@@ -408,15 +407,13 @@ async function init(){
     loyaltyRes.forEach(function(r){if(!loyaltyData[r.brand_classified])loyaltyData[r.brand_classified]=r;});
     adsDataAllWeeks={};
     adsRes.forEach(function(r){
-      // Normalise to Sunday: if stored as Saturday (day=6), shift +1 day to Sunday
       var d=new Date(r.week_start);
       if(d.getDay()===6){d.setDate(d.getDate()+1);}
       var normWs=d.toISOString().split('T')[0];
       var k=normWs+'||'+r.brand_classified+'||'+(r.market||'ALL');
       if(!adsDataAllWeeks[k]){
         adsDataAllWeeks[k]=Object.assign({},r,{week_start:normWs});
-      } else {
-        // Accumulate if same brand/market/week
+      }else{
         adsDataAllWeeks[k].ad_revenue=(adsDataAllWeeks[k].ad_revenue||0)+(r.ad_revenue||0);
         adsDataAllWeeks[k].ad_spend=(adsDataAllWeeks[k].ad_spend||0)+(r.ad_spend||0);
         adsDataAllWeeks[k].ad_clicks=(adsDataAllWeeks[k].ad_clicks||0)+(r.ad_clicks||0);
@@ -427,17 +424,14 @@ async function init(){
     if(!allWeeks.length){document.getElementById('loading-screen').style.display='none';document.getElementById('no-data-screen').style.display='block';return;}
     buildPeriodSelect();
     await loadPeriod(currentPeriod);
-
-    // Phase 2 — background load (non-blocking, after dashboard is visible)
     setTimeout(async function(){
       try{var cr=await sbFetch('/rest/v1/brand_health_ads_coverage?select=*');if(Array.isArray(cr)){adsCoverageData={};cr.forEach(function(r){if(!adsCoverageData[r.brand_classified])adsCoverageData[r.brand_classified]={};adsCoverageData[r.brand_classified][r.market]={total:r.total_asins,sp:r.sp_asins,sb:r.sb_asins};});}}catch(e){}
       try{var sr=await sbFetch('/rest/v1/brand_health_search_terms?select=*&order=week_start.desc,rank.asc');if(Array.isArray(sr)){searchTermsData=sr;renderBrandCards();}}catch(e){}
-    }, 100);
-
+    },100);
   }catch(err){
     document.getElementById('loading-screen').innerHTML='<div style="color:var(--red);font-size:12px;text-align:center;padding:40px">Error: '+err.message+'</div>';
-  } finally {
-    _initRunning = false;
+  }finally{
+    _initRunning=false;
   }
 }
 
@@ -457,45 +451,37 @@ async function loadPeriod(periodVal){
   document.getElementById('main-content').style.display='none';
   var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){return periodKey(ws)===periodVal;});
   var SNAP_COLS='week_start,asin,product_title,brand_classified,market,dispatched_revenue,dispatched_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy';
-
   if(!weekStarts.length){
     document.getElementById('loading-screen').style.display='none';
     document.getElementById('main-content').style.display='grid';
-    buildDashboard();
-    return;
+    buildDashboard();return;
   }
-
   if(periodMode==='week'&&weekStarts.length===1){
     allRows=await sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+weekStarts[0]+'&select='+SNAP_COLS);
-    adsData={};
-    Object.keys(adsDataAllWeeks).forEach(function(k){
-      var parts=k.split('||'),ws=parts[0],bid=parts[1],mkt=parts[2]||'ALL';
-      if(ws!==weekStarts[0])return;
-      var v=adsDataAllWeeks[k];
-      if(!adsData[bid])adsData[bid]={};
-      if(!adsData[bid][mkt])adsData[bid][mkt]={ad_revenue:0,ad_spend:0,ad_glance_views:0};
-      adsData[bid][mkt].ad_revenue+=(v.ad_revenue||0);
-      adsData[bid][mkt].ad_spend+=(v.ad_spend||0);
-      adsData[bid][mkt].ad_glance_views+=(v.ad_glance_views||0);
-    });
-    await loadPriorData();
-
   }else{
-    var weekArrays=await Promise.all(weekStarts.map(function(ws){return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select='+SNAP_COLS);}));
+    // Fetch each week in parallel then combine
+    var weekArrays=await Promise.all(weekStarts.map(function(ws){
+      return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select='+SNAP_COLS);
+    }));
     allRows=weekArrays.reduce(function(a,b){return a.concat(b);},[]);
-    adsData={};
-    Object.keys(adsDataAllWeeks).forEach(function(k){
-      var parts=k.split('||'),ws=parts[0],bid=parts[1],mkt=parts[2]||'ALL';
-      if(weekStarts.indexOf(ws)===-1)return;
-      var v=adsDataAllWeeks[k];
-      if(!adsData[bid])adsData[bid]={};
-      if(!adsData[bid][mkt])adsData[bid][mkt]={ad_revenue:0,ad_spend:0,ad_glance_views:0};
-      adsData[bid][mkt].ad_revenue+=(v.ad_revenue||0);adsData[bid][mkt].ad_spend+=(v.ad_spend||0);adsData[bid][mkt].ad_glance_views+=(v.ad_glance_views||0);
-    });
-    // Load prior data for multi-week periods
-    await loadPriorData();
   }
-  var sel=document.getElementById('week-select');var selOpt=sel.options[sel.selectedIndex];
+  // Build ads for this period
+  adsData={};
+  Object.keys(adsDataAllWeeks).forEach(function(k){
+    var parts=k.split('||'),ws=parts[0],bid=parts[1],mkt=parts[2]||'ALL';
+    if(weekStarts.indexOf(ws)===-1)return;
+    var v=adsDataAllWeeks[k];
+    if(!adsData[bid])adsData[bid]={};
+    if(!adsData[bid][mkt])adsData[bid][mkt]={ad_revenue:0,ad_spend:0,ad_glance_views:0,ad_clicks:0,ad_impressions:0};
+    adsData[bid][mkt].ad_revenue+=(v.ad_revenue||0);
+    adsData[bid][mkt].ad_spend+=(v.ad_spend||0);
+    adsData[bid][mkt].ad_glance_views+=(v.ad_glance_views||0);
+    adsData[bid][mkt].ad_clicks+=(v.ad_clicks||0);
+    adsData[bid][mkt].ad_impressions+=(v.ad_impressions||0);
+  });
+  await loadPriorData();
+  var sel=document.getElementById('week-select');
+  var selOpt=sel.options[sel.selectedIndex];
   var badgeLabel=periodMode==='week'?(selOpt?selOpt.text:periodVal):periodMode==='month'?'Month: '+periodVal:periodMode==='quarter'?'Quarter: '+periodVal:'Year: '+periodVal;
   document.getElementById('week-badge').textContent=badgeLabel;
   document.getElementById('loading-screen').style.display='none';
@@ -508,108 +494,87 @@ function setPeriodMode(mode,btn){
   document.querySelectorAll('.period-tab').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
   buildPeriodSelect();
-  if(currentPeriod) loadPeriod(currentPeriod);
+  if(currentPeriod)loadPeriod(currentPeriod);
 }
-function getRows(brandId){var rows=allRows.filter(function(r){return r.brand_classified===brandId;});if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});return rows;}
 
-var currentComparison = 'wow'; // 'wow' | '4w' | 'yoy'
-var priorData = {};
+var currentComparison='wow';
+var priorData={};
 
-function setComparison(mode, btn) {
-  currentComparison = mode;
-  document.querySelectorAll('.comp-tab').forEach(function(b){ b.classList.remove('active'); });
+function setComparison(mode,btn){
+  currentComparison=mode;
+  document.querySelectorAll('.comp-tab').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
-  loadPriorData().then(function(){ buildDashboard(); });
+  loadPriorData().then(function(){buildDashboard();});
 }
 
-function getPriorPeriodWeekStarts(currentWeekStarts) {
-  var sorted = allWeeks.map(function(w){ return w.week_start; }).sort();
-
-  if (periodMode === 'week') {
-    var ws = currentWeekStarts[0]; if (!ws) return [];
-    var idx = sorted.indexOf(ws); if (idx < 0) return [];
-    if (currentComparison === 'wow') return idx >= 1 ? [sorted[idx-1]] : [];
-    if (currentComparison === '4w')  return idx >= 4 ? [sorted[idx-4]] : [];
-    if (currentComparison === 'yoy') {
-      var target = new Date(ws); target.setDate(target.getDate() - 364);
-      var best = null, bestDiff = Infinity;
-      sorted.forEach(function(w){ var d=Math.abs(new Date(w)-target); if(d<bestDiff&&d<=14*24*60*60*1000){bestDiff=d;best=w;} });
-      return best ? [best] : [];
+function getPriorPeriodWeekStarts(currentWeekStarts){
+  var sorted=allWeeks.map(function(w){return w.week_start;}).sort();
+  if(periodMode==='week'){
+    var ws=currentWeekStarts[0];if(!ws)return[];
+    var idx=sorted.indexOf(ws);if(idx<0)return[];
+    if(currentComparison==='wow')return idx>=1?[sorted[idx-1]]:[];
+    if(currentComparison==='4w')return idx>=4?[sorted[idx-4]]:[];
+    if(currentComparison==='yoy'){
+      var target=new Date(ws);target.setDate(target.getDate()-364);
+      var best=null,bestDiff=Infinity;
+      sorted.forEach(function(w){var d=Math.abs(new Date(w)-target);if(d<bestDiff&&d<=14*24*60*60*1000){bestDiff=d;best=w;}});
+      return best?[best]:[];
     }
-  } else {
-    // Monthly/quarterly/annual: map each current week to its equivalent prior period week
-    // WoW = 4 weeks back per week | 4W = 4 weeks | YoY = 52 weeks
-    var offset = currentComparison === 'yoy' ? 52 : currentComparison === '4w' ? 4 : 4;
-    var priorWeeks = [];
-    currentWeekStarts.forEach(function(ws) {
-      var idx = sorted.indexOf(ws);
-      if (idx >= offset) priorWeeks.push(sorted[idx - offset]);
-    });
+  }else{
+    var offset=currentComparison==='yoy'?52:4;
+    var priorWeeks=[];
+    currentWeekStarts.forEach(function(ws){var idx=sorted.indexOf(ws);if(idx>=offset)priorWeeks.push(sorted[idx-offset]);});
     return priorWeeks;
   }
-  return [];
+  return[];
 }
 
-var _priorToken = 0;
+var _priorToken=0;
 
-async function loadPriorData() {
-  var token = ++_priorToken; // increment token — any previous call will see its token is stale
-  priorData = {};
-
-  try {
-    var weekStarts = allWeeks.map(function(w){ return w.week_start; })
-      .filter(function(ws){ return periodKey(ws) === currentPeriod; });
-    if (!weekStarts.length || token !== _priorToken) return;
-
-    var priorWeekStarts = getPriorPeriodWeekStarts(weekStarts);
-    if (!priorWeekStarts.length || token !== _priorToken) return;
-
-    var results = await Promise.all(priorWeekStarts.map(function(ws) {
-      return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+
-        '&select=brand_classified,market,dispatched_revenue,glance_views');
+async function loadPriorData(){
+  var token=++_priorToken;
+  priorData={};
+  try{
+    var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){return periodKey(ws)===currentPeriod;});
+    if(!weekStarts.length||token!==_priorToken)return;
+    var priorWeekStarts=getPriorPeriodWeekStarts(weekStarts);
+    if(!priorWeekStarts.length||token!==_priorToken)return;
+    var results=await Promise.all(priorWeekStarts.map(function(ws){
+      return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=brand_classified,market,dispatched_revenue,glance_views');
     }));
-
-    // Only apply results if this is still the latest call
-    if (token !== _priorToken) return;
-    priorData = {};
-    results.forEach(function(rows) {
-      (rows||[]).forEach(function(r) {
-        var k = r.brand_classified + '||' + (r.market||'');
-        if (!priorData[k]) priorData[k] = { revenue:0, gviews:0 };
-        priorData[k].revenue += r.dispatched_revenue||0;
-        priorData[k].gviews  += r.glance_views||0;
+    if(token!==_priorToken)return;
+    priorData={};
+    results.forEach(function(rows){
+      (rows||[]).forEach(function(r){
+        var k=r.brand_classified+'||'+(r.market||'');
+        if(!priorData[k])priorData[k]={revenue:0,gviews:0};
+        priorData[k].revenue+=r.dispatched_revenue||0;
+        priorData[k].gviews+=r.glance_views||0;
       });
     });
-  } catch(e) {
-    console.warn('loadPriorData error:', e);
-    if (token === _priorToken) priorData = {};
-  }
+  }catch(e){console.warn('loadPriorData error:',e);if(token===_priorToken)priorData={};}
 }
 
 function aggregateBrand(brandId){
-  var rows=getRows(brandId);
+  var rows=allRows.filter(function(r){return r.brand_classified===brandId;});
+  if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});
   var revenue=0,units=0,gviews=0,unfilled=0,oosVals=[];
   rows.forEach(function(r){
-    var rev=r.dispatched_revenue||0;revenue+=rev;units+=r.dispatched_units||0;
-    var gv=r.glance_views||0;gviews+=gv;
-    unfilled+=r.unfilled_units||0;if(r.oos_pct!=null)oosVals.push(r.oos_pct);
+    revenue+=r.dispatched_revenue||0;
+    units+=r.dispatched_units||0;
+    gviews+=r.glance_views||0;
+    unfilled+=r.unfilled_units||0;
+    if(r.oos_pct!=null)oosVals.push(r.oos_pct);
   });
-
-  // Get comparison from pre-fetched priorData
-  var priorRevenue=0, priorGviews=0;
-  if (currentMarket === 'ALL') {
-    // Sum across all markets
-    ['GB','DE','FR','IT','ES'].forEach(function(mkt) {
-      var k = brandId + '||' + mkt;
-      if (priorData[k]) { priorRevenue += priorData[k].revenue; priorGviews += priorData[k].gviews; }
-    });
-  } else {
-    var k = brandId + '||' + currentMarket;
-    if (priorData[k]) { priorRevenue = priorData[k].revenue; priorGviews = priorData[k].gviews; }
+  var priorRevenue=0,priorGviews=0;
+  if(currentMarket==='ALL'){
+    ['GB','DE','FR','IT','ES'].forEach(function(mkt){var k=brandId+'||'+mkt;if(priorData[k]){priorRevenue+=priorData[k].revenue;priorGviews+=priorData[k].gviews;}});
+  }else{
+    var k=brandId+'||'+currentMarket;
+    if(priorData[k]){priorRevenue=priorData[k].revenue;priorGviews=priorData[k].gviews;}
   }
-  var revenueYoy = priorRevenue > 0 ? (revenue - priorRevenue) / priorRevenue : null;
-  var gviewsYoy  = priorGviews  > 0 ? (gviews  - priorGviews)  / priorGviews  : null;
-
+  var revenueYoy=priorRevenue>0?(revenue-priorRevenue)/priorRevenue:null;
+  var gviewsYoy=priorGviews>0?(gviews-priorGviews)/priorGviews:null;
   var avgOos=oosVals.length>0?oosVals.reduce(function(a,b){return a+b;},0)/oosVals.length:0;
   var conv=gviews>0?(units/gviews)*100:0,asp=units>0?revenue/units:0;
   var loyalty=loyaltyData[brandId],repeatRate=loyalty?loyalty.repeat_rate:null;
@@ -618,49 +583,23 @@ function aggregateBrand(brandId){
   if(adsData[brandId]){
     var mkts=currentMarket==='ALL'?Object.keys(adsData[brandId]):[currentMarket];
     ads={ad_revenue:0,ad_spend:0,ad_impressions:0,ad_clicks:0,ad_glance_views:0};
-    mkts.forEach(function(mk){var a=adsData[brandId][mk];if(a){ads.ad_revenue+=(a.ad_revenue||0);ads.ad_spend+=(a.ad_spend||0);ads.ad_glance_views+=(a.ad_glance_views||0);}});
+    mkts.forEach(function(mk){var a=adsData[brandId][mk];if(a){ads.ad_revenue+=(a.ad_revenue||0);ads.ad_spend+=(a.ad_spend||0);ads.ad_glance_views+=(a.ad_glance_views||0);ads.ad_clicks+=(a.ad_clicks||0);ads.ad_impressions+=(a.ad_impressions||0);}});
     if(ads.ad_revenue===0&&ads.ad_spend===0)ads=null;
   }
   return{revenue:revenue,revenueYoy:revenueYoy,units:units,asp:asp,conv:conv,gviews:gviews,gviewsYoy:gviewsYoy,unfilled:unfilled,avgOos:avgOos,repeatRate:repeatRate,ltv:ltv,ads:ads};
 }
 
-function getToysRank(brandId) {
-  if (!searchTermsData.length) return null;
-  // Get all weeks available in search terms data
-  var weeks = searchTermsData.map(function(t){ return t.week_start; })
-    .filter(function(v,i,a){ return a.indexOf(v)===i; }).sort();
-  if (!weeks.length) return null;
-
-  var latestWeek = weeks[weeks.length-1];
-  var priorWeek  = weeks.length >= 2 ? weeks[weeks.length-2] : null;
-
-  // Find best (lowest) rank for this brand in Toys category, current week
-  var brandTerms = searchTermsData.filter(function(t){
-    return t.brand_classified === brandId &&
-           t.week_start === latestWeek &&
-           (t.top_clicked_category||'').toLowerCase().indexOf('toy') >= 0 &&
-           t.rank;
-  });
-  if (!brandTerms.length) return null;
-  var bestRank = Math.min.apply(null, brandTerms.map(function(t){ return t.rank; }));
-
-  // Find prior week rank for WoW
-  var priorRank = null;
-  if (priorWeek) {
-    var priorTerms = searchTermsData.filter(function(t){
-      return t.brand_classified === brandId &&
-             t.week_start === priorWeek &&
-             (t.top_clicked_category||'').toLowerCase().indexOf('toy') >= 0 &&
-             t.rank;
-    });
-    if (priorTerms.length) {
-      priorRank = Math.min.apply(null, priorTerms.map(function(t){ return t.rank; }));
-    }
-  }
-
-  // For rank: improvement = lower number = up arrow (green)
-  var rankChange = priorRank ? priorRank - bestRank : null; // positive = improved
-  return { rank: bestRank, priorRank: priorRank, change: rankChange };
+function getToysRank(brandId){
+  if(!searchTermsData.length)return null;
+  var weeks=searchTermsData.map(function(t){return t.week_start;}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
+  if(!weeks.length)return null;
+  var latestWeek=weeks[weeks.length-1],priorWeek=weeks.length>=2?weeks[weeks.length-2]:null;
+  var brandTerms=searchTermsData.filter(function(t){return t.brand_classified===brandId&&t.week_start===latestWeek&&(t.top_clicked_category||'').toLowerCase().indexOf('toy')>=0&&t.rank;});
+  if(!brandTerms.length)return null;
+  var bestRank=Math.min.apply(null,brandTerms.map(function(t){return t.rank;}));
+  var priorRank=null;
+  if(priorWeek){var pt=searchTermsData.filter(function(t){return t.brand_classified===brandId&&t.week_start===priorWeek&&(t.top_clicked_category||'').toLowerCase().indexOf('toy')>=0&&t.rank;});if(pt.length)priorRank=Math.min.apply(null,pt.map(function(t){return t.rank;}));}
+  return{rank:bestRank,priorRank:priorRank,change:priorRank?priorRank-bestRank:null};
 }
 
 function getSentiment(d){
@@ -737,17 +676,7 @@ function renderBrandCards(){
       '<div class="bm-row"><span class="bm-label">Conversion</span><span class="bm-right"><span class="bm-value '+cvrClass(d.conv)+'">'+d.conv.toFixed(2)+'%</span></span></div>'+
       '<div class="bm-row"><span class="bm-label">ASP</span><span class="bm-right"><span class="bm-value">'+fmtCur(d.asp)+'</span></span></div>'+
       '<div class="bm-row"><span class="bm-label">OOS</span><span class="bm-right"><span class="bm-value '+oosClass(d.avgOos)+'">'+d.avgOos.toFixed(1)+'%</span></span></div>'+
-      (function(){
-        var tr=getToysRank(id);
-        if(!tr)return'';
-        var changeHtml='';
-        if(tr.change!==null){
-          var cls=tr.change>0?'yoy-up':tr.change<0?'yoy-down':'yoy-na';
-          var arr=tr.change>0?'▲':tr.change<0?'▼':'';
-          changeHtml='<span class="yoy '+cls+'">'+arr+Math.abs(tr.change)+'</span>';
-        }
-        return'<div class="bm-row"><span class="bm-label">🔍 Toys Rank</span><span class="bm-right"><span class="bm-value">#'+tr.rank.toLocaleString()+'</span>'+changeHtml+'</span></div>';
-      })()+
+      (function(){var tr=getToysRank(id);if(!tr)return'';var ch='';if(tr.change!==null){var cls=tr.change>0?'yoy-up':tr.change<0?'yoy-down':'yoy-na';var arr=tr.change>0?'▲':tr.change<0?'▼':'';ch='<span class="yoy '+cls+'">'+arr+Math.abs(tr.change)+'</span>';}return'<div class="bm-row"><span class="bm-label">🔍 Toys Rank</span><span class="bm-right"><span class="bm-value">#'+tr.rank.toLocaleString()+'</span>'+ch+'</span></div>';})()+
       '<div class="brand-divider"></div>'+
       '<div class="bm-row"><span class="bm-label">Repeat Rate</span><span class="bm-right"><span class="bm-value">'+(d.repeatRate!==null?(d.repeatRate*100).toFixed(1)+'%':'<span style="color:var(--text3);font-size:9px">No data</span>')+'</span></span></div>'+
       '<div class="bm-row"><span class="bm-label">Est. LTV</span><span class="bm-right"><span class="ltv-badge" style="'+(d.ltv?'':'opacity:0.35')+'">'+(d.ltv?fmtCur(d.ltv):'—')+'</span></span></div>'+
@@ -772,25 +701,27 @@ function selectBrand(brandId,cardEl){
 function setTab(tab,btn){currentTab=tab;document.querySelectorAll('.rca-tab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');if(selectedBrand)renderRCA(selectedBrand,tab);}
 
 function renderRCA(brandId,tab){
-  var rows=getRows(brandId),d=aggregateBrand(brandId),ads=d.ads;
+  var rows=allRows.filter(function(r){return r.brand_classified===brandId;});
+  if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});
+  var d=aggregateBrand(brandId),ads=d.ads;
   var adRevPct=ads&&d.revenue>0?((ads.ad_revenue/d.revenue)*100).toFixed(0):null;
   var rcaOrgRev=ads?Math.max(0,d.revenue-(ads.ad_revenue||0)):0;
   var rcaOrgGv=ads?Math.max(0,d.gviews-(ads.ad_glance_views||0)):0;
-  var compLabel = currentComparison==='wow'?'vs last week':currentComparison==='4w'?'vs 4 weeks ago':'vs last year';
+  var compLabel=currentComparison==='wow'?'vs last week':currentComparison==='4w'?'vs 4 weeks ago':'vs last year';
   document.getElementById('kpi-row').innerHTML=
     '<div class="kpi-card"><div class="kpi-label">Revenue</div><div class="kpi-value c-blue">'+fmtCur(d.revenue)+'</div><div class="kpi-yoy">'+fmtYoyText(d.revenueYoy)+' '+compLabel+'</div>'+(ads?'<div class="kpi-ads-split"><span class="kpi-split-pill org">🌿 Org '+fmtCur(rcaOrgRev)+'</span><span class="kpi-split-pill ad">🎯 Ads '+fmtCur(ads.ad_revenue||0)+' ('+adRevPct+'%)</span></div>':'')+'</div>'+
     '<div class="kpi-card"><div class="kpi-label">Glance Views</div><div class="kpi-value c-green">'+fmtNum(d.gviews)+'</div><div class="kpi-yoy">'+fmtYoyText(d.gviewsYoy)+' '+compLabel+'</div>'+(ads?'<div class="kpi-ads-split"><span class="kpi-split-pill org">🌿 Org '+fmtNum(rcaOrgGv)+'</span><span class="kpi-split-pill ad">🎯 Ad '+fmtNum(ads.ad_glance_views||0)+'</span></div>':'')+'</div>'+
     '<div class="kpi-card"><div class="kpi-label">Conversion Rate</div><div class="kpi-value '+(cvrLevel(d.conv)==='good'?'c-green':cvrLevel(d.conv)==='ok'?'c-amber':'c-red')+'">'+d.conv.toFixed(2)+'%</div><div class="kpi-yoy">'+(d.conv>=10?'✅ Good (≥10%)':d.conv>=5?'⚠️ Average (5–9%)':'🔴 Low (<5%)')+'</div></div>'+
     '<div class="kpi-card"><div class="kpi-label">Avg OOS</div><div class="kpi-value '+(oosLabel(d.avgOos)==='green'?'c-green':oosLabel(d.avgOos)==='amber'?'c-amber':'c-red')+'">'+d.avgOos.toFixed(1)+'%</div><div class="kpi-yoy">'+(d.avgOos<=6?'✅ Good (≤6%)':d.avgOos<=9?'⚠️ Monitor (7–9%)':'🔴 High (≥10%)')+' · Unfilled: '+Math.round(d.unfilled)+'</div></div>';
   var wrap=document.getElementById('table-wrap');
-  if(tab==='revenue'){renderRevenueTab(rows,wrap);}
-  else if(tab==='traffic'){renderTrafficTab(rows,wrap);}
-  else if(tab==='conversion'){renderConversionTab(rows,wrap);}
-  else if(tab==='supply'){renderSupplyTab(rows,wrap);}
-  else if(tab==='ads'){renderAdsTab(brandId,d,ads,wrap);}
-  else if(tab==='adopp'){renderAdOppTab(rows,wrap);}
-  else if(tab==='search'){renderSearchTab(brandId,wrap);}
-  else if(tab==='trends'){renderTrendsTab(brandId,wrap);} // async — runs independently
+  if(tab==='revenue')renderRevenueTab(rows,wrap);
+  else if(tab==='traffic')renderTrafficTab(rows,wrap);
+  else if(tab==='conversion')renderConversionTab(rows,wrap);
+  else if(tab==='supply')renderSupplyTab(rows,wrap);
+  else if(tab==='ads')renderAdsTab(brandId,d,ads,wrap);
+  else if(tab==='adopp')renderAdOppTab(rows,wrap);
+  else if(tab==='search')renderSearchTab(brandId,wrap);
+  else if(tab==='trends')renderTrendsTab(brandId,wrap);
 }
 
 function buildAsinMap(rows,extractor){
@@ -803,7 +734,7 @@ function buildAsinMap(rows,extractor){
     var vals=extractor(r);
     Object.keys(vals).forEach(function(key){var val=vals[key];if(val!=null){if(noSumKeys.indexOf(key)>=0){if(m[k][key]===null)m[k][key]=val;else m[k][key]=(m[k][key]+val)/2;}else{m[k][key]=(m[k][key]||0)+val;}}});
   });
-  Object.keys(m).forEach(function(k){m[k].marketsStr=useMarket?m[k].market:Object.keys(m[k].markets).sort().join(' ');delete m[k].markets;});
+  Object.keys(m).forEach(function(k){m[k].marketsStr=currentMarket!=='ALL'?m[k].market:Object.keys(m[k].markets).sort().join(' ');delete m[k].markets;});
   return m;
 }
 
@@ -842,305 +773,29 @@ function renderSupplyTab(rows,wrap){
   var data=Object.values(m).filter(function(r){return r.oos>0||r.unfilled>0;}).map(function(r){return Object.assign({},r,{risk:r.oos>=10?r.rev*(r.oos/100):0});}).sort(function(a,b){return b.risk-a.risk||b.unfilled-a.unfilled;}).slice(0,30);
   wrap.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text2);"><b style="color:var(--red)">OOS Thresholds:</b> ≤6% green ✅ · 7–9% amber ⚠️ · ≥10% red 🔴</div>'+buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'oos',label:'OOS %',r:true},{k:'unfilled',label:'Unfilled',r:true},{k:'rev',label:'Revenue',r:true},{k:'risk',label:'Rev at Risk',r:true,dir:'desc'}],data,'risk','desc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name">'+r.name+'</span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val"><span class="'+oosClass(r.oos)+'">'+r.oos.toFixed(1)+'%</span></td><td class="td-val" style="color:'+(r.unfilled>100?'var(--red)':r.unfilled>50?'var(--amber)':'var(--text)')+'">'+Math.round(r.unfilled).toLocaleString()+'</td><td class="td-val">'+fmtCur(r.rev)+'</td><td class="td-val" style="color:var(--red);font-weight:700">'+(r.risk>0?fmtCur(r.risk):'—')+'</td>';},'supply');
 }
-async function renderPreOrderTab(brandId,wrap){
-  wrap.innerHTML='<div style="color:var(--text3);font-size:12px;padding:20px">Loading pre-order analysis...</div>';
-
-  try{
-    // Fetch all historical snapshots for this brand — ordered vs dispatched gap + OOS
-    var mktFilter=currentMarket!=='ALL'?'&market=eq.'+currentMarket:'';
-    var brandFilter=brandId?'&brand_classified=eq.'+brandId:'';
-    var history=await sbFetch('/rest/v1/brand_health_snapshots?select=asin,product_title,market,week_start,ordered_revenue,dispatched_revenue,ordered_units,dispatched_units,oos_pct,unfilled_units'+brandFilter+mktFilter+'&order=week_start.asc');
-
-    if(!history.length){wrap.innerHTML='<div style="color:var(--text3);font-size:12px;padding:20px">No data available.</div>';return;}
-
-    // Build per-ASIN history
-    var asinMap={};
-    history.forEach(function(r){
-      var k=r.asin+'||'+(r.market||'');
-      if(!asinMap[k])asinMap[k]={asin:r.asin,title:r.product_title,market:r.market,weeks:[],everHadStock:false};
-      var hasStock=(r.oos_pct||0)<100&&(r.unfilled_units||0)===0;
-      if(hasStock||(r.dispatched_units||0)>0)asinMap[k].everHadStock=true;
-      asinMap[k].weeks.push({
-        week:r.week_start,
-        ordered:r.ordered_revenue||0,
-        dispatched:r.dispatched_revenue||0,
-        gap:Math.max(0,(r.ordered_revenue||0)-(r.dispatched_revenue||0)),
-        oos:r.oos_pct||0,
-        unfilled:r.unfilled_units||0,
-        hasStock:hasStock
-      });
-    });
-
-    // Get current week only for display
-    var currentWeeks=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){return periodKey(ws)===currentPeriod;});
-    var currentWs=currentWeeks[0];
-
-    // Classify ASINs with gaps in current period
-    var results=[];
-    Object.values(asinMap).forEach(function(a){
-      var currentWeek=a.weeks.filter(function(w){return currentWeeks.indexOf(w.week)>=0;});
-      var totalGap=currentWeek.reduce(function(s,w){return s+w.gap;},0);
-      var totalOrdered=currentWeek.reduce(function(s,w){return s+w.ordered;},0);
-      var avgOos=currentWeek.length?currentWeek.reduce(function(s,w){return s+w.oos;},0)/currentWeek.length:0;
-
-      if(totalOrdered<1)return; // skip ASINs with no ordered revenue
-
-      // Classification logic
-      var classification,confidence,reason;
-      if(!a.everHadStock){
-        classification='PRE-ORDER';
-        confidence='High';
-        reason='No stock ever received — ordered revenue without prior on-hand history';
-      } else if(avgOos>=80){
-        classification='OOS';
-        confidence='High';
-        reason='Previously stocked ('+avgOos.toFixed(0)+'% OOS this period) — stock exhausted';
-      } else if(avgOos>=30){
-        classification='OOS';
-        confidence='Medium';
-        reason='Partial OOS ('+avgOos.toFixed(0)+'%) — may be OOS-driven gap';
-      } else if(totalGap<totalOrdered*0.1){
-        return; // gap too small to classify, skip
-      } else {
-        classification='UNCLEAR';
-        confidence='Low';
-        reason='Has prior stock history, low OOS — gap origin unclear';
-      }
-
-      results.push({
-        asin:a.asin,
-        title:a.title,
-        market:a.market,
-        ordered:totalOrdered,
-        dispatched:currentWeek.reduce(function(s,w){return s+w.dispatched;},0),
-        gap:totalGap,
-        oos:avgOos,
-        classification:classification,
-        confidence:confidence,
-        reason:reason,
-        everHadStock:a.everHadStock
-      });
-    });
-
-    if(!results.length){
-      wrap.innerHTML='<div style="color:var(--text3);font-size:12px;padding:20px;text-align:center">✅ No significant ordered vs dispatched gaps this period.</div>';
-      return;
-    }
-
-    // Sort by gap size
-    results.sort(function(a,b){return b.gap-a.gap;});
-
-    var preOrders=results.filter(function(r){return r.classification==='PRE-ORDER';});
-    var oosItems=results.filter(function(r){return r.classification==='OOS';});
-    var unclear=results.filter(function(r){return r.classification==='UNCLEAR';});
-
-    var totalPreOrderRev=preOrders.reduce(function(s,r){return s+r.ordered;},0);
-    var totalOosGap=oosItems.reduce(function(s,r){return s+r.gap;},0);
-
-    function fC(v){return v>=1000?'€'+(v/1000).toFixed(1)+'K':'€'+v.toFixed(0);}
-    function mkBadge(cls,conf){
-      var col=cls==='PRE-ORDER'?'var(--purple)':cls==='OOS'?'var(--red)':'var(--text3)';
-      var bg=cls==='PRE-ORDER'?'var(--purple-bg)':cls==='OOS'?'var(--red-bg)':'var(--bg)';
-      return'<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;background:'+bg+';color:'+col+'">'+cls+'</span> <span style="font-size:9px;color:var(--text3)">'+conf+' confidence</span>';
-    }
-
-    var html='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">';
-    html+='<div style="background:var(--purple-bg);border-radius:8px;padding:12px;border:1px solid var(--purple);"><div style="font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;margin-bottom:4px">Likely Pre-Order</div><div style="font-size:20px;font-weight:800;color:var(--purple)">'+preOrders.length+' ASINs</div><div style="font-size:11px;color:var(--text2)">'+fC(totalPreOrderRev)+' ordered revenue</div></div>';
-    html+='<div style="background:var(--red-bg);border-radius:8px;padding:12px;border:1px solid var(--red);"><div style="font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;margin-bottom:4px">Likely OOS Gap</div><div style="font-size:20px;font-weight:800;color:var(--red)">'+oosItems.length+' ASINs</div><div style="font-size:11px;color:var(--text2)">'+fC(totalOosGap)+' revenue gap</div></div>';
-    html+='<div style="background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--border);"><div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:4px">Unclear</div><div style="font-size:20px;font-weight:800;color:var(--text2)">'+unclear.length+' ASINs</div><div style="font-size:11px;color:var(--text3)">Gap present, origin unknown</div></div>';
-    html+='</div>';
-
-    html+='<div style="font-size:10px;color:var(--text3);background:var(--blue-light);border-radius:6px;padding:8px 12px;margin-bottom:12px;">🤖 <b>Logic:</b> ASINs with no prior on-hand history = Pre-Order. ASINs previously stocked now OOS = Supply Gap. Updates automatically each week as new data is uploaded.</div>';
-
-    html+='<table style="width:100%;border-collapse:collapse;font-size:11px;">';
-    html+='<thead><tr>';
-    html+='<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase">ASIN</th>';
-    html+='<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase">Product</th>';
-    html+='<th style="padding:6px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase">Mkt</th>';
-    html+='<th style="text-align:right;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase">Ordered</th>';
-    html+='<th style="text-align:right;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase">Dispatched</th>';
-    html+='<th style="text-align:right;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase">Gap</th>';
-    html+='<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase">Classification</th>';
-    html+='</tr></thead><tbody>';
-
-    results.slice(0,50).forEach(function(r){
-      var rowBg=r.classification==='PRE-ORDER'?'background:rgba(155,89,182,0.04)':r.classification==='OOS'?'background:rgba(232,66,63,0.04)':'';
-      html+='<tr style="'+rowBg+'">';
-      html+='<td style="padding:6px 8px;border-bottom:1px solid var(--border);font-family:\'DM Mono\',monospace;font-size:10px;color:var(--blue)">'+r.asin+'</td>';
-      html+='<td style="padding:6px 8px;border-bottom:1px solid var(--border);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)" title="'+r.title+'">'+r.title+'</td>';
-      html+='<td style="padding:6px 8px;border-bottom:1px solid var(--border)"><span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--blue-light);color:var(--blue-dark)">'+r.market+'</span></td>';
-      html+='<td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+fC(r.ordered)+'</td>';
-      html+='<td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+fC(r.dispatched)+'</td>';
-      html+='<td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace;font-weight:700;color:'+(r.gap>100?'var(--red)':'var(--text2)')+'">'+fC(r.gap)+'</td>';
-      html+='<td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+mkBadge(r.classification,r.confidence)+'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+r.reason+'</div></td>';
-      html+='</tr>';
-    });
-
-    html+='</tbody></table>';
-    if(results.length>50)html+='<div style="font-size:11px;color:var(--text3);padding:8px 0">Showing 50 of '+results.length+' ASINs</div>';
-
-    wrap.innerHTML=html;
-
-  }catch(e){
-    wrap.innerHTML='<div style="color:var(--red);font-size:12px;padding:20px">Error loading pre-order analysis: '+e.message+'</div>';
-  }
-}
 
 async function renderAdsTab(brandId,d,ads,wrap){
   if(!ads||(!ads.ad_revenue&&!ads.ad_spend)){wrap.innerHTML='<div class="empty">📊 No ads data uploaded for this brand/period.</div>';return;}
-
   var roas=ads.ad_spend>0?(ads.ad_revenue/ads.ad_spend).toFixed(2):null;
   var blendedRoas=ads.ad_spend>0?(d.revenue/ads.ad_spend).toFixed(1):null;
   var acos=ads.ad_revenue>0?((ads.ad_spend/ads.ad_revenue)*100).toFixed(1):null;
-  var orgRevPct=d.revenue>0?(Math.max(0,d.revenue-(ads.ad_revenue||0))/d.revenue*100).toFixed(0):null;
   var adRevPct2=d.revenue>0?(((ads.ad_revenue||0)/d.revenue)*100).toFixed(0):null;
   var roasNum=parseFloat(roas)||0;
-
-  // Get current week starts
-  var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){return periodKey(ws)===currentPeriod;});
-  var wsFilter=weekStarts.map(function(ws){return'week_start=eq.'+ws;}).join(',');
-  var wsParam=weekStarts.length===1?'week_start=eq.'+weekStarts[0]:'week_start=in.('+weekStarts.join(',')+')';
-
-  // Show skeleton immediately
-  wrap.innerHTML='<div id="ads-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">'+
+  wrap.innerHTML='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">'+
     ['True ROAS','Blended ROAS','Ad Spend','ACoS'].map(function(l,i){
       var vals=[roas?roas+'x':'—',blendedRoas?blendedRoas+'x':'—',fmtCur(ads.ad_spend||0),(acos||'—')+'%'];
       var cols=[roasNum>=4?'var(--green)':roasNum>=2?'var(--amber)':'var(--red)','var(--text)','var(--ad-color)',parseFloat(acos)>30?'var(--red)':parseFloat(acos)>20?'var(--amber)':'var(--green)'];
       return'<div style="background:var(--bg);border-radius:10px;padding:12px;border:1px solid var(--border);"><div style="font-size:10px;color:var(--text2);font-weight:600;margin-bottom:4px">'+l+'</div><div style="font-family:\'Syne\',sans-serif;font-size:22px;font-weight:800;color:'+cols[i]+'">'+vals[i]+'</div></div>';
-    }).join('')+
-  '</div>'+
-  '<div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:20px;overflow:hidden;"><div style="width:'+adRevPct2+'%;height:100%;background:var(--ad-color);border-radius:2px;"></div></div>'+
-  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">'+
-    '<div id="ads-placement-wrap"><div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Placement Split</div><div style="color:var(--text3);font-size:12px">Loading...</div></div>'+
-    '<div id="ads-query-wrap"><div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Top Search Queries</div><div style="color:var(--text3);font-size:12px">Loading...</div></div>'+
-  '</div>'+
-  '<div id="ads-campaign-wrap" style="margin-top:16px;"><div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Top Campaigns</div><div style="color:var(--text3);font-size:12px">Loading...</div></div>';
-
-  // Fetch placement, queries and campaigns in parallel — graceful fallback on error
-  var mktFilter=currentMarket!=='ALL'?'&market=eq.'+currentMarket:'';
-  var placements=[],queries=[],campaigns=[];
-  try{
-    var fetches=await Promise.all([
-      sbFetch('/rest/v1/brand_health_ads_placement?'+wsParam+'&brand_classified=eq.'+brandId+mktFilter+'&select=placement,ad_spend,ad_revenue,ad_clicks,ad_impressions&order=ad_spend.desc').catch(function(){return[];}),
-      sbFetch('/rest/v1/brand_health_ads_queries?'+wsParam+'&brand_classified=eq.'+brandId+mktFilter+'&select=query,ad_spend,ad_revenue,ad_clicks,roas&order=ad_spend.desc').catch(function(){return[];}),
-      sbFetch('/rest/v1/brand_health_ads_campaigns?'+wsParam+'&brand_classified=eq.'+brandId+mktFilter+'&select=campaign_name,ad_spend,ad_revenue,ad_clicks,ad_impressions,roas&order=ad_spend.desc').catch(function(){return[];})
-    ]);
-    placements=fetches[0]||[];queries=fetches[1]||[];campaigns=fetches[2]||[];
-  }catch(e){console.warn('Ads deep-dive fetch error:',e);}
-
-  // Aggregate placements
-  var plAgg={};
-  placements.forEach(function(r){
-    var p=r.placement||'Unknown';
-    if(!plAgg[p])plAgg[p]={spend:0,revenue:0,clicks:0};
-    plAgg[p].spend+=r.ad_spend||0;plAgg[p].revenue+=r.ad_revenue||0;plAgg[p].clicks+=r.ad_clicks||0;
-  });
-  var plData=Object.entries(plAgg).sort(function(a,b){return b[1].spend-a[1].spend;});
-  var totalPlSpend=plData.reduce(function(s,p){return s+p[1].spend;},0);
-
-  var plWrap=document.getElementById('ads-placement-wrap');
-  if(plWrap){
-    if(!plData.length){plWrap.innerHTML+='<div style="color:var(--text3);font-size:12px">No placement data for this period.</div>';}
-    else{
-      plWrap.innerHTML='<div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Placement Split</div>'+
-        plData.map(function(p){
-          var pct=totalPlSpend>0?(p[1].spend/totalPlSpend*100).toFixed(0):0;
-          var roas=p[1].spend>0?(p[1].revenue/p[1].spend).toFixed(2):0;
-          var col=p[0].toLowerCase().includes('top')?'var(--blue)':p[0].toLowerCase().includes('detail')?'var(--purple)':'var(--amber)';
-          return'<div style="margin-bottom:10px;">'+
-            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'+
-              '<span style="font-size:12px;font-weight:600;color:var(--text)">'+p[0]+'</span>'+
-              '<span style="font-size:11px;color:var(--text2)">'+fmtCur(p[1].spend)+' · ROAS '+roas+'x</span>'+
-            '</div>'+
-            '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">'+
-              '<div style="width:'+pct+'%;height:100%;background:'+col+';border-radius:4px;"></div>'+
-            '</div>'+
-            '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+pct+'% of spend · '+p[1].clicks.toLocaleString()+' clicks</div>'+
-          '</div>';
-        }).join('');
-    }
-  }
-
-  // Aggregate queries
-  var qAgg={};
-  queries.forEach(function(r){
-    var q=r.query||'';if(!q)return;
-    if(!qAgg[q])qAgg[q]={spend:0,revenue:0,clicks:0};
-    qAgg[q].spend+=r.ad_spend||0;qAgg[q].revenue+=r.ad_revenue||0;qAgg[q].clicks+=r.ad_clicks||0;
-  });
-  var qData=Object.entries(qAgg).sort(function(a,b){return b[1].spend-a[1].spend;}).slice(0,10);
-
-  var qWrap=document.getElementById('ads-query-wrap');
-  if(qWrap){
-    if(!qData.length){qWrap.innerHTML='<div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Top Search Queries</div><div style="color:var(--text3);font-size:12px">No query data for this period.</div>';}
-    else{
-      qWrap.innerHTML='<div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Top Search Queries by Spend</div>'+
-        '<table style="width:100%;border-collapse:collapse;font-size:11px;">'+
-        '<thead><tr>'+
-          '<th style="text-align:left;padding:5px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">Query</th>'+
-          '<th style="text-align:right;padding:5px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">Spend</th>'+
-          '<th style="text-align:right;padding:5px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">Rev</th>'+
-          '<th style="text-align:right;padding:5px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">ROAS</th>'+
-        '</tr></thead><tbody>'+
-        qData.map(function(q){
-          var roas=q[1].spend>0?(q[1].revenue/q[1].spend).toFixed(2):0;
-          var roasCol=parseFloat(roas)>=4?'var(--green)':parseFloat(roas)>=2?'var(--amber)':'var(--red)';
-          return'<tr>'+
-            '<td style="padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600;color:var(--text)">'+q[0]+'</td>'+
-            '<td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+fmtCur(q[1].spend)+'</td>'+
-            '<td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+fmtCur(q[1].revenue)+'</td>'+
-            '<td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:'+roasCol+'">'+roas+'x</td>'+
-          '</tr>';
-        }).join('')+
-        '</tbody></table>';
-    }
-  }
-
-  // Campaigns
-  var cAgg={};
-  campaigns.forEach(function(r){
-    var c=r.campaign_name||'Unknown';
-    if(!cAgg[c])cAgg[c]={spend:0,revenue:0,clicks:0,impressions:0};
-    cAgg[c].spend+=r.ad_spend||0;cAgg[c].revenue+=r.ad_revenue||0;cAgg[c].clicks+=r.ad_clicks||0;cAgg[c].impressions+=r.ad_impressions||0;
-  });
-  var cData=Object.entries(cAgg).sort(function(a,b){return b[1].spend-a[1].spend;}).slice(0,15);
-
-  var cWrap=document.getElementById('ads-campaign-wrap');
-  if(cWrap){
-    if(!cData.length){cWrap.innerHTML='<div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Top Campaigns</div><div style="color:var(--text3);font-size:12px">No campaign data — upload Pacvue Campaign Report.</div>';}
-    else{
-      cWrap.innerHTML='<div style="font-family:\'Syne\',sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Top Campaigns by Spend</div>'+
-        '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;">'+
-        '<thead><tr>'+
-          '<th style="text-align:left;padding:6px 10px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">Campaign</th>'+
-          '<th style="text-align:right;padding:6px 10px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">Spend</th>'+
-          '<th style="text-align:right;padding:6px 10px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">Revenue</th>'+
-          '<th style="text-align:right;padding:6px 10px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">ROAS</th>'+
-          '<th style="text-align:right;padding:6px 10px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">Clicks</th>'+
-          '<th style="text-align:right;padding:6px 10px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:700;font-size:10px;text-transform:uppercase">CTR</th>'+
-        '</tr></thead><tbody>'+
-        cData.map(function(c){
-          var roas=c[1].spend>0?(c[1].revenue/c[1].spend).toFixed(2):0;
-          var ctr=c[1].impressions>0?(c[1].clicks/c[1].impressions*100).toFixed(2):0;
-          var roasCol=parseFloat(roas)>=4?'var(--green)':parseFloat(roas)>=2?'var(--amber)':'var(--red)';
-          return'<tr>'+
-            '<td style="padding:7px 10px;border-bottom:1px solid var(--border);font-weight:600;color:var(--text);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+c[0]+'</td>'+
-            '<td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+fmtCur(c[1].spend)+'</td>'+
-            '<td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+fmtCur(c[1].revenue)+'</td>'+
-            '<td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:'+roasCol+'">'+roas+'x</td>'+
-            '<td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+c[1].clicks.toLocaleString()+'</td>'+
-            '<td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:\'DM Mono\',monospace">'+ctr+'%</td>'+
-          '</tr>';
-        }).join('')+
-        '</tbody></table></div>';
-    }
-  }
+    }).join('')+'</div>'+
+    '<div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:20px;overflow:hidden;"><div style="width:'+adRevPct2+'%;height:100%;background:var(--ad-color);border-radius:2px;"></div></div>';
 }
+
 function renderAdOppTab(rows,wrap){
   var m=buildAsinMap(rows,function(r){return{rev:r.dispatched_revenue||0,units:r.dispatched_units||0,gv:r.glance_views||0,oos:r.oos_pct||0};});
   var data=Object.values(m).filter(function(r){return r.gv>50;}).map(function(r){return Object.assign({},r,{asp:r.units>0?r.rev/r.units:0,conv:r.gv>0?(r.units/r.gv)*100:0});}).filter(function(r){return r.asp>5&&r.oos<10;}).map(function(r){return Object.assign({},r,{score:Math.round((r.asp*r.gv/1000)*(1-(r.conv/8)))});}).sort(function(a,b){return b.score-a.score;}).slice(0,30);
   wrap.innerHTML='<div style="background:var(--ad-bg);border:1px solid var(--ad-color);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text2);"><b style="color:var(--ad-color)">💡 Ad Opportunity:</b> High ASP + low CVR + traffic + in stock.</div>'+(data.length===0?'<div class="empty">No strong ad opportunities identified.</div>':buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'asp',label:'ASP',r:true},{k:'conv',label:'CVR',r:true},{k:'gv',label:'Views',r:true},{k:'oos',label:'OOS',r:true},{k:'score',label:'Score',r:true,dir:'desc'}],data,'score','desc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name">'+r.name+'<span class="flag flag-ad">AD OPP</span></span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val" style="color:var(--amber);font-weight:700">'+fmtCur(r.asp)+'</td><td class="td-val"><span class="'+cvrClass(r.conv)+'">'+r.conv.toFixed(2)+'%</span></td><td class="td-val">'+r.gv.toLocaleString()+'</td><td class="td-val"><span class="'+oosClass(r.oos)+'">'+r.oos.toFixed(1)+'%</span></td><td class="td-val" style="color:var(--ad-color);font-weight:700">'+r.score+'</td>';},'adopp'));
 }
+
 function renderSearchTab(brandId,wrap){
   if(!searchTermsData.length){wrap.innerHTML='<div class="empty">🔍 No search terms data uploaded yet.</div>';return;}
   var activeView=window._searchView||'brand';
@@ -1158,9 +813,8 @@ function setSearchView(brandId,view){window._searchView=view;renderRCA(brandId,'
 
 async function renderTrendsTab(brandId,wrap){
   wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--text2);font-size:13px;">Loading trend data...</div>';
-  // Fetch all weeks for this brand from Supabase
-  var trendRows = await sbFetch('/rest/v1/brand_health_snapshots?select=week_start,brand_classified,market,dispatched_revenue,dispatched_units,glance_views,oos_pct&brand_classified=eq.'+brandId+'&order=week_start.asc');
-  if(currentMarket!=='ALL') trendRows=trendRows.filter(function(r){return r.market===currentMarket;});
+  var trendRows=await sbFetch('/rest/v1/brand_health_snapshots?select=week_start,brand_classified,market,dispatched_revenue,dispatched_units,glance_views,oos_pct&brand_classified=eq.'+brandId+'&order=week_start.asc');
+  if(currentMarket!=='ALL')trendRows=trendRows.filter(function(r){return r.market===currentMarket;});
   var byWeek={};
   trendRows.forEach(function(r){if(!byWeek[r.week_start])byWeek[r.week_start]={revenue:0,gviews:0,units:0,oos:[]};byWeek[r.week_start].revenue+=(r.dispatched_revenue||0);byWeek[r.week_start].gviews+=(r.glance_views||0);byWeek[r.week_start].units+=(r.dispatched_units||0);if(r.oos_pct!=null)byWeek[r.week_start].oos.push(r.oos_pct);});
   var byPeriod={};
@@ -1197,6 +851,8 @@ function drawLineChart(canvasId,labels,data,color,fmt,thresholds){
 }
 
 var supplySort={key:'uf',dir:'desc'};
+function setSupplySort(key){if(supplySort.key===key)supplySort.dir=supplySort.dir==='asc'?'desc':'asc';else{supplySort.key=key;supplySort.dir='desc';}renderSupplyAlerts();}
+
 function renderSupplyAlerts(){
   var rows=allRows;if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});if(selectedBrand)rows=rows.filter(function(r){return r.brand_classified===selectedBrand;});
   var seen={},alerts=[];
@@ -1209,7 +865,7 @@ function renderSupplyAlerts(){
   function sTh(label,key){var active=supplySort.key===key,arrow=active?(supplySort.dir==='asc'?' ↑':' ↓'):' ↕';return'<th style="text-align:right;font-size:10px;font-weight:700;color:'+(active?'var(--blue)':'var(--text2)')+';text-transform:uppercase;letter-spacing:1px;padding:8px 12px;cursor:pointer;" onclick="setSupplySort(\''+key+'\')">'+label+'<span style="font-size:9px;opacity:0.6">'+arrow+'</span></th>';}
   g.innerHTML='<table style="width:100%;border-collapse:collapse;"><thead><tr style="border-bottom:2px solid var(--border);"><th style="text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">ASIN</th><th style="text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">Product</th><th style="text-align:center;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">Market</th>'+sTh('OOS %','oos')+sTh('Unfilled','uf')+sTh('Demand (GVs)','gv')+'</tr></thead><tbody>'+alerts.slice(0,30).map(function(a){return'<tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 12px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--blue);">'+a.asin+'</td><td style="padding:7px 12px;font-size:11px;color:var(--text);max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+a.name+'">'+a.name+'</td><td style="padding:7px 12px;text-align:center;">'+(currentMarket==='ALL'?'<span style="font-size:9px;color:var(--text3)">EU5</span>':'<span class="mp mp-'+a.market+'">'+a.market+'</span>')+'</td><td style="padding:7px 12px;text-align:right;font-family:\'DM Mono\',monospace;font-size:11px;font-weight:700;" class="'+oosClass(a.oos)+'">'+a.oos.toFixed(1)+'%</td><td style="padding:7px 12px;text-align:right;font-family:\'DM Mono\',monospace;font-size:11px;font-weight:700;color:'+(a.uf>100?'var(--red)':'var(--amber)')+';">'+Math.round(a.uf).toLocaleString()+'</td><td style="padding:7px 12px;text-align:right;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--blue-dark);">'+(a.gv>0?a.gv.toLocaleString():'—')+'</td></tr>';}).join('')+'</tbody></table>';
 }
-function setSupplySort(key){if(supplySort.key===key)supplySort.dir=supplySort.dir==='asc'?'desc':'asc';else{supplySort.key=key;supplySort.dir='desc';}renderSupplyAlerts();}
+
 function resetSupplyFilter(){selectedBrand=null;document.querySelectorAll('.brand-card').forEach(function(c){c.classList.remove('selected');});document.getElementById('rca-panel').style.display='none';renderSupplyAlerts();}
 function setMarket(m,btn){currentMarket=m;document.querySelectorAll('.market-tab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');buildDashboard();}
 function setSort(s,btn){currentSort=s;document.querySelectorAll('.sort-tab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');renderBrandCards();}
@@ -1220,204 +876,34 @@ function fmtNum(n){if(n>=1000000)return(n/1000000).toFixed(1)+'M';if(n>=1000)ret
 function fmtYoy(val){if(val==null||isNaN(val))return'';var p=(val*100).toFixed(1),cls=val>0?'yoy-up':val<0?'yoy-down':'yoy-na',arr=val>0?'▲':val<0?'▼':'';return'<span class="yoy '+cls+'">'+arr+Math.abs(p)+'%</span>';}
 function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFixed(1),col=val>0?'var(--green)':val<0?'var(--red)':'var(--text3)',arr=val>0?'▲':val<0?'▼':'';return'<span style="color:'+col+';font-weight:700">'+arr+Math.abs(p)+'%</span>';}
 
-/* ADAM WIDGET — tool-calling architecture */
+/* ADAM WIDGET */
 (function(){
   var PROXY='https://adam-proxy.addham.workers.dev/';
   var AVATAR='https://attic.sh/arz5gqoevz38gefaczkyj07h42iz';
   var SB_HEADERS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};
-
-  var SYSTEM='You are Adam — a sharp English data analyst in the Hasbro EU Amazon brand health dashboard.\n\nYou have ONE tool: query_supabase. Use it for EVERY data question. Never say you cannot access data. Never apologise.\n\nIMPORTANT WORKFLOW:\n1. If you do not know the current week, FIRST query brand_health_weeks (select=week_start, order=week_start.desc) — the first row is the latest week.\n2. Then query brand_health_snapshots with that exact week_start to answer brand/ASIN questions.\n3. Sum dispatched_revenue by brand_classified mentally to rank brands.\n\nTABLES:\n- brand_health_weeks: available weeks. Columns: week_start, week_label\n- brand_health_snapshots: ASIN-level weekly data. Columns: week_start, asin, product_title, brand_classified, market, dispatched_revenue, glance_views, oos_pct, dispatched_units, unfilled_units\n- brand_health_ads: brand ad data. Columns: week_start, brand_classified, market, ad_spend, ad_revenue\n- brand_health_ads_queries: search terms. Columns: week_start, brand_classified, market, query, ad_spend, ad_revenue\n\nBRAND VALUES (exact): GAMES, PLAY_DOH, MONOPOLY, BEYBLADE, NERF, TRANSFORMERS, MARVEL, STAR_WARS, PEPPA_PIG, DISNEY_KIDS\nMARKET VALUES: GB, DE, FR, IT, ES\n\nFILTER SYNTAX:\n- Equal: brand_classified=eq.GAMES\n- Date range: week_start=gte.2026-04-01&week_start=lte.2026-05-10\n- ASIN: asin=eq.B0DNFPM6KB\n\nSpeak naturally. Dry, confident. No bullet points. Answer then one sharp observation.';
-
-  var TOOLS=[
-    {
-      name:'query_supabase',
-      description:'Query Supabase for ASIN performance, brand performance, ad data, or search terms across any date range. Returns raw rows from the database.',
-      input_schema:{
-        type:'object',
-        properties:{
-          table:{type:'string',enum:['brand_health_snapshots','brand_health_ads','brand_health_ads_queries','brand_health_ads_placement','brand_health_weeks'],description:'Table to query'},
-          filters:{type:'string',description:'Supabase filter params e.g. asin=eq.B0DNFPM6KB&week_start=gte.2026-04-01&market=eq.GB'},
-          select:{type:'string',description:'Columns to select e.g. week_start,asin,product_title,dispatched_revenue,glance_views'},
-          order:{type:'string',description:'Order clause e.g. week_start.asc'},
-        },
-        required:['table','select']
-      }
-    }
-  ];
-
-  async function runTool(toolName, toolInput){
-    if(toolName!=='query_supabase') return JSON.stringify({error:'Unknown tool'});
-    try{
-      var table=toolInput.table||'brand_health_snapshots';
-      var select=toolInput.select||'*';
-      var filters=toolInput.filters||'';
-      var order=toolInput.order?'&order='+toolInput.order:'';
-      var headers=Object.assign({},SB_HEADERS); // limit=100 added to URL below
-      var url=SUPABASE_URL+'/rest/v1/'+table+'?select='+encodeURIComponent(select)+(filters?'&'+filters:'')+order+'&limit=100';
-      var res=await fetch(url,{headers:headers});
-      var data=await res.json();
-      if(!Array.isArray(data)) return JSON.stringify({error:'Query failed',detail:data});
-      // Trim response to keep tokens manageable
-      return JSON.stringify({rows:data,count:data.length});
-    }catch(e){
-      return JSON.stringify({error:e.message});
-    }
+  var SYSTEM='You are Adam — a sharp English data analyst in the Hasbro EU Amazon brand health dashboard.\n\nYou have ONE tool: query_supabase. Use it for EVERY data question. Never say you cannot access data. Never apologise.\n\nIMPORTANT WORKFLOW:\n1. If you do not know the current week, FIRST query brand_health_weeks (select=week_start, order=week_start.desc) — the first row is the latest week.\n2. Then query brand_health_snapshots with that exact week_start to answer brand/ASIN questions.\n3. Sum dispatched_revenue by brand_classified mentally to rank brands.\n\nTABLES:\n- brand_health_weeks: available weeks. Columns: week_start, week_label\n- brand_health_snapshots: ASIN-level weekly data. Columns: week_start, asin, product_title, brand_classified, market, dispatched_revenue, glance_views, oos_pct, dispatched_units, unfilled_units\n- brand_health_ads: brand ad data. Columns: week_start, brand_classified, market, ad_spend, ad_revenue\n\nBRAND VALUES (exact): GAMES, PLAY_DOH, MONOPOLY, BEYBLADE, NERF, TRANSFORMERS, MARVEL, STAR_WARS, PEPPA_PIG, DISNEY_KIDS\nMARKET VALUES: GB, DE, FR, IT, ES\n\nFILTER SYNTAX:\n- Equal: brand_classified=eq.GAMES\n- Date range: week_start=gte.2026-04-01&week_start=lte.2026-05-10\n\nSpeak naturally. Dry, confident. No bullet points. Answer then one sharp observation.';
+  var TOOLS=[{name:'query_supabase',description:'Query Supabase for ASIN performance, brand performance, ad data, or search terms across any date range.',input_schema:{type:'object',properties:{table:{type:'string',enum:['brand_health_snapshots','brand_health_ads','brand_health_ads_queries','brand_health_weeks']},filters:{type:'string'},select:{type:'string'},order:{type:'string'}},required:['table','select']}}];
+  async function runTool(toolName,toolInput){
+    if(toolName!=='query_supabase')return JSON.stringify({error:'Unknown tool'});
+    try{var table=toolInput.table||'brand_health_snapshots',select=toolInput.select||'*',filters=toolInput.filters||'',order=toolInput.order?'&order='+toolInput.order:'';var url=SUPABASE_URL+'/rest/v1/'+table+'?select='+encodeURIComponent(select)+(filters?'&'+filters:'')+order+'&limit=100';var res=await fetch(url,{headers:SB_HEADERS});var data=await res.json();if(!Array.isArray(data))return JSON.stringify({error:'Query failed',detail:data});return JSON.stringify({rows:data,count:data.length});}catch(e){return JSON.stringify({error:e.message});}
   }
-
-  var history=[];
-  var loading=false;
-  var open=false;
-  var suggestionsShown=true;
-
-  // Lightweight current-week summary for initial context
-  var weekSummary='';
-  (async function(){
-    try{
-      var wRes=await fetch(SUPABASE_URL+'/rest/v1/brand_health_weeks?select=week_start,week_label&order=week_start.desc&limit=1',{headers:SB_HEADERS});
-      var weeks=await wRes.json();
-      if(!weeks||!weeks.length)return;
-      var latest=weeks[0];
-      weekSummary='CURRENT WEEK: week_start='+latest.week_start+' ('+( latest.week_label||latest.week_start)+')\n'+
-        'To answer "which brand had the best week" or similar, query brand_health_snapshots with filters=week_start=eq.'+latest.week_start+' and select=brand_classified,market,dispatched_revenue,glance_views then aggregate by brand_classified.\n'+
-        'Week starts are always Sundays in format YYYY-MM-DD. The latest available week is '+latest.week_start+'.';
-    }catch(e){}
-  })();
-
-  setTimeout(function(){if(!open){var p=document.getElementById('adam-pulse'),b=document.getElementById('adam-uat-badge');if(p)p.style.display='block';if(b)b.style.display='none';}},10000);
-
-  function adamFormat(text){
-    var e=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    e=e.replace(/```[\w]*\n?([\s\S]*?)```/g,'<pre style="background:#0d1117;color:#e6edf3;border-radius:6px;padding:10px;font-family:\'DM Mono\',monospace;font-size:11px;overflow-x:auto;margin:6px 0;white-space:pre;">$1</pre>');
-    e=e.replace(/`([^`]+)`/g,'<code style="background:#f0f4f8;color:#003A54;padding:1px 4px;border-radius:3px;font-size:11px;">$1</code>');
-    e=e.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
-    e=e.replace(/\n/g,'<br>');
-    return e;
-  }
-
-  window.adamToggle=function(){
-    open=!open;
-    document.getElementById('adam-panel').classList.toggle('open',open);
-    if(open){
-      var p=document.getElementById('adam-pulse'),b=document.getElementById('adam-uat-badge');
-      if(p)p.style.display='none';if(b)b.style.display='block';
-      if(history.length===0)addMsg('assistant','Adam. I have direct access to the full database — every ASIN, every week, every market.\n\nAsk me about a specific ASIN, a campaign period, or any brand across any date range.');
-    }
-  };
-
-  function addMsg(role,content,typing){
-    var msgs=document.getElementById('adam-messages');
-    var div=document.createElement('div');div.className='adam-msg'+(role==='user'?' user':'');
-    var av;
-    if(role==='assistant'){av=document.createElement('img');av.className='avatar';av.src=AVATAR;av.alt='Adam';}
-    else{av=document.createElement('div');av.className='avatar user-av';av.textContent='U';}
-    var bubble=document.createElement('div');bubble.className='adam-bubble';
-    if(typing)bubble.innerHTML='<div class="adam-typing"><span></span><span></span><span></span></div>';
-    else bubble.innerHTML=adamFormat(content);
-    div.appendChild(av);div.appendChild(bubble);msgs.appendChild(div);
-    msgs.scrollTop=msgs.scrollHeight;
-    if(!typing&&suggestionsShown&&history.length>1){var s=document.getElementById('adam-suggestions');if(s)s.style.display='none';suggestionsShown=false;}
-    return div;
-  }
-
-  function updateBubble(el, text){
-    el.querySelector('.adam-bubble').innerHTML=adamFormat(text);
-    document.getElementById('adam-messages').scrollTop=99999;
-  }
-
-  window.adamSend=async function(text){
-    var inp=document.getElementById('adam-input');
-    var msg=text||inp.value.trim();
-    if(!msg||loading)return;
-    inp.value='';
-    history.push({role:'user',content:msg});
-    addMsg('user',msg);
-    var typingEl=addMsg('assistant','',true);
-    loading=true;document.getElementById('adam-send').disabled=true;
-
-    try{
-      var systemFull = SYSTEM + (weekSummary ? '\n\n' + weekSummary : '\n\nTo find the latest week, query brand_health_weeks table with select=week_start&order=week_start.desc (limit 1 row) first.');
-      var messages=history.slice();
-
-      // Agentic loop — Adam can call tools up to 5 times per message
-      var maxIter=5;
-      for(var iter=0;iter<maxIter;iter++){
-        var res=await fetch(PROXY,{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({system:systemFull,messages:messages,tools:TOOLS})
-        });
-        var data=await res.json();
-
-        // Retry once on rate limit
-        if(data.error&&data.error.toString().includes('Rate limit')){
-          updateBubble(typingEl,'⏳ Rate limit — retrying in 15s...');
-          await new Promise(function(r){setTimeout(r,15000);});
-          var res2=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:systemFull,messages:messages,tools:TOOLS})});
-          data=await res2.json();
-        }
-
-        if(data.error){
-          updateBubble(typingEl,'Error: '+data.error);
-          break;
-        }
-
-        // Check stop reason
-        var stopReason=data.stop_reason||data.stopReason||'end_turn';
-        var content=data.content||[];
-
-        // Collect any text to show user while tools run
-        var textParts=content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
-        var toolUses=content.filter(function(b){return b.type==='tool_use';});
-
-        if(stopReason==='tool_use'&&toolUses.length>0){
-          // Show thinking indicator
-          updateBubble(typingEl,(textParts?textParts+'\n\n':'')+'⏳ Querying database...');
-
-          // Add assistant turn to history
-          messages.push({role:'assistant',content:content});
-
-          // Execute tools and collect results
-          var toolResults=[];
-          for(var ti=0;ti<toolUses.length;ti++){
-            var tu=toolUses[ti];
-            var result=await runTool(tu.name,tu.input);
-            toolResults.push({type:'tool_result',tool_use_id:tu.id,content:result});
-          }
-          messages.push({role:'user',content:toolResults});
-          // Continue loop to get final answer
-
-        } else {
-          // Final answer
-          var reply=textParts||data.reply||'No response.';
-          history.push({role:'assistant',content:reply});
-          updateBubble(typingEl,reply);
-          break;
-        }
-      }
-    }catch(e){
-      console.error('Adam error:',e);
-      updateBubble(typingEl,'Error: '+e.message);
-    }
-
-    loading=false;document.getElementById('adam-send').disabled=false;
-  };
-
+  var history=[],loading=false,open=false,suggestionsShown=true,weekSummary='';
+  (async function(){try{var wRes=await fetch(SUPABASE_URL+'/rest/v1/brand_health_weeks?select=week_start,week_label&order=week_start.desc&limit=1',{headers:SB_HEADERS});var weeks=await wRes.json();if(!weeks||!weeks.length)return;var latest=weeks[0];weekSummary='CURRENT WEEK: week_start='+latest.week_start+' ('+( latest.week_label||latest.week_start)+')\nThe latest available week is '+latest.week_start+'.';}catch(e){}})();
+  setTimeout(function(){if(!open){var p=document.getElementById('adam-pulse');if(p)p.style.display='block';}},10000);
+  function adamFormat(text){var e=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');e=e.replace(/```[\w]*\n?([\s\S]*?)```/g,'<pre style="background:#0d1117;color:#e6edf3;border-radius:6px;padding:10px;font-family:\'DM Mono\',monospace;font-size:11px;overflow-x:auto;margin:6px 0;white-space:pre;">$1</pre>');e=e.replace(/`([^`]+)`/g,'<code style="background:#f0f4f8;color:#003A54;padding:1px 4px;border-radius:3px;font-size:11px;">$1</code>');e=e.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');e=e.replace(/\n/g,'<br>');return e;}
+  window.adamToggle=function(){open=!open;document.getElementById('adam-panel').classList.toggle('open',open);if(open&&history.length===0)addMsg('assistant','Adam. I have direct access to the full database — every ASIN, every week, every market.\n\nAsk me about a specific ASIN, a campaign period, or any brand across any date range.');};
+  function addMsg(role,content,typing){var msgs=document.getElementById('adam-messages');var div=document.createElement('div');div.className='adam-msg'+(role==='user'?' user':'');var av;if(role==='assistant'){av=document.createElement('img');av.className='avatar';av.src=AVATAR;av.alt='Adam';}else{av=document.createElement('div');av.className='avatar user-av';av.textContent='U';}var bubble=document.createElement('div');bubble.className='adam-bubble';if(typing)bubble.innerHTML='<div class="adam-typing"><span></span><span></span><span></span></div>';else bubble.innerHTML=adamFormat(content);div.appendChild(av);div.appendChild(bubble);msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;if(!typing&&suggestionsShown&&history.length>1){var s=document.getElementById('adam-suggestions');if(s)s.style.display='none';suggestionsShown=false;}return div;}
+  function updateBubble(el,text){el.querySelector('.adam-bubble').innerHTML=adamFormat(text);document.getElementById('adam-messages').scrollTop=99999;}
+  window.adamSend=async function(text){var inp=document.getElementById('adam-input');var msg=text||inp.value.trim();if(!msg||loading)return;inp.value='';history.push({role:'user',content:msg});addMsg('user',msg);var typingEl=addMsg('assistant','',true);loading=true;document.getElementById('adam-send').disabled=true;try{var systemFull=SYSTEM+(weekSummary?'\n\n'+weekSummary:'');var messages=history.slice();var maxIter=5;for(var iter=0;iter<maxIter;iter++){var res=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:systemFull,messages:messages,tools:TOOLS})});var data=await res.json();if(data.error&&data.error.toString().includes('Rate limit')){updateBubble(typingEl,'⏳ Rate limit — retrying in 15s...');await new Promise(function(r){setTimeout(r,15000);});var res2=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:systemFull,messages:messages,tools:TOOLS})});data=await res2.json();}if(data.error){updateBubble(typingEl,'Error: '+data.error);break;}var stopReason=data.stop_reason||data.stopReason||'end_turn';var content=data.content||[];var textParts=content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');var toolUses=content.filter(function(b){return b.type==='tool_use';});if(stopReason==='tool_use'&&toolUses.length>0){updateBubble(typingEl,(textParts?textParts+'\n\n':'')+'⏳ Querying database...');messages.push({role:'assistant',content:content});var toolResults=[];for(var ti=0;ti<toolUses.length;ti++){var tu=toolUses[ti];var result=await runTool(tu.name,tu.input);toolResults.push({type:'tool_result',tool_use_id:tu.id,content:result});}messages.push({role:'user',content:toolResults});}else{var reply=textParts||data.reply||'No response.';history.push({role:'assistant',content:reply});updateBubble(typingEl,reply);break;}}}catch(e){console.error('Adam error:',e);updateBubble(typingEl,'Error: '+e.message);}loading=false;document.getElementById('adam-send').disabled=false;};
   document.getElementById('adam-input').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();adamSend();}});
 })();
 
 init();
 
-// Re-render when returning to tab — only re-init if data was lost
-document.addEventListener('visibilitychange', function() {
-  if (!document.hidden) {
-    if (!allWeeks.length || !allRows.length) {
-      // Data genuinely missing — full reinit
-      init();
-    } else {
-      // Data intact — just re-render
-      var main = document.getElementById('main-content');
-      if (main) { main.style.display = 'grid'; buildDashboard(); }
-    }
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden){
+    if(!allWeeks.length||!allRows.length){init();}
+    else{var main=document.getElementById('main-content');if(main){main.style.display='grid';buildDashboard();}}
   }
 });
 </script>
