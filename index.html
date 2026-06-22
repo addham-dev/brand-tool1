@@ -437,7 +437,16 @@ async function init(){
 
 function buildPeriodSelect(){
   var seen={},options=[];
-  allWeeks.forEach(function(w){var k=periodKey(w.week_start);if(!seen[k]){seen[k]=1;var label=periodMode==='week'?(w.week_label||w.week_start):k;options.push({value:k,label:label});}});
+  allWeeks.forEach(function(w){
+    var k=periodKey(w.week_start);
+    if(!seen[k]){
+      seen[k]=1;
+      var label=periodMode==='week'?(w.week_label||w.week_start):k;
+      options.push({value:k,label:label});
+    }
+  });
+  // Sort descending
+  options.sort(function(a,b){return b.value>a.value?1:-1;});
   var sel=document.getElementById('week-select');
   sel.innerHTML=options.map(function(o){return'<option value="'+o.value+'">'+o.label+'</option>';}).join('');
   document.getElementById('period-label').textContent=periodMode.charAt(0).toUpperCase()+periodMode.slice(1);
