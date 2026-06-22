@@ -851,12 +851,24 @@ async function processVC() {
     log('✓ Cleared','ok');
 
     document.getElementById('overlay-sub').textContent='Uploading to Supabase...';
-    const BATCH=500; let uploaded=0;
+    const BATCH=150; let uploaded=0;
     for(let i=0;i<rows.length;i+=BATCH){
-      await sbPost('/rest/v1/brand_health_snapshots',rows.slice(i,i+BATCH));
+      let attempts=0;
+      while(attempts<3){
+        try{
+          await sbPost('/rest/v1/brand_health_snapshots',rows.slice(i,i+BATCH));
+          break;
+        }catch(e){
+          attempts++;
+          if(attempts===3) throw e;
+          log(`Retry ${attempts} for batch ${i}...`,'info');
+          await new Promise(r=>setTimeout(r,1000*attempts));
+        }
+      }
       uploaded+=Math.min(BATCH,rows.length-i);
       document.getElementById('overlay-progress').textContent=`${uploaded} / ${rows.length} rows`;
       log(`Uploaded ${uploaded}/${rows.length} rows...`);
+      await new Promise(r=>setTimeout(r,200));
     }
 
     await sbDelete(`/rest/v1/brand_health_weeks?week_start=eq.${weekStart}`);
