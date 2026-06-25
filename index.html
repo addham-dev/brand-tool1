@@ -371,17 +371,11 @@ function getMonthKey(d){var x=new Date(d);return x.getFullYear()+'-'+String(x.ge
 function getQuarterKey(d){var x=new Date(d);return x.getFullYear()+'-Q'+Math.ceil((x.getMonth()+1)/3);}
 function getYearKey(d){return String(new Date(d).getFullYear());}
 function periodKey(d){
-  // For monthly/quarterly/annual, attribute week to the month containing Saturday (end of week)
-  // so week 31 May-6 Jun goes to June not May
-  var base=d;
-  if(periodMode!=='week'){
-    var sat=new Date(d);sat.setDate(sat.getDate()+6);
-    base=sat.getFullYear()+'-'+String(sat.getMonth()+1).padStart(2,'0')+'-'+String(sat.getDate()).padStart(2,'0');
-  }
+  // Use week START date for all period attribution (Amazon weeks Sun-Sat)
   if(periodMode==='week')return d;
-  if(periodMode==='month')return getMonthKey(base);
-  if(periodMode==='quarter')return getQuarterKey(base);
-  return getYearKey(base);
+  if(periodMode==='month')return getMonthKey(d);
+  if(periodMode==='quarter')return getQuarterKey(d);
+  return getYearKey(d);
 }
 function periodLabel(k){if(periodMode==='week'){var p=k.split('-');return p[2]+'/'+p[1]+'/'+p[0];}return k;}
 
