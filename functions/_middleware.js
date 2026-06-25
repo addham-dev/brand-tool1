@@ -1,4 +1,4 @@
-const PASSWORD = "choose-a-password-here";
+const PASSWORD = "Addham2026";
 
 export async function onRequest({ request, next }) {
   const authHeader = request.headers.get("Authorization");
