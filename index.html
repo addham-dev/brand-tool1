@@ -379,6 +379,23 @@ function periodKey(d){
 }
 function periodLabel(k){if(periodMode==='week'){var p=k.split('-');return p[2]+'/'+p[1]+'/'+p[0];}return k;}
 
+// For monthly view only: a week that starts in one calendar month can run into the next
+// (e.g. week_start 2026-05-31 covers 31 May through 6 June). Rather than dumping the whole
+// week into whichever month the start date falls in, work out exactly how many of its 7 days
+// sit inside the target month and return that as a fraction (1.0 = fully inside, 0.0 = fully outside).
+// Used to pro-rate numeric fields so monthly totals don't over/under count boundary weeks.
+function weekDayFractionInMonth(weekStart, monthKey){
+  var start=new Date(weekStart+'T00:00:00');
+  var daysInMonth=0;
+  for(var i=0;i<7;i++){
+    var d=new Date(start);
+    d.setDate(d.getDate()+i);
+    var mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    if(mk===monthKey)daysInMonth++;
+  }
+  return daysInMonth/7;
+}
+
 // THE FIX: Range header forces Supabase to return up to 50000 rows
 function sbFetch(path){
   var sep=path.indexOf('?')>=0?'&':'?';
@@ -467,7 +484,13 @@ async function loadPeriod(periodVal){
   currentPeriod=periodVal;
   document.getElementById('loading-screen').style.display='flex';
   document.getElementById('main-content').style.display='none';
-  var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){return periodKey(ws)===periodVal;});
+  var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){
+    if(periodMode!=='month')return periodKey(ws)===periodVal;
+    // In month mode, include this week if ANY of its days fall in the target month —
+    // not just if its start date does. Catches weeks like 31 May (week_start in May,
+    // but 6 of 7 days actually in June) when viewing June.
+    return weekDayFractionInMonth(ws,periodVal)>0;
+  });
   var SNAP_COLS='week_start,asin,product_title,brand_classified,market,dispatched_revenue,dispatched_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy';
   if(!weekStarts.length){
     document.getElementById('loading-screen').style.display='none';
@@ -482,6 +505,25 @@ async function loadPeriod(periodVal){
       return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select='+SNAP_COLS);
     }));
     allRows=weekArrays.reduce(function(a,b){return a.concat(b);},[]);
+
+    // MONTH-BOUNDARY FIX: if we're in month view, any week whose 7 days don't sit
+    // 100% inside this calendar month gets its numeric fields scaled by the fraction
+    // of days that actually fall in the target month. Prevents e.g. the 31 May week
+    // (which runs into June) from either fully double-counting or fully dropping out.
+    if(periodMode==='month'){
+      var NUMERIC_FIELDS=['dispatched_revenue','dispatched_units','glance_views','unfilled_units'];
+      allRows=allRows.map(function(r){
+        var frac=weekDayFractionInMonth(r.week_start,periodVal);
+        if(frac>=0.999)return r; // fully inside target month, no change needed
+        if(frac<=0.001)return null; // fully outside, shouldn't normally happen given weekStarts filter, but guard anyway
+        var scaled=Object.assign({},r);
+        NUMERIC_FIELDS.forEach(function(f){
+          if(scaled[f]!=null)scaled[f]=scaled[f]*frac;
+        });
+        // revenue_yoy / glance_views_yoy are ratios, not absolutes — leave untouched, they don't need scaling
+        return scaled;
+      }).filter(function(r){return r!==null;});
+    }
   }
   // Build ads for this period
   adsData={};
@@ -489,13 +531,16 @@ async function loadPeriod(periodVal){
     var parts=k.split('||'),ws=parts[0],bid=parts[1],mkt=parts[2]||'ALL';
     if(weekStarts.indexOf(ws)===-1)return;
     var v=adsDataAllWeeks[k];
+    // Same boundary-week pro-rating as snapshots: if this ad week straddles two
+    // months and we're in month view, scale its contribution to this fraction only.
+    var fracAds=periodMode==='month'?weekDayFractionInMonth(ws,periodVal):1;
     if(!adsData[bid])adsData[bid]={};
     if(!adsData[bid][mkt])adsData[bid][mkt]={ad_revenue:0,ad_spend:0,ad_glance_views:0,ad_clicks:0,ad_impressions:0};
-    adsData[bid][mkt].ad_revenue+=(v.ad_revenue||0);
-    adsData[bid][mkt].ad_spend+=(v.ad_spend||0);
-    adsData[bid][mkt].ad_glance_views+=(v.ad_glance_views||0);
-    adsData[bid][mkt].ad_clicks+=(v.ad_clicks||0);
-    adsData[bid][mkt].ad_impressions+=(v.ad_impressions||0);
+    adsData[bid][mkt].ad_revenue+=(v.ad_revenue||0)*fracAds;
+    adsData[bid][mkt].ad_spend+=(v.ad_spend||0)*fracAds;
+    adsData[bid][mkt].ad_glance_views+=(v.ad_glance_views||0)*fracAds;
+    adsData[bid][mkt].ad_clicks+=(v.ad_clicks||0)*fracAds;
+    adsData[bid][mkt].ad_impressions+=(v.ad_impressions||0)*fracAds;
   });
   await loadPriorData();
   var sel=document.getElementById('week-select');
