@@ -575,13 +575,18 @@ function setPeriodMode(mode,btn){
     dropdownEl.style.display='none';
     customEl.style.display='inline-flex';
     document.getElementById('period-label').textContent='Range';
-    // Pre-fill with something sensible if empty: default to the most recent available week's start/end
+    // Pre-fill with the most recent 4 weeks of available data, not the earliest —
+    // sorted[0] on YYYY-MM-DD strings is the OLDEST date, not newest, which previously
+    // caused the default to span the entire dataset (a year+) instead of a sensible window.
     if(allWeeks.length&&!document.getElementById('custom-start-date').value){
       var sorted=allWeeks.map(function(w){return w.week_start;}).sort();
-      document.getElementById('custom-start-date').value=sorted[0];
-      var lastStart=new Date(sorted[sorted.length-1]+'T00:00:00');
-      lastStart.setDate(lastStart.getDate()+6);
-      document.getElementById('custom-end-date').value=lastStart.toISOString().split('T')[0];
+      var latestWeekStart=sorted[sorted.length-1]; // last element after ascending sort = most recent
+      var idx=sorted.length-4; // go back 4 weeks for a sensible default window
+      var defaultStart=sorted[idx>=0?idx:0];
+      var endDate=new Date(latestWeekStart+'T00:00:00');
+      endDate.setDate(endDate.getDate()+6); // end of that final week (Saturday)
+      document.getElementById('custom-start-date').value=defaultStart;
+      document.getElementById('custom-end-date').value=endDate.toISOString().split('T')[0];
     }
     return;
   }
@@ -676,9 +681,10 @@ async function loadCustomRange(rangeStart,rangeEnd){
     adsData[bid][mkt].ad_impressions+=(v.ad_impressions||0)*fracAds;
   });
 
-  // No sensible single "prior period" concept for an arbitrary custom range yet —
-  // clear priorData so YoY/WoW comparisons don't show stale numbers from whatever was last loaded.
-  priorData={};
+  // Pull comparison data for whichever WoW/4W/YoY toggle is currently selected,
+  // shifted back from this custom range, so a comparison is available immediately
+  // on load rather than only after manually re-clicking the comparison toggle.
+  await loadCustomRangePriorData(rangeStart,rangeEnd);
 
   var fmtDate=function(s){var p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
   document.getElementById('week-badge').textContent='Range: '+fmtDate(rangeStart)+' – '+fmtDate(rangeEnd);
@@ -694,7 +700,55 @@ function setComparison(mode,btn){
   currentComparison=mode;
   document.querySelectorAll('.comp-tab').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
+
+  if(periodMode==='custom'){
+    // currentPeriod is intentionally null in custom mode, so the normal
+    // loadPriorData() (which keys off currentPeriod) can't find anything and
+    // silently no-ops — that's what caused WoW/YoY to look frozen here.
+    // Re-derive the prior comparison window directly from the chosen custom dates instead.
+    var startVal=document.getElementById('custom-start-date').value;
+    var endVal=document.getElementById('custom-end-date').value;
+    if(startVal&&endVal){
+      loadCustomRangePriorData(startVal,endVal).then(function(){buildDashboard();});
+    }
+    return;
+  }
+
   loadPriorData().then(function(){buildDashboard();});
+}
+
+// Equivalent of loadPriorData(), but for an arbitrary custom range rather than a
+// dropdown-selected week/month/quarter. Shifts the whole range back by the chosen
+// comparison window (7 days for WoW, 28 days for 4W, 364 days for YoY) and pulls
+// whatever weeks overlap that shifted range, using the same day-fraction pro-rating
+// as the main custom-range load so the comparison is genuinely apples-to-apples.
+async function loadCustomRangePriorData(rangeStart,rangeEnd){
+  priorData={};
+  var shiftDays=currentComparison==='yoy'?364:currentComparison==='4w'?28:7;
+  var rs=new Date(rangeStart+'T00:00:00');var re=new Date(rangeEnd+'T00:00:00');
+  rs.setDate(rs.getDate()-shiftDays);re.setDate(re.getDate()-shiftDays);
+  var priorStart=rs.toISOString().split('T')[0];
+  var priorEnd=re.toISOString().split('T')[0];
+
+  var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){
+    return weekDayFractionInRange(ws,priorStart,priorEnd)>0;
+  });
+  if(!weekStarts.length)return;
+
+  try{
+    var results=await Promise.all(weekStarts.map(function(ws){
+      return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=brand_classified,market,dispatched_revenue,glance_views');
+    }));
+    results.forEach(function(rows,i){
+      var frac=weekDayFractionInRange(weekStarts[i],priorStart,priorEnd);
+      (rows||[]).forEach(function(r){
+        var k=r.brand_classified+'||'+(r.market||'');
+        if(!priorData[k])priorData[k]={revenue:0,gviews:0};
+        priorData[k].revenue+=(r.dispatched_revenue||0)*frac;
+        priorData[k].gviews+=(r.glance_views||0)*frac;
+      });
+    });
+  }catch(e){console.warn('loadCustomRangePriorData error:',e);priorData={};}
 }
 
 function getPriorPeriodWeekStarts(currentWeekStarts){
