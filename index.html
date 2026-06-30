@@ -238,6 +238,7 @@
     <button class="period-tab" onclick="setPeriodMode('month',this)">Monthly</button>
     <button class="period-tab" onclick="setPeriodMode('quarter',this)">Quarterly</button>
     <button class="period-tab" onclick="setPeriodMode('year',this)">Annual</button>
+    <button class="period-tab" onclick="setPeriodMode('custom',this)">Custom</button>
   </div>
   <div class="divider"></div>
   <span class="filter-label">vs</span>
@@ -259,6 +260,11 @@
   <div class="divider"></div>
   <span class="filter-label" id="period-label">Week</span>
   <select class="week-select" id="week-select" onchange="loadPeriod(this.value)"><option>Loading...</option></select>
+  <span id="custom-range-controls" style="display:none;align-items:center;gap:8px;">
+    <input type="date" id="custom-start-date" class="week-select" style="font-family:inherit;" onchange="onCustomRangeChange()">
+    <span style="color:var(--text2);font-size:12px;">to</span>
+    <input type="date" id="custom-end-date" class="week-select" style="font-family:inherit;" onchange="onCustomRangeChange()">
+  </span>
   <div class="divider"></div>
   <span class="filter-label">Sort</span>
   <div class="sort-tabs">
@@ -554,10 +560,131 @@ async function loadPeriod(periodVal){
 
 function setPeriodMode(mode,btn){
   periodMode=mode;
-  document.querySelectorAll('.period-tab').forEach(function(b){b.classList.remove('active');});
+  document.querySelectorAll('.period-tab').forEach(function(b){
+    if(b.classList.contains('comp-tab'))return; // don't touch the WoW/4W/YoY tabs, they're a separate group
+    b.classList.remove('active');
+  });
   btn.classList.add('active');
+
+  var dropdownEl=document.getElementById('week-select');
+  var customEl=document.getElementById('custom-range-controls');
+
+  if(mode==='custom'){
+    // Swap the normal month/quarter/year dropdown out for the two date pickers.
+    // Don't auto-run a query yet — wait until the person has actually picked both dates.
+    dropdownEl.style.display='none';
+    customEl.style.display='inline-flex';
+    document.getElementById('period-label').textContent='Range';
+    // Pre-fill with something sensible if empty: default to the most recent available week's start/end
+    if(allWeeks.length&&!document.getElementById('custom-start-date').value){
+      var sorted=allWeeks.map(function(w){return w.week_start;}).sort();
+      document.getElementById('custom-start-date').value=sorted[0];
+      var lastStart=new Date(sorted[sorted.length-1]+'T00:00:00');
+      lastStart.setDate(lastStart.getDate()+6);
+      document.getElementById('custom-end-date').value=lastStart.toISOString().split('T')[0];
+    }
+    return;
+  }
+
+  // Leaving custom mode — restore the normal dropdown-driven flow
+  dropdownEl.style.display='';
+  customEl.style.display='none';
   buildPeriodSelect();
   if(currentPeriod)loadPeriod(currentPeriod);
+}
+
+function onCustomRangeChange(){
+  var startVal=document.getElementById('custom-start-date').value;
+  var endVal=document.getElementById('custom-end-date').value;
+  if(!startVal||!endVal)return; // wait for both
+  if(startVal>endVal){
+    alert('Start date must be before end date.');
+    return;
+  }
+  loadCustomRange(startVal,endVal);
+}
+
+// How many of a week's 7 days (starting at weekStart) fall between rangeStart and rangeEnd inclusive.
+// Same idea as weekDayFractionInMonth, generalised to an arbitrary date range rather than a calendar month.
+function weekDayFractionInRange(weekStart,rangeStart,rangeEnd){
+  var start=new Date(weekStart+'T00:00:00');
+  var rs=new Date(rangeStart+'T00:00:00');
+  var re=new Date(rangeEnd+'T00:00:00');
+  var daysInRange=0;
+  for(var i=0;i<7;i++){
+    var d=new Date(start);
+    d.setDate(d.getDate()+i);
+    if(d>=rs&&d<=re)daysInRange++;
+  }
+  return daysInRange/7;
+}
+
+async function loadCustomRange(rangeStart,rangeEnd){
+  currentPeriod=null; // custom ranges don't map to a single dropdown value
+  document.getElementById('loading-screen').style.display='flex';
+  document.getElementById('main-content').style.display='none';
+
+  // Pull in any week that overlaps the range at all, even partially —
+  // same principle as the month-boundary fix: a week_start before rangeStart
+  // can still contribute days that fall inside the range (and vice versa at the far end).
+  var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){
+    return weekDayFractionInRange(ws,rangeStart,rangeEnd)>0;
+  });
+
+  var SNAP_COLS='week_start,asin,product_title,brand_classified,market,dispatched_revenue,dispatched_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy';
+
+  if(!weekStarts.length){
+    document.getElementById('loading-screen').style.display='none';
+    document.getElementById('main-content').style.display='grid';
+    document.getElementById('week-badge').textContent='Range: '+rangeStart+' to '+rangeEnd+' (no data)';
+    buildDashboard();
+    return;
+  }
+
+  var weekArrays=await Promise.all(weekStarts.map(function(ws){
+    return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select='+SNAP_COLS);
+  }));
+  allRows=weekArrays.reduce(function(a,b){return a.concat(b);},[]);
+
+  // Pro-rate every overlapping week by the fraction of its days that actually
+  // fall inside the chosen range — fully-inside weeks pass through unscaled.
+  var NUMERIC_FIELDS=['dispatched_revenue','dispatched_units','glance_views','unfilled_units'];
+  allRows=allRows.map(function(r){
+    var frac=weekDayFractionInRange(r.week_start,rangeStart,rangeEnd);
+    if(frac>=0.999)return r;
+    if(frac<=0.001)return null;
+    var scaled=Object.assign({},r);
+    NUMERIC_FIELDS.forEach(function(f){
+      if(scaled[f]!=null)scaled[f]=scaled[f]*frac;
+    });
+    return scaled;
+  }).filter(function(r){return r!==null;});
+
+  // Same pro-rating applied to ads data for the same overlapping weeks
+  adsData={};
+  Object.keys(adsDataAllWeeks).forEach(function(k){
+    var parts=k.split('||'),ws=parts[0],bid=parts[1],mkt=parts[2]||'ALL';
+    if(weekStarts.indexOf(ws)===-1)return;
+    var v=adsDataAllWeeks[k];
+    var fracAds=weekDayFractionInRange(ws,rangeStart,rangeEnd);
+    if(!adsData[bid])adsData[bid]={};
+    if(!adsData[bid][mkt])adsData[bid][mkt]={ad_revenue:0,ad_spend:0,ad_glance_views:0,ad_clicks:0,ad_impressions:0};
+    adsData[bid][mkt].ad_revenue+=(v.ad_revenue||0)*fracAds;
+    adsData[bid][mkt].ad_spend+=(v.ad_spend||0)*fracAds;
+    adsData[bid][mkt].ad_glance_views+=(v.ad_glance_views||0)*fracAds;
+    adsData[bid][mkt].ad_clicks+=(v.ad_clicks||0)*fracAds;
+    adsData[bid][mkt].ad_impressions+=(v.ad_impressions||0)*fracAds;
+  });
+
+  // No sensible single "prior period" concept for an arbitrary custom range yet —
+  // clear priorData so YoY/WoW comparisons don't show stale numbers from whatever was last loaded.
+  priorData={};
+
+  var fmtDate=function(s){var p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
+  document.getElementById('week-badge').textContent='Range: '+fmtDate(rangeStart)+' – '+fmtDate(rangeEnd);
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('main-content').style.display='grid';
+  buildDashboard();
 }
 
 var currentComparison='wow';
