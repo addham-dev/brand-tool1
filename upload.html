@@ -1,3 +1,112 @@
+
+Claude finished the response
+| week_start | day | rows | spend  |
+| ---------- | --- | ---- | ------ |
+| 2026-06-21 | Sun | 43   | 129840 |
+| 2026-06-28 | Sun | 43   | 58721  |
+
+09:11
+
+Verified data consistency and flagged parser configuration
+Verified data consistency and flagged parser configuration
+Both weeks are now clean Sundays — 21 June (€129,840, Prime week) and 28 June (€58,721, back to normal levels). The registry should now show ✅ Ads against the 28/06 week, and you're fully current: VC and ads both complete through 4 July.
+
+Still worth closing the loop on the root cause though — this is the third SQL patch for the same off-by-one. Paste the exact filename of the file you uploaded (as it was when you dropped it in) and I'll fix the date detection in direct-ads-upload.html so the next upload just lands right first time.
+
+what should the file name be?
+
+09:12
+
+Reconciled date range logic and filename format requirements
+Reconciled date range logic and filename format requirements
+For the week you just uploaded (week starting Sunday 28 June), the Pacvue export should have been:
+
+Query report_2026-06-29-2026-07-05.xlsx
+The rule: the trailing date range must be the Pacvue Monday–Sunday week — i.e. Monday 29 June to Sunday 5 July. The tool reads the first date after the underscore and subtracts one day to land on Amazon's Sunday week start (29 Jun − 1 = Sun 28 Jun ✓).
+
+The fact your upload landed on Saturday 27 June tells me the file you dropped in almost certainly had _2026-06-28-2026-07-04 in the name — a Sunday–Saturday range, matching Amazon's week rather than Pacvue's. The tool then subtracted a day from the 28th and overshot to the 27th.
+
+So when exporting from Pacvue, make sure the report date range is set to Monday through Sunday, and don't rename the file afterwards. If the date range in Pacvue was set to Sun 28 Jun – Sat 4 Jul when you exported, that's the root cause — the data is the same either way, but the filename dates drive the week detection.
+
+If you'd rather the tool just handle both formats, I can update the parser in direct-ads-upload.html to check what day the first date falls on: Monday → subtract 1, Sunday → use as-is. Then it lands correctly regardless of how the export range was set. Want me to make that change?
+
+looks like that has kicked out some ads data. look i dont care if theres a day or two overlap just fix it so i dont vbgae this issue everytime. its stupid 28/06/2026 – 04/07/2026    06/07/2026, 17:38:20    —    ✅ Ads    Delete
+27/06/2026 – 03/07/2026    07/07/2026, 09:07:53    —    No ads    Delete
+
+09:42
+
+Snapping dates to Amazon week boundaries instead of blindly subtracting
+Snapping dates to Amazon week boundaries instead of blindly subtracting
+Two things to do — clean the ghost, then fix the parser properly so this never happens again.
+
+1. The ghost row. Your ads data is fine (it's sitting correctly at 2026-06-28 — that's the ✅ row). The 27/06 entry is just the phantom week-registry record left behind from the mis-dated upload, same as the two we deleted before. Run:
+
+sql
+delete from brand_health_weeks where week_start = '2026-06-27';
+2. The permanent fix. Let me patch the upload tool so it detects what day the filename date falls on and handles both formats automatically:
+
+
+Architected nearest-Sunday snapping logic to resolve date misalignment issues
+Architected nearest-Sunday snapping logic to resolve date misalignment issues
+Verify the snapping logic against every real filename that's caused trouble:
+
+
+Ran a command, read a file
+Ran a command, read a file
+Fixed at the root. The old code blindly subtracted one day from whatever date was in the filename — right for Monday-start Pacvue exports, wrong for everything else. The new logic snaps the filename date to the nearest Sunday, so it no longer matters how the export range was set: Monday-start goes back one, Sunday-start stays put, even that mangled Saturday-start file from last week would have landed correctly. Tested against every filename that's bitten you so far — all pass.
+
+Two things to finish:
+
+Run the ghost cleanup if you haven't: delete from brand_health_weeks where week_start = '2026-06-27'; — your ads data for that week is safe at 2026-06-28 (the ✅ row), the 27/06 entry is just an empty leftover.
+Commit and deploy this direct-ads-upload.html to the repo. From next week's upload onwards, export from Pacvue with whatever date range convention you like and it'll land on the right week first time. No more SQL patches.
+
+Direct ads upload
+Code · HTML 
+
+<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Hasbro Brand Health — Data Upload</title> <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;
+
+pasted
+
+this is the repro - can you update this and not fuck anything eklse up in the process?
+
+09:51
+
+Verifying file identity before patching the bug
+Verifying file identity before patching the bug
+Let me check whether the copy in outputs matches the repo version you pasted, so I patch the right file:
+
+
+Architected minimal patch to snap dates and prevent phantom week entries
+Architected minimal patch to snap dates and prevent phantom week entries
+Now the Executive Summary in-file date detection — same snap:
+
+
+Verified regex patterns and confirmed all test cases passed
+Verified regex patterns and confirmed all test cases passed
+Done, and deliberately minimal. What changed and what didn't:
+
+Changed — two things only:
+
+detectWeekFromFilename — the three filename patterns now all route through one snapWeek helper that snaps the detected date to the nearest Sunday and derives the end as Sunday+6. The old Pacvue branch's blind "-1 day" is gone; that was the root of every off-by-one.
+detectWeekFromXlsx — the Executive Summary in-file "widget date range" path gets the same snap. That's the path that turned the Saturday 13 June file into a phantom 12 June week.
+Untouched — everything else: login, VC processing, brand classification, Pacvue parser, Exec Summary parser, loyalty, coverage, search terms, history table, delete, all Supabase helpers. The change is confined to date detection only.
+
+Verified before handing over: full syntax check passed, plus a seven-case test using your real filenames — the actual VC files from your upload logs come out unchanged (21-06→27-06 stays exactly that), and all four problem ads formats now land on the right Sunday, including a no-op for correctly-dated files.
+
+Swap this into the repo in place of the current upload.html, commit, deploy. From the next upload onward, export with whatever date convention Pacvue gives you — Monday-start, Sunday-start, even renamed files — and it lands on the right week first time. The label shown in the drop zone before you hit upload will also now always display the true snapped week, so you can sanity-check at a glance before pushing.
+
+
+Upload
+Code · HTML 
+
+
+
+
+
+Claude is AI and can make mistakes. Please double-check responses.
+
+
+Upload · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,7 +132,7 @@
     }
     *{margin:0;padding:0;box-sizing:border-box;}
     body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;}
-
+ 
     header{background:#1F1646;padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:68px;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
     .logo{display:flex;align-items:center;gap:16px;}
     .logo-img{height:36px;width:auto;display:block;}
@@ -35,7 +144,7 @@
     .nav-link{padding:6px 16px;border-radius:6px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:rgba(255,255,255,0.65);text-decoration:none;transition:all 0.2s;}
     .nav-link:hover{background:rgba(255,255,255,0.1);color:white;}
     .nav-link.active{background:white;color:var(--blue-dark);}
-
+ 
     .overlay{display:none;position:fixed;inset:0;background:rgba(0,58,84,0.88);z-index:1000;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
     .overlay.on{display:flex;}
     .overlay-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:white;}
@@ -44,7 +153,7 @@
     .overlay-bar::after{content:'';display:block;height:100%;width:40%;background:var(--blue);border-radius:2px;animation:lb 1.2s ease infinite;}
     @keyframes lb{0%{transform:translateX(-150%)}100%{transform:translateX(400%)}}
     .overlay-progress{font-family:'DM Mono',monospace;font-size:13px;color:rgba(255,255,255,0.8);}
-
+ 
     #login-section{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 68px);}
     .login-box{background:white;border-radius:16px;padding:40px;width:360px;box-shadow:var(--shadow);border:2px solid var(--border);text-align:center;}
     .login-icon{font-size:48px;margin-bottom:16px;}
@@ -55,12 +164,12 @@
     .login-btn{width:100%;background:var(--blue);color:white;border:none;border-radius:8px;padding:12px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
     .login-btn:hover{background:var(--blue-dark);}
     .login-error{color:var(--red);font-size:12px;margin-top:8px;display:none;}
-
+ 
     #main-section{display:none;}
     main{padding:32px 40px;max-width:1000px;margin:0 auto;display:grid;gap:24px;}
     .page-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;}
     .page-sub{font-size:14px;color:var(--text2);margin-top:4px;}
-
+ 
     .section-card{background:white;border-radius:14px;padding:24px;box-shadow:var(--shadow);border:2px solid var(--border);}
     .section-card.amber-border{border-color:var(--amber);}
     .section-card.ad-border{border-color:var(--ad-color);}
@@ -69,22 +178,22 @@
     .card-title.amber{color:var(--amber);}
     .card-title.ad{color:var(--ad-color);}
     .card-title.purple{color:var(--purple);}
-
+ 
     .note-box{background:var(--blue-light);border:1px solid var(--blue);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--text2);margin-bottom:16px;}
     .note-box.ad-note{background:var(--ad-bg);border-color:var(--ad-color);}
-
+ 
     .input-group{display:flex;flex-direction:column;gap:6px;}
     .input-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;}
     .date-input{padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color 0.2s;background:white;color:var(--text);}
     .date-input:focus{border-color:var(--blue);}
-
+ 
     /* Smart drop zone */
     .smart-drop{border:2px dashed var(--border);border-radius:14px;padding:40px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--blue-light);margin-bottom:16px;}
     .smart-drop:hover,.smart-drop.drag-over{border-color:var(--blue);background:#D0EEFF;}
     .smart-drop-icon{font-size:36px;margin-bottom:10px;}
     .smart-drop-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue-dark);margin-bottom:4px;}
     .smart-drop-sub{font-size:12px;color:var(--text2);}
-
+ 
     /* Detected file cards */
     .detected-file{display:flex;align-items:center;gap:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;padding:10px 14px;}
     .detected-file.warn{background:var(--amber-bg);border-color:var(--amber);}
@@ -96,7 +205,7 @@
     .df-week.ok{color:var(--green);}
     .df-week.warn{color:var(--amber);}
     .df-remove{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:2px 6px;flex-shrink:0;}
-
+ 
     /* Upload cards (legacy style for quarterly) */
     .upload-card{background:white;border:2px dashed var(--border);border-radius:14px;padding:20px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;}
     .upload-card:hover{border-color:var(--blue);background:var(--blue-light);}
@@ -108,7 +217,7 @@
     .uc-check{position:absolute;top:8px;right:8px;font-size:14px;display:none;}
     .upload-card.loaded .uc-check{display:block;}
     input[type="file"]{display:none;}
-
+ 
     /* Ads queue drop zone */
     .ads-drop{border:2px dashed rgba(79,70,229,0.3);border-radius:12px;padding:30px;text-align:center;cursor:pointer;background:var(--ad-bg);transition:all 0.2s;}
     .ads-drop:hover,.ads-drop.drag-over{border-color:var(--ad-color);}
@@ -119,7 +228,7 @@
     .aqi-week{font-size:11px;}
     .aqi-week.ok{color:var(--green);}
     .aqi-week.warn{color:var(--amber);}
-
+ 
     .process-btn{background:var(--blue);color:white;border:none;border-radius:10px;padding:14px 32px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 12px rgba(0,156,222,0.3);}
     .process-btn:hover:not(:disabled){background:var(--blue-dark);transform:translateY(-1px);}
     .process-btn:disabled{background:var(--text3);cursor:not-allowed;transform:none;box-shadow:none;}
@@ -127,13 +236,13 @@
     .ad-btn:hover:not(:disabled){background:#4338CA !important;}
     .amber-btn{background:var(--amber) !important;box-shadow:0 4px 12px rgba(245,166,35,0.3) !important;color:#5a3a00 !important;}
     .purple-btn{background:var(--purple) !important;box-shadow:0 4px 12px rgba(155,89,182,0.3) !important;}
-
+ 
     .log-area{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);height:160px;overflow-y:auto;margin-top:16px;line-height:1.8;}
     .log-line{display:block;}
     .log-line.ok{color:var(--green);}
     .log-line.err{color:var(--red);}
     .log-line.info{color:var(--blue);}
-
+ 
     .history-table{width:100%;border-collapse:collapse;margin-top:12px;}
     .history-table th{text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;border-bottom:2px solid var(--border);}
     .history-table td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;font-family:'DM Mono',monospace;}
@@ -142,14 +251,14 @@
   </style>
 </head>
 <body>
-
+ 
 <div class="overlay" id="overlay">
   <div class="overlay-title" id="overlay-title">Uploading to Supabase...</div>
   <div class="overlay-sub" id="overlay-sub">Processing files</div>
   <div class="overlay-bar"></div>
   <div class="overlay-progress" id="overlay-progress">0 / 0 rows</div>
 </div>
-
+ 
 <header>
   <div class="logo">
     <img src="https://corporate.hasbro.com/_next/image?url=%2Fimages%2Fhasbro_logo.png&w=256&q=75" alt="Hasbro" class="logo-img">
@@ -170,7 +279,7 @@
     <div class="admin-badge">🔒 ADMIN</div>
   </div>
 </header>
-
+ 
 <div id="login-section">
   <div class="login-box">
     <div class="login-icon">🔐</div>
@@ -181,14 +290,14 @@
     <div class="login-error" id="login-error">Incorrect password. Try again.</div>
   </div>
 </div>
-
+ 
 <div id="main-section">
 <main>
   <div>
     <div class="page-title">Weekly Data Upload</div>
     <div class="page-sub">Upload Vendor Central reports to update the Brand Health Dashboard. All historical weeks are preserved for trend analysis.</div>
   </div>
-
+ 
   <!-- VC SMART UPLOAD -->
   <div class="section-card">
     <input type="hidden" id="week-start">
@@ -205,7 +314,7 @@
     <button class="process-btn" id="vc-process-btn" onclick="processVC()" disabled>🚀 Process & Push to Dashboard</button>
     <div class="log-area" id="vc-log"><span class="log-line">Drop your weekly VC reports above to get started.</span></div>
   </div>
-
+ 
   <!-- ADS BULK UPLOAD -->
   <div class="section-card ad-border">
     <div class="card-title ad">🎯 Weekly Ads Report — Pacvue Query Report</div>
@@ -220,7 +329,7 @@
     <button class="process-btn ad-btn" id="ads-process-btn" onclick="processAdsQueue()" disabled style="margin-top:16px;">🎯 Process & Upload All Ads Reports</button>
     <div class="log-area" id="ads-log" style="height:200px;"><span class="log-line">Drop your weekly Pacvue Query report above.</span></div>
   </div>
-
+ 
   <!-- QUARTERLY LOYALTY -->
   <div class="section-card amber-border">
     <div class="card-title amber">Quarterly Loyalty Data — Upload Once Per Quarter</div>
@@ -247,7 +356,7 @@
     </div>
     <div class="log-area" id="loyalty-log" style="height:90px;"><span class="log-line">Upload the repeat purchase CSV to add loyalty metrics.</span></div>
   </div>
-
+ 
   <!-- QUARTERLY ADS COVERAGE -->
   <div class="section-card ad-border">
     <div class="card-title ad">📋 Quarterly Ads Coverage — ASIN Coverage</div>
@@ -274,7 +383,7 @@
     </div>
     <div class="log-area" id="coverage-log" style="height:120px;"><span class="log-line">Upload the EMEA AMZ Ads quarterly Excel file.</span></div>
   </div>
-
+ 
   <!-- SEARCH TERMS -->
   <div class="section-card purple-border">
     <div class="card-title purple">🔍 Weekly Search Terms — Amazon Brand Analytics</div>
@@ -291,7 +400,7 @@
     </div>
     <div class="log-area" id="search-log" style="height:100px;"><span class="log-line">Upload the Top Search Terms CSV.</span></div>
   </div>
-
+ 
   <!-- UPLOAD HISTORY -->
   <div class="section-card">
     <div class="card-title">Upload History</div>
@@ -302,16 +411,16 @@
   </div>
 </main>
 </div>
-
+ 
 <script>
 const SB_URL = 'https://rycqfwzgvpzwhphgclpb.supabase.co';
 const SB_KEY = 'sb_publishable_CbKFhpN2dWI_UXhwGkclqw_AMPSprs4';
 const ADMIN_PW = 'hasbro2026';
 const EU5 = ['GB','DE','FR','IT','ES'];
 const YOY_CAP = 2.0;
-
+ 
 let files = { loyalty:null, coverage:null, search:null };
-
+ 
 // ─── LOGIN ────────────────────────────────────────────────────
 function checkPassword() {
   if (document.getElementById('password-input').value === ADMIN_PW) {
@@ -323,7 +432,7 @@ function checkPassword() {
     document.getElementById('password-input').value = '';
   }
 }
-
+ 
 // ─── LEGACY FILE HANDLING (quarterly cards) ───────────────────
 function dOver(e,id){e.preventDefault();document.getElementById(id).style.borderColor='var(--blue)';}
 function dLeave(id){document.getElementById(id).style.borderColor='';}
@@ -339,37 +448,39 @@ function loadFile(f,type){
   if(type==='coverage') document.getElementById('coverage-btn').disabled=false;
   if(type==='search') document.getElementById('search-btn').disabled=false;
 }
-
+ 
 // ─── DATE DETECTION ───────────────────────────────────────────
+// Snap any detected start date to the NEAREST Sunday (Amazon week start), then
+// derive the week end as Sunday+6 (Saturday). Handles every export convention
+// without caring which day the range starts on:
+//   Sunday-start  (VC exports, Amazon-style ranges)  → unchanged
+//   Monday-start  (Pacvue default)                   → back 1 day
+//   Saturday-start (odd/renamed exports)             → forward 1 day
+// Replaces the old blind "-1 day" Pacvue logic that caused off-by-one weeks
+// whenever a file wasn't Monday-start.
+function snapWeek(y, mo, da) {
+  const d = new Date(y, mo - 1, da, 12);
+  const g = d.getDay(); // Sun=0 ... Sat=6
+  d.setDate(d.getDate() + (g <= 3 ? -g : 7 - g));
+  const e = new Date(d); e.setDate(e.getDate() + 6);
+  const fmt  = x => `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
+  const fmtL = x => `${String(x.getDate()).padStart(2,'0')}/${String(x.getMonth()+1).padStart(2,'0')}/${x.getFullYear()}`;
+  return { start:fmt(d), end:fmt(e), label:`${fmtL(d)} – ${fmtL(e)}` };
+}
+ 
 function detectWeekFromFilename(name) {
   // DD-MM-YYYY_DD-MM-YYYY
-  let m = name.match(/(\d{2}-\d{2}-\d{4})_(\d{2}-\d{2}-\d{4})/);
-  if (m) {
-    const [d1,mo1,y1] = m[1].split('-');
-    const [d2,mo2,y2] = m[2].split('-');
-    return { start:`${y1}-${mo1}-${d1}`, end:`${y2}-${mo2}-${d2}`, label:`${d1}/${mo1}/${y1} – ${d2}/${mo2}/${y2}` };
-  }
+  let m = name.match(/(\d{2})-(\d{2})-(\d{4})_(\d{2}-\d{2}-\d{4})/);
+  if (m) return snapWeek(parseInt(m[3]), parseInt(m[2]), parseInt(m[1]));
   // YYYY-MM-DD_YYYY-MM-DD
-  m = name.match(/(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})/);
-  if (m) {
-    const [y1,mo1,d1] = m[1].split('-');
-    const [y2,mo2,d2] = m[2].split('-');
-    return { start:m[1], end:m[2], label:`${d1}/${mo1}/${y1} – ${d2}/${mo2}/${y2}` };
-  }
-  // Pacvue: _YYYY-MM-DD-YYYY-MM-DD (Pacvue weeks start Monday, Amazon VC weeks start Sunday — subtract 1 day)
-  m = name.match(/_(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})/);
-  if (m) {
-    const startD = new Date(m[1] + 'T12:00:00');
-    startD.setDate(startD.getDate() - 1);
-    const endD = new Date(m[2] + 'T12:00:00');
-    endD.setDate(endD.getDate() - 1);
-    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const fmtL = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-    return { start:fmt(startD), end:fmt(endD), label:`${fmtL(startD)} – ${fmtL(endD)}` };
-  }
+  m = name.match(/(\d{4})-(\d{2})-(\d{2})_(\d{4}-\d{2}-\d{2})/);
+  if (m) return snapWeek(parseInt(m[1]), parseInt(m[2]), parseInt(m[3]));
+  // Pacvue: _YYYY-MM-DD-YYYY-MM-DD
+  m = name.match(/_(\d{4})-(\d{2})-(\d{2})-(\d{4}-\d{2}-\d{2})/);
+  if (m) return snapWeek(parseInt(m[1]), parseInt(m[2]), parseInt(m[3]));
   return null;
 }
-
+ 
 async function detectWeekFromXlsx(file) {
   try {
     const data = await file.arrayBuffer();
@@ -380,23 +491,19 @@ async function detectWeekFromXlsx(file) {
       for (let i = 0; i < row.length; i++) {
         if (/widget date range|date range/i.test(String(row[i]))) {
           const ds = String(row[i+1]||'').trim();
-          const m = ds.match(/(\d{2}-\d{2}-\d{4})\s+(\d{2}-\d{2}-\d{4})/);
-          if (m) {
-            const [d1,mo1,y1] = m[1].split('-');
-            const [d2,mo2,y2] = m[2].split('-');
-            return { start:`${y1}-${mo1}-${d1}`, end:`${y2}-${mo2}-${d2}`, label:`${d1}/${mo1}/${y1} – ${d2}/${mo2}/${y2}` };
-          }
+          const m = ds.match(/(\d{2})-(\d{2})-(\d{4})\s+(\d{2}-\d{2}-\d{4})/);
+          if (m) return snapWeek(parseInt(m[3]), parseInt(m[2]), parseInt(m[1]));
         }
       }
     }
   } catch(e) {}
   return null;
 }
-
+ 
 // ─── VC SMART DROP ZONE ───────────────────────────────────────
 const vcFiles = {};
 const VC_TYPE_MAP = { sales:'📊 Sales', traffic:'👁 Traffic', inventory:'📦 Inventory' };
-
+ 
 function detectVCType(name) {
   const n = name.toLowerCase();
   if (n.includes('sales_asin') || n.includes('sales_manufacturing')) return 'sales';
@@ -404,12 +511,12 @@ function detectVCType(name) {
   if (n.includes('inventory_health') || n.includes('inventory_')) return 'inventory';
   return null;
 }
-
+ 
 function vcDragOver(e){e.preventDefault();document.getElementById('vc-dropzone').classList.add('drag-over');}
 function vcDragLeave(){document.getElementById('vc-dropzone').classList.remove('drag-over');}
 function vcDrop(e){e.preventDefault();vcDragLeave();handleVCFiles([...e.dataTransfer.files]);}
 function vcFileSelect(e){handleVCFiles([...e.target.files]);e.target.value='';}
-
+ 
 function handleVCFiles(list) {
   list.forEach(f => {
     const type = detectVCType(f.name);
@@ -420,7 +527,7 @@ function handleVCFiles(list) {
   renderVCDetected();
   checkVCReady();
 }
-
+ 
 function renderVCDetected() {
   const el = document.getElementById('vc-detected-list');
   const entries = Object.entries(vcFiles);
@@ -436,28 +543,28 @@ function renderVCDetected() {
       <button class="df-remove" onclick="removeVCFile('${type}')">✕</button>
     </div>`).join('');
 }
-
+ 
 function removeVCFile(type) {
   delete vcFiles[type];
   renderVCDetected();
   checkVCReady();
 }
-
+ 
 function checkVCReady() {
   const has3 = vcFiles.sales && vcFiles.traffic && vcFiles.inventory;
   const hasWeeks = has3 && vcFiles.sales.week && vcFiles.traffic.week && vcFiles.inventory.week;
   document.getElementById('vc-process-btn').disabled = !(has3 && hasWeeks);
 }
-
+ 
 // ─── ADS BULK QUEUE ───────────────────────────────────────────
 let adsQueue = [];
 let _processingQueue = false;
-
+ 
 function adsDragOver(e){e.preventDefault();document.getElementById('ads-dropzone').classList.add('drag-over');}
 function adsDragLeave(){document.getElementById('ads-dropzone').classList.remove('drag-over');}
 function adsDrop(e){e.preventDefault();adsDragLeave();handleAdsFiles([...e.dataTransfer.files]);}
 function adsFileSelect(e){handleAdsFiles([...e.target.files]);e.target.value='';}
-
+ 
 async function handleAdsFiles(list) {
   const xlsxFiles = list.filter(f=>f.name.endsWith('.xlsx'));
   if (!xlsxFiles.length) { logA('No .xlsx files found.','err'); return; }
@@ -473,7 +580,7 @@ async function handleAdsFiles(list) {
   renderAdsQueue();
   document.getElementById('ads-process-btn').disabled = adsQueue.length===0;
 }
-
+ 
 function renderAdsQueue() {
   const el = document.getElementById('ads-queue-list');
   if (!adsQueue.length){el.innerHTML='';return;}
@@ -485,13 +592,13 @@ function renderAdsQueue() {
       <button class="df-remove" onclick="removeAdsQueue(${i})">✕</button>
     </div>`).join('');
 }
-
+ 
 function removeAdsQueue(i) {
   adsQueue.splice(i,1);
   renderAdsQueue();
   document.getElementById('ads-process-btn').disabled = adsQueue.length===0;
 }
-
+ 
 async function processAdsQueue() {
   const valid = adsQueue.filter(q=>q.weekStart);
   if (!valid.length){logA('No files with detectable week dates.','err');return;}
@@ -517,7 +624,7 @@ async function processAdsQueue() {
   document.getElementById('ads-process-btn').disabled = false;
   loadHistory();
 }
-
+ 
 // ─── BRAND CLASSIFICATION ─────────────────────────────────────
 const BRANDS = [
   { id:'DISNEY_KIDS', titleKeys:['spidey and his amazing friends','spidey and amazing friends','iron man and his awesome friends','iron man and friends','spidey and his'], brandKeys:['hasbro spidey','iron man and his awesome','hasbro iron man and his','spidey and his amazing'] },
@@ -532,7 +639,7 @@ const BRANDS = [
   { id:'NERF', titleKeys:['nerf','super soaker','supersoaker'], brandKeys:['nerf','hasbro nerf','super soaker','supersoaker'] },
   { id:'OTHER', titleKeys:[], brandKeys:[] }
 ];
-
+ 
 function classifyBrand(title,brand) {
   const t=(title||'').toLowerCase(), b=(brand||'').toLowerCase().trim();
   const dk=BRANDS[0];
@@ -543,7 +650,7 @@ function classifyBrand(title,brand) {
   }
   return 'OTHER';
 }
-
+ 
 // ─── ADS BRAND MAP (Executive Summary) ───────────────────────
 const ADS_BRAND_RULES = [
   { id:'DISNEY_KIDS', fn: b=>/spidey|iron man and his awesome|iron man and friends|disney kids/i.test(b) },
@@ -557,7 +664,7 @@ const ADS_BRAND_RULES = [
   { id:'MARVEL',      fn: b=>/^marvel$/i.test(b.trim()) },
   { id:'STAR_WARS',   fn: b=>/star wars|star_wars|_star_|star brand/i.test(b) },
 ];
-
+ 
 const COUNTRY_MAP = {
   'united kingdom':'GB','uk':'GB','great britain':'GB',
   'germany':'DE','deutschland':'DE',
@@ -565,7 +672,7 @@ const COUNTRY_MAP = {
   'italy':'IT','italia':'IT',
   'spain':'ES','españa':'ES','espana':'ES'
 };
-
+ 
 function classifyAdsBrand(brandName, freeForm) {
   const b = (brandName||'').trim();
   const ff = (freeForm||'').toLowerCase();
@@ -580,11 +687,11 @@ function classifyAdsBrand(brandName, freeForm) {
   }
   return null;
 }
-
+ 
 function countryToMarket(c) {
   return COUNTRY_MAP[(c||'').toLowerCase().trim()] || null;
 }
-
+ 
 // ─── PACVUE CAMPAIGN NAME → BRAND ────────────────────────────
 const PACVUE_BRAND_MAP = {
   'STAR':'STAR_WARS', 'GAME':'GAMES', 'PLAY':'PLAY_DOH',
@@ -598,7 +705,7 @@ const PACVUE_PROFILE_MARKET = {
   'hasbro uk':'GB','hasbro de':'DE','hasbro fr':'FR','hasbro it':'IT','hasbro es':'ES',
   'hbro uk':'GB','hbro de':'DE','hbro fr':'FR','hbro it':'IT','hbro es':'ES'
 };
-
+ 
 function classifyPacvueCampaign(campaignName) {
   const parts = campaignName.toUpperCase().split('_');
   if (parts.length < 3) return null;
@@ -610,15 +717,15 @@ function classifyPacvueCampaign(campaignName) {
   }
   return PACVUE_BRAND_MAP[code] || null;
 }
-
+ 
 function pacvueProfileToMarket(profile) {
   return PACVUE_PROFILE_MARKET[(profile||'').toLowerCase().trim()] || null;
 }
-
+ 
 function isPacvueReport(filename) {
   return /weekly.*report|placement.*report|campaign.*report|query.*report/i.test(filename);
 }
-
+ 
 async function parsePacvueReport(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -627,11 +734,11 @@ async function parsePacvueReport(file) {
         const wb = XLSX.read(e.target.result, {type:'array', cellText:false});
         const ws = wb.Sheets[wb.SheetNames[0]];
         const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
-
+ 
         // Find header row (has 'Campaign Name' or 'Campaign')
         let hi = raw.findIndex(r => r.some(c => /^campaign name$/i.test(String(c).trim()) || /^profile name$/i.test(String(c).trim())));
         if (hi === -1) throw new Error('Could not find header row in Pacvue report');
-
+ 
         const headers = raw[hi].map(h => String(h).trim());
         const gc = name => headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()));
         const campCol    = gc('Campaign Name') >= 0 ? gc('Campaign Name') : gc('Campaign');
@@ -640,7 +747,7 @@ async function parsePacvueReport(file) {
         const salesCol   = gc('Sales 14d') >= 0 ? gc('Sales 14d') : gc('Sales');
         const clickCol   = gc('Click');
         const impCol     = gc('Impression');
-
+ 
         const agg = {};
         for (const row of raw.slice(hi + 1)) {
           if (!row.some(v => v !== '')) continue;
@@ -664,10 +771,10 @@ async function parsePacvueReport(file) {
     reader.readAsArrayBuffer(file);
   });
 }
-
-
+ 
+ 
 function normaliseKey(s){return String(s).trim().replace(/\u2013|\u2014|\u2212/g,'–').replace(/\s+/g,' ');}
-
+ 
 function parseVCFile(file) {
   return new Promise(resolve => {
     const ext = file.name.split('.').pop().toLowerCase();
@@ -706,7 +813,7 @@ function parseVCFile(file) {
     }
   });
 }
-
+ 
 async function parseExecSummary(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -753,11 +860,11 @@ async function parseExecSummary(file) {
     reader.readAsArrayBuffer(file);
   });
 }
-
+ 
 function cleanNum(v){if(v===null||v===undefined||v==='')return null;if(typeof v==='number')return isNaN(v)?null:v;const s=String(v).replace(/[^0-9.\-]/g,'').trim();if(s===''||s==='-')return null;const n=parseFloat(s);return isNaN(n)?null:n;}
 function parseYoy(v,pct){if(v===null||v===undefined||v===''||v==='-')return null;let n;if(pct){const s=String(v).replace(/,/g,'').replace(/%/g,'').trim();if(s===''||s==='nan')return null;n=parseFloat(s)/100;}else{n=typeof v==='number'?v:parseFloat(String(v).replace(/,/g,'').trim());}if(isNaN(n))return null;if(n<=-0.99)return null;if(Math.abs(n)>YOY_CAP)return null;return n;}
 function col(row,name){if(row[name]!==undefined)return row[name];const norm=name.replace(/[-\u2013\u2014\u2212]/g,'–').toLowerCase();for(const k of Object.keys(row)){if(k.replace(/[-\u2013\u2014\u2212]/g,'–').toLowerCase()===norm)return row[k];}return undefined;}
-
+ 
 // ─── LOGGING ─────────────────────────────────────────────────
 function log(msg,type='',areaId='vc-log'){
   const area=document.getElementById(areaId);
@@ -771,7 +878,7 @@ function logA(msg,type=''){log(msg,type,'ads-log');}
 function logL(msg,type=''){log(msg,type,'loyalty-log');}
 function logC(msg,type=''){log(msg,type,'coverage-log');}
 function logS(msg,type=''){log(msg,type,'search-log');}
-
+ 
 // ─── PROCESS VC ───────────────────────────────────────────────
 async function processVC() {
   const weekData = vcFiles.sales?.week || vcFiles.traffic?.week || vcFiles.inventory?.week;
@@ -780,11 +887,11 @@ async function processVC() {
   const weekEnd = weekData.end;
   document.getElementById('week-start').value = weekStart;
   document.getElementById('week-end').value = weekEnd;
-
+ 
   document.getElementById('overlay').classList.add('on');
   document.getElementById('vc-log').innerHTML='';
   log('Starting process...','info');
-
+ 
   try {
     log('Reading Sales report...');
     const salesRaw=await parseVCFile(vcFiles.sales.file);
@@ -795,12 +902,12 @@ async function processVC() {
     log('Reading Inventory report...');
     const invRaw=await parseVCFile(vcFiles.inventory.file);
     log(`✓ Inventory: ${invRaw.length} total rows`,'ok');
-
+ 
     const sales=salesRaw.filter(r=>EU5.includes(String(col(r,'Store code')||'').trim().toUpperCase()));
     const traffic=trafficRaw.filter(r=>EU5.includes(String(col(r,'Store code')||'').trim().toUpperCase()));
     const inv=invRaw.filter(r=>EU5.includes(String(col(r,'Store code')||'').trim().toUpperCase()));
     log(`EU5 filter: ${sales.length} sales, ${traffic.length} traffic, ${inv.length} inventory`,'info');
-
+ 
     const trafficMap={};
     traffic.forEach(r=>{
       const k=String(r['ASIN']).trim()+'_'+String(col(r,'Store code')||'').trim().toUpperCase();
@@ -809,7 +916,7 @@ async function processVC() {
       const yoy=parseYoy(col(r,'Featured offer page views – Same Period Last Year (%)'),true);
       if(yoy!==null) trafficMap[k].gviewsYoy=yoy;
     });
-
+ 
     const invMap={};
     inv.forEach(r=>{
       const k=String(r['ASIN']).trim()+'_'+String(col(r,'Store code')||'').trim().toUpperCase();
@@ -817,7 +924,7 @@ async function processVC() {
       invMap[k].oos=cleanNum(col(r,'Sourceable product OOS %'))||0;
       invMap[k].unfilled+=cleanNum(col(r,'Unfilled Customer Ordered Units'))||0;
     });
-
+ 
     log('Classifying brands & building rows...');
     const rows=[];
     sales.forEach(r=>{
@@ -845,11 +952,11 @@ async function processVC() {
       });
     });
     log(`✓ Built ${rows.length} rows`,'ok');
-
+ 
     log(`Clearing existing data for week ${weekStart}...`);
     await sbDelete(`/rest/v1/brand_health_snapshots?week_start=eq.${weekStart}`);
     log('✓ Cleared','ok');
-
+ 
     document.getElementById('overlay-sub').textContent='Uploading to Supabase...';
     const BATCH=150; let uploaded=0;
     for(let i=0;i<rows.length;i+=BATCH){
@@ -870,7 +977,7 @@ async function processVC() {
       log(`Uploaded ${uploaded}/${rows.length} rows...`);
       await new Promise(r=>setTimeout(r,200));
     }
-
+ 
     await sbDelete(`/rest/v1/brand_health_weeks?week_start=eq.${weekStart}`);
     await sbPost('/rest/v1/brand_health_weeks',{week_start:weekStart,week_label:fmtDate(weekStart)+' – '+fmtDate(weekEnd)});
     document.getElementById('overlay').classList.remove('on');
@@ -882,7 +989,7 @@ async function processVC() {
     console.error(err);
   }
 }
-
+ 
 // ─── PROCESS ADS ──────────────────────────────────────────────
 async function processAndUploadAds(file, weekStart) {
   logA(`Reading ${file.name}...`,'info');
@@ -896,7 +1003,7 @@ async function processAndUploadAds(file, weekStart) {
   }
   logA(`✓ ${parsedRows.length} brand-market rows parsed`,'ok');
   if (!parsedRows.length) throw new Error('0 rows parsed — check file format');
-
+ 
   // Aggregate by brand+market
   const agg = {};
   parsedRows.forEach(r => {
@@ -907,7 +1014,7 @@ async function processAndUploadAds(file, weekStart) {
     agg[k].ad_impressions+= r.ad_impressions;
     agg[k].ad_clicks     += r.ad_clicks;
   });
-
+ 
   // Log brand summary
   const brandSum = {};
   Object.values(agg).forEach(r => {
@@ -919,7 +1026,7 @@ async function processAndUploadAds(file, weekStart) {
   Object.entries(brandSum).forEach(([bid,s]) => {
     logA(`  ${bid}: rev=€${s.rev.toFixed(0)} spend=€${s.spend.toFixed(0)} ROAS=${s.spend>0?(s.rev/s.spend).toFixed(2):'—'} clicks=${Math.round(s.clicks)}`,'ok');
   });
-
+ 
   // Fetch VC totals for organic split
   logA('Fetching VC totals for organic split...','info');
   const vcRows = await sbFetch(`/rest/v1/brand_health_snapshots?week_start=eq.${weekStart}&select=brand_classified,market,dispatched_revenue,ordered_revenue,glance_views&limit=10000`);
@@ -930,7 +1037,7 @@ async function processAndUploadAds(file, weekStart) {
     vcMap[k].revenue += (r.dispatched_revenue||r.ordered_revenue||0);
     vcMap[k].gviews  += (r.glance_views||0);
   });
-
+ 
   const finalRows = Object.values(agg).map(r => {
     const k = r.brand_classified+'||'+r.market;
     const vc = vcMap[k]||{revenue:0,gviews:0};
@@ -947,11 +1054,11 @@ async function processAndUploadAds(file, weekStart) {
       organic_glance_views:Math.max(0,Math.round(vc.gviews-r.ad_clicks))
     };
   });
-
+ 
   logA(`✓ Built ${finalRows.length} brand-market rows`,'ok');
   await sbDelete(`/rest/v1/brand_health_ads?week_start=eq.${weekStart}`);
   await sbPost('/rest/v1/brand_health_ads', finalRows);
-
+ 
   // Ensure week exists in brand_health_weeks
   const existingWeek = await sbFetch(`/rest/v1/brand_health_weeks?week_start=eq.${weekStart}&select=week_start`);
   if (!existingWeek.length) {
@@ -959,11 +1066,11 @@ async function processAndUploadAds(file, weekStart) {
     const end = new Date(d); end.setDate(d.getDate()+6);
     await sbPost('/rest/v1/brand_health_weeks',{week_start:weekStart, week_label:fmtDate(weekStart)+' – '+fmtDate(end.toISOString().split('T')[0])});
   }
-
+ 
   logA(`✅ Done! ${finalRows.length} rows for week ${weekStart}`,'ok');
   if (!_processingQueue) loadHistory();
 }
-
+ 
 // ─── LOYALTY ──────────────────────────────────────────────────
 async function uploadLoyalty() {
   const quarter = document.getElementById('loyalty-quarter').value;
@@ -1001,7 +1108,7 @@ async function uploadLoyalty() {
   } catch(err){logL('❌ Error: '+err.message,'err');}
   document.getElementById('loyalty-btn').disabled=false;
 }
-
+ 
 // ─── COVERAGE ─────────────────────────────────────────────────
 async function uploadCoverage() {
   const quarter = document.getElementById('coverage-quarter').value;
@@ -1049,12 +1156,12 @@ async function uploadCoverage() {
   } catch(err){logC('❌ Error: '+err.message,'err');}
   document.getElementById('coverage-btn').disabled=false;
 }
-
+ 
 // ─── SEARCH TERMS ─────────────────────────────────────────────
 const HASBRO_KEYWORDS={TRANSFORMERS:['transformers','optimus prime','megatron','autobot','decepticon','bumblebee transformer'],NERF:['nerf','super soaker','supersoaker'],MONOPOLY:['monopoly'],PLAY_DOH:['play-doh','play doh','playdoh'],BEYBLADE:['beyblade','bey blade'],PEPPA_PIG:['peppa pig','peppa'],MARVEL:['marvel','spider-man','spiderman','spidey','avengers','iron man toy','thor toy','hulk toy','marvel legends','captain america toy'],STAR_WARS:['star wars','lightsaber','mandalorian','darth vader','yoda toy','stormtrooper toy','boba fett','grogu'],GAMES:['monopoly','cluedo','hasbro game','jenga','battleship game','connect 4','operation game','guess who','trivial pursuit','hasbro gaming'],DISNEY_KIDS:['spidey and his','spidey amazing friends'],HASBRO:['hasbro']};
 function classifySearchTerm(term){const t=term.toLowerCase();for(const[brand,kws]of Object.entries(HASBRO_KEYWORDS)){if(kws.some(k=>t.includes(k)))return brand;}return null;}
 function estimateSearchVol(rank){if(!rank||rank<=0)return null;return Math.round(500000/Math.pow(rank,0.7));}
-
+ 
 async function uploadSearchTerms() {
   const weekStart = document.getElementById('week-start').value;
   if (!weekStart){alert('Please upload VC data first to set the week date.');return;}
@@ -1096,7 +1203,7 @@ async function uploadSearchTerms() {
     logS(`✅ Done! ${allRows.length} terms uploaded for week ${weekStart}`,'ok');
   } catch(err){logS('❌ Error: '+err.message,'err');}
 }
-
+ 
 // ─── HISTORY ─────────────────────────────────────────────────
 async function loadHistory() {
   const [weeks,adsWeeks] = await Promise.all([
@@ -1114,7 +1221,7 @@ async function loadHistory() {
     <td><button class="del-btn" onclick="deleteWeek('${w.week_start}')">Delete</button></td>
   </tr>`).join('');
 }
-
+ 
 async function deleteWeek(weekStart){
   if(!confirm(`Delete all data for week ${weekStart}? This cannot be undone.`)) return;
   await Promise.all([
@@ -1124,13 +1231,59 @@ async function deleteWeek(weekStart){
   ]);
   loadHistory();
 }
-
+ 
 // ─── SUPABASE HELPERS ─────────────────────────────────────────
 function sbFetch(path){return fetch(SB_URL+path,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Range':'0-1999','Prefer':'count=none'}}).then(r=>r.json()).then(d=>Array.isArray(d)?d:[]);}
 async function sbDelete(path){const r=await fetch(SB_URL+path,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});if(!r.ok)throw new Error('Delete failed: '+r.status);}
 async function sbPost(path,body){const r=await fetch(SB_URL+path,{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=minimal'},body:JSON.stringify(body)});if(!r.ok){const e=await r.text();throw new Error('Upload failed: '+e);}}
-
+ 
 function fmtDate(d){const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
 </script>
 </body>
 </html>
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
