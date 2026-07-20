@@ -50,6 +50,17 @@
     .section-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
     .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
     .sentiment-bar{display:flex;gap:16px;flex-wrap:wrap;}
+    .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;}
+    .metric-card{background:white;border-radius:14px;border:2px solid var(--border);padding:16px;position:relative;box-shadow:var(--shadow);}
+    .metric-card.m-happy{border-color:var(--green);}
+    .metric-card.m-sad{border-color:var(--amber);}
+    .metric-card.m-cry{border-color:var(--red);}
+    .metric-emoji{position:absolute;top:12px;right:12px;font-size:22px;line-height:1;}
+    .metric-label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+    .metric-value{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--text);line-height:1.1;}
+    .metric-sub{font-size:11px;color:var(--text2);margin-top:6px;font-family:'DM Mono',monospace;}
+    .metric-sub .yoy-up{color:var(--green);font-weight:700;}
+    .metric-sub .yoy-down{color:var(--red);font-weight:700;}
     .sentiment-pill{display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:50px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;border:2px solid;}
     .sentiment-pill.happy{background:var(--green-bg);border-color:var(--green);color:var(--green);}
     .sentiment-pill.sad{background:var(--amber-bg);border-color:var(--amber);color:var(--amber);}
@@ -282,6 +293,10 @@
   <div class="no-data-title">No data uploaded yet</div>
 </div>
 <main id="main-content" style="display:none">
+  <div>
+    <div class="section-title">Key Metrics — Portfolio Overview</div>
+    <div class="metrics-grid" id="overall-metrics"></div>
+  </div>
   <div>
     <div class="section-title">Portfolio Health Summary</div>
     <div class="sentiment-bar" id="sentiment-bar"></div>
@@ -860,7 +875,78 @@ function getSentiment(d){
 }
 var SC={happy:{emoji:'🤑',label:'Happy',cls:'happy'},sad:{emoji:'🧐',label:'Mixed',cls:'sad'},cry:{emoji:'😭',label:'Needs Attention',cls:'cry'}};
 
-function buildDashboard(){renderSentimentBar();renderBrandCards();renderSupplyAlerts();if(selectedBrand)renderRCA(selectedBrand,currentTab);}
+// ─── PORTFOLIO-LEVEL AGGREGATION (Key Metrics section) ────────
+// Mirrors aggregateBrand exactly but across ALL rows in the current
+// period/market selection, so the overall numbers always reconcile
+// with the sum of the brand cards below.
+function aggregatePortfolio(){
+  var rows=allRows;
+  if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});
+  var revenue=0,units=0,gviews=0,oosVals=[];
+  rows.forEach(function(r){
+    revenue+=r.dispatched_revenue||0;
+    units+=r.dispatched_units||0;
+    gviews+=r.glance_views||0;
+    if(r.oos_pct!=null)oosVals.push(r.oos_pct);
+  });
+  // Prior period totals: sum every brand||market key in priorData that
+  // matches the current market filter — same source the brand cards use.
+  var priorRevenue=0,priorGviews=0;
+  Object.keys(priorData).forEach(function(k){
+    var mkt=k.split('||')[1];
+    if(currentMarket!=='ALL'&&mkt!==currentMarket)return;
+    priorRevenue+=priorData[k].revenue||0;
+    priorGviews+=priorData[k].gviews||0;
+  });
+  var revenueYoy=priorRevenue>0?(revenue-priorRevenue)/priorRevenue:null;
+  var gviewsYoy=priorGviews>0?(gviews-priorGviews)/priorGviews:null;
+  var avgOos=oosVals.length>0?oosVals.reduce(function(a,b){return a+b;},0)/oosVals.length:0;
+  var conv=gviews>0?(units/gviews)*100:0,asp=units>0?revenue/units:0;
+  // Portfolio repeat rate: customer-weighted across brands, NOT a simple
+  // average of brand rates — sum(repeat customers)/sum(total customers).
+  var repeatCust=0,totalCust=0;
+  Object.keys(loyaltyData).forEach(function(bid){
+    var l=loyaltyData[bid];
+    if(l&&l.total_customers){repeatCust+=(l.repeat_customers||0);totalCust+=l.total_customers;}
+  });
+  var repeatRate=totalCust>0?repeatCust/totalCust:null;
+  return{revenue:revenue,revenueYoy:revenueYoy,units:units,gviews:gviews,gviewsYoy:gviewsYoy,conv:conv,asp:asp,avgOos:avgOos,repeatRate:repeatRate};
+}
+
+function renderOverallMetrics(){
+  var p=aggregatePortfolio();
+  var fmtEuro=function(v){return v>=1000000?'€'+(v/1000000).toFixed(1)+'M':v>=1000?'€'+(v/1000).toFixed(0)+'K':'€'+Math.round(v);};
+  var fmtNum=function(v){return v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'K':Math.round(v).toLocaleString();};
+  var yoyHtml=function(y){
+    if(y===null)return'<span style="opacity:0.6">no prior data</span>';
+    var cls=y>=0?'yoy-up':'yoy-down';var arr=y>=0?'▲':'▼';
+    return'<span class="'+cls+'">'+arr+Math.abs(y*100).toFixed(1)+'% '+(currentComparison==='yoy'?'YoY':currentComparison==='4w'?'vs 4W':'WoW')+'</span>';
+  };
+  // Per-metric sentiment, reusing the exact thresholds the brand cards use
+  // (getSentiment ±2% revenue, ±5% GVs; cvrLevel; oosLabel).
+  var sRev=p.revenueYoy===null?'sad':p.revenueYoy>0.02?'happy':p.revenueYoy<-0.02?'cry':'sad';
+  var sGv=p.gviewsYoy===null?'sad':p.gviewsYoy>0.05?'happy':p.gviewsYoy<-0.05?'cry':'sad';
+  var sCvr=cvrLevel(p.conv)==='good'?'happy':cvrLevel(p.conv)==='ok'?'sad':'cry';
+  var sOos=oosLabel(p.avgOos)==='green'?'happy':oosLabel(p.avgOos)==='amber'?'sad':'cry';
+  var sRep=p.repeatRate===null?null:p.repeatRate>=0.15?'happy':p.repeatRate>=0.08?'sad':'cry';
+  var card=function(label,value,sub,sent){
+    var emoji=sent?('<div class="metric-emoji">'+SC[sent].emoji+'</div>'):'';
+    var cls=sent?(' m-'+SC[sent].cls):'';
+    return'<div class="metric-card'+cls+'">'+emoji+
+      '<div class="metric-label">'+label+'</div>'+
+      '<div class="metric-value">'+value+'</div>'+
+      '<div class="metric-sub">'+sub+'</div></div>';
+  };
+  document.getElementById('overall-metrics').innerHTML=
+    card('Revenue',fmtEuro(p.revenue),yoyHtml(p.revenueYoy),sRev)+
+    card('Glance Views',fmtNum(p.gviews),yoyHtml(p.gviewsYoy),sGv)+
+    card('Conversion Rate',p.conv.toFixed(2)+'%',fmtNum(p.units)+' units',sCvr)+
+    card('ASP','€'+p.asp.toFixed(2),'per unit dispatched',null)+
+    card('Avg OOS',p.avgOos.toFixed(1)+'%','target ≤6%',sOos)+
+    card('Repeat Purchase',p.repeatRate!==null?(p.repeatRate*100).toFixed(1)+'%':'—',p.repeatRate!==null?'customer-weighted · GB quarterly':'no loyalty data',sRep);
+}
+
+function buildDashboard(){renderOverallMetrics();renderSentimentBar();renderBrandCards();renderSupplyAlerts();if(selectedBrand)renderRCA(selectedBrand,currentTab);}
 
 function renderSentimentBar(){
   var counts={happy:0,sad:0,cry:0};
