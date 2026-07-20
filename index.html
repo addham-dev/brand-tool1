@@ -1015,6 +1015,13 @@ function renderOverallMetrics(){
   var poGroups=computePreOrders();
   var poRev=0,poUnits=0;
   poGroups.forEach(function(g){poRev+=g.pending;poUnits+=g.pendingUnits;});
+  // Secondary line: orders placed on book ASINs within the SELECTED period —
+  // moves with the week/month selector while the headline stays cumulative.
+  var flaggedAsins={};
+  poGroups.forEach(function(g){g.asins.forEach(function(a){flaggedAsins[a.asin]=1;});});
+  var poNewRev=0;
+  var poRows=currentMarket==='ALL'?allRows:allRows.filter(function(r){return r.market===currentMarket;});
+  poRows.forEach(function(r){if(flaggedAsins[r.asin])poNewRev+=r.ordered_revenue||0;});
   var card=function(label,value,sub,sent){
     var emoji=sent?('<div class="metric-emoji">'+SC[sent].emoji+'</div>'):'';
     var cls=sent?(' m-'+SC[sent].cls):'';
@@ -1029,7 +1036,7 @@ function renderOverallMetrics(){
     card('Conversion Rate',p.conv.toFixed(2)+'%',cvrSub,sCvr)+
     card('ASP','€'+p.asp.toFixed(2),yoyHtml(p.aspYoy),null)+
     card('Avg OOS',p.avgOos.toFixed(1)+'%','target ≤6%',sOos)+
-    card('Pre-Order Pipeline',poRev>0?fmtEuro(poRev):'€0',fmtNum(poUnits)+' units · excl. from shipped revenue',null);
+    card('Pre-Order Pipeline',poRev>0?fmtEuro(poRev):'€0',fmtNum(poUnits)+' units · excl. shipped rev'+(poNewRev>0?'<br>+'+fmtEuro(poNewRev)+' ordered in period':''),null);
 }
 
 // ─── PRE-ORDER / PENDING SHIP PIPELINE ─────────────────────────
