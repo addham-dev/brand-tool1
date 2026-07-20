@@ -333,7 +333,7 @@
   <div class="supply-panel" id="preorder-panel" style="display:none;">
     <div class="supply-header">
       <div class="supply-title">📦 Pre-Order &amp; Pending Ship Revenue</div>
-      <span style="font-size:11px;color:var(--text2);font-weight:600;">Ordered but not dispatched · ASINs with dispatch rate &lt;25%</span>
+      <span style="font-size:11px;color:var(--text2);font-weight:600;">Cumulative YTD order book · drains as units ship · independent of period selector</span>
     </div>
     <div id="preorder-items"></div>
   </div>
@@ -393,7 +393,8 @@ var allRows=[],loyaltyData={},adsData={},allWeeks=[],adsDataAllWeeks={},adsCover
 // 2025 weeks, EU5). Used as the benchmark on the Key Metrics CVR card.
 // Populate by running the FY25 benchmark SQL in Supabase and pasting the
 // result here. While null, the card falls back to the fixed 10%/5% thresholds.
-var FY25_CVR_BENCHMARK=6.69; // FY2025 EU5 portfolio avg CVR — from Supabase, units/GVs across all 2025 weeks
+var FY25_CVR_BENCHMARK=6.69;
+var preorderData=[]; // cumulative YTD ordered-vs-dispatched per ASIN+market, from the preorder_pipeline view // FY2025 EU5 portfolio avg CVR — from Supabase, units/GVs across all 2025 weeks
 var periodMode='week',currentPeriod=null;
 
 function oosClass(p){return p<=6?'oos-green':p<=9?'oos-amber':'oos-red';}
@@ -455,9 +456,11 @@ async function init(){
     var results=await Promise.all([
       sbFetch('/rest/v1/brand_health_weeks?select=*&order=week_start.desc'),
       sbFetch('/rest/v1/brand_health_loyalty?select=*&order=uploaded_at.desc'),
-      sbFetch('/rest/v1/brand_health_ads?select=week_start,brand_classified,market,ad_revenue,ad_spend,ad_impressions,ad_clicks,ad_glance_views&order=week_start.desc')
+      sbFetch('/rest/v1/brand_health_ads?select=week_start,brand_classified,market,ad_revenue,ad_spend,ad_impressions,ad_clicks,ad_glance_views&order=week_start.desc'),
+      sbFetch('/rest/v1/preorder_pipeline?select=*').catch(function(e){console.warn('preorder_pipeline view missing — run the CREATE VIEW SQL. Pre-order panel disabled.',e);return[];})
     ]);
     var weeksRes=results[0],loyaltyRes=results[1],adsRes=results[2];
+    preorderData=results[3]||[];
     allWeeks=weeksRes;
     // Deduplicate allWeeks by week_start
     var seenWks={};
@@ -764,15 +767,16 @@ async function loadCustomRangePriorData(rangeStart,rangeEnd){
 
   try{
     var results=await Promise.all(weekStarts.map(function(ws){
-      return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=brand_classified,market,dispatched_revenue,glance_views');
+      return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=brand_classified,market,dispatched_revenue,dispatched_units,glance_views');
     }));
     results.forEach(function(rows,i){
       var frac=weekDayFractionInRange(weekStarts[i],priorStart,priorEnd);
       (rows||[]).forEach(function(r){
         var k=r.brand_classified+'||'+(r.market||'');
-        if(!priorData[k])priorData[k]={revenue:0,gviews:0};
+        if(!priorData[k])priorData[k]={revenue:0,gviews:0,units:0};
         priorData[k].revenue+=(r.dispatched_revenue||0)*frac;
         priorData[k].gviews+=(r.glance_views||0)*frac;
+        priorData[k].units+=(r.dispatched_units||0)*frac;
       });
     });
   }catch(e){console.warn('loadCustomRangePriorData error:',e);priorData={};}
@@ -824,13 +828,14 @@ async function loadPriorData(){
         sorted.forEach(function(w){var d=Math.abs(new Date(w)-target);if(d<bestDiff&&d<=14*24*60*60*1000){bestDiff=d;prior=w;}});
       }
       if(!prior)return;
-      var rows=await sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+prior+'&select=brand_classified,market,dispatched_revenue,glance_views');
+      var rows=await sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+prior+'&select=brand_classified,market,dispatched_revenue,dispatched_units,glance_views');
       if(token!==_priorToken)return;
       (rows||[]).forEach(function(r){
         var k=r.brand_classified+'||'+(r.market||'');
-        if(!priorData[k])priorData[k]={revenue:0,gviews:0};
+        if(!priorData[k])priorData[k]={revenue:0,gviews:0,units:0};
         priorData[k].revenue+=r.dispatched_revenue||0;
         priorData[k].gviews+=r.glance_views||0;
+        priorData[k].units+=r.dispatched_units||0;
       });
       return;
     }
@@ -856,7 +861,7 @@ async function loadPriorData(){
 
     if(!priorWs.length||token!==_priorToken)return;
     var results=await Promise.all(priorWs.map(function(ws){
-      return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=brand_classified,market,dispatched_revenue,glance_views');
+      return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=brand_classified,market,dispatched_revenue,dispatched_units,glance_views');
     }));
     if(token!==_priorToken)return;
     priorData={};
@@ -864,9 +869,10 @@ async function loadPriorData(){
       var frac=weekDayFractionInRange(priorWs[i],priorStart,priorEnd);
       (rows||[]).forEach(function(r){
         var k=r.brand_classified+'||'+(r.market||'');
-        if(!priorData[k])priorData[k]={revenue:0,gviews:0};
+        if(!priorData[k])priorData[k]={revenue:0,gviews:0,units:0};
         priorData[k].revenue+=(r.dispatched_revenue||0)*frac;
         priorData[k].gviews+=(r.glance_views||0)*frac;
+        priorData[k].units+=(r.dispatched_units||0)*frac;
       });
     });
   }catch(e){console.warn('loadPriorData error:',e);if(token===_priorToken){priorData={};priorCoverage=null;}}
@@ -949,17 +955,20 @@ function aggregatePortfolio(){
   });
   // Prior period totals: sum every brand||market key in priorData that
   // matches the current market filter — same source the brand cards use.
-  var priorRevenue=0,priorGviews=0;
+  var priorRevenue=0,priorGviews=0,priorUnits=0;
   Object.keys(priorData).forEach(function(k){
     var mkt=k.split('||')[1];
     if(currentMarket!=='ALL'&&mkt!==currentMarket)return;
     priorRevenue+=priorData[k].revenue||0;
     priorGviews+=priorData[k].gviews||0;
+    priorUnits+=priorData[k].units||0;
   });
   var revenueYoy=priorRevenue>0?(revenue-priorRevenue)/priorRevenue:null;
   var gviewsYoy=priorGviews>0?(gviews-priorGviews)/priorGviews:null;
+  var priorAsp=priorUnits>0?priorRevenue/priorUnits:0;
   var avgOos=oosVals.length>0?oosVals.reduce(function(a,b){return a+b;},0)/oosVals.length:0;
   var conv=gviews>0?(units/gviews)*100:0,asp=units>0?revenue/units:0;
+  var aspYoy=priorAsp>0&&asp>0?(asp-priorAsp)/priorAsp:null;
   // Portfolio repeat rate: customer-weighted across brands, NOT a simple
   // average of brand rates — sum(repeat customers)/sum(total customers).
   var repeatCust=0,totalCust=0;
@@ -968,7 +977,7 @@ function aggregatePortfolio(){
     if(l&&l.total_customers){repeatCust+=(l.repeat_customers||0);totalCust+=l.total_customers;}
   });
   var repeatRate=totalCust>0?repeatCust/totalCust:null;
-  return{revenue:revenue,revenueYoy:revenueYoy,units:units,gviews:gviews,gviewsYoy:gviewsYoy,conv:conv,asp:asp,avgOos:avgOos,repeatRate:repeatRate};
+  return{revenue:revenue,revenueYoy:revenueYoy,units:units,gviews:gviews,gviewsYoy:gviewsYoy,conv:conv,asp:asp,aspYoy:aspYoy,avgOos:avgOos,repeatRate:repeatRate};
 }
 
 function renderOverallMetrics(){
@@ -1018,7 +1027,7 @@ function renderOverallMetrics(){
     card('Revenue',fmtEuro(p.revenue),yoyHtml(p.revenueYoy),sRev)+
     card('Glance Views',fmtNum(p.gviews),yoyHtml(p.gviewsYoy),sGv)+
     card('Conversion Rate',p.conv.toFixed(2)+'%',cvrSub,sCvr)+
-    card('ASP','€'+p.asp.toFixed(2),'per unit dispatched',null)+
+    card('ASP','€'+p.asp.toFixed(2),yoyHtml(p.aspYoy),null)+
     card('Avg OOS',p.avgOos.toFixed(1)+'%','target ≤6%',sOos)+
     card('Pre-Order Pipeline',poRev>0?fmtEuro(poRev):'€0',fmtNum(poUnits)+' units · excl. from shipped revenue',null);
 }
@@ -1029,15 +1038,17 @@ function renderOverallMetrics(){
 // pre-order or pending-ship line (unreleased launches — Star Wars movie items,
 // Monopoly F1 — or heavily backordered stock). Brand-level ordered-minus-
 // dispatched alone would drown that signal in ordinary order-to-ship lag.
-var PREORDER_MIN_ORDERED=500;   // € floor so long-tail noise doesn't qualify
-var PREORDER_MAX_DISPATCH=0.25; // dispatch rate below this = pending
-
+// Thresholds now live in the preorder_pipeline VIEW in Supabase (>=€500
+// cumulative ordered, dispatch rate <25%) — tune them there, not here.
+// The view is cumulative YTD per ASIN+market: an order stays in the book
+// from the week it's placed until the week it ships, then drains out as
+// dispatched revenue catches up. Period-independent by design — the book
+// is a running total, so it does NOT change with the week/month selector.
 function computePreOrders(){
-  var rows=allRows;
+  var rows=preorderData;
   if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});
   var byAsin={};
   rows.forEach(function(r){
-    if(r.ordered_revenue==null)return;
     var k=r.asin;
     if(!byAsin[k])byAsin[k]={asin:r.asin,title:r.product_title,brand:r.brand_classified,ordered:0,dispatched:0,orderedUnits:0,dispatchedUnits:0};
     byAsin[k].ordered+=r.ordered_revenue||0;
@@ -1045,13 +1056,11 @@ function computePreOrders(){
     byAsin[k].orderedUnits+=r.ordered_units||0;
     byAsin[k].dispatchedUnits+=r.dispatched_units||0;
   });
-  var flagged=Object.values(byAsin).filter(function(a){
-    return a.ordered>=PREORDER_MIN_ORDERED&&(a.dispatched/a.ordered)<PREORDER_MAX_DISPATCH;
-  });
   var byBrand={};
-  flagged.forEach(function(a){
-    a.pending=a.ordered-a.dispatched;
+  Object.values(byAsin).forEach(function(a){
+    a.pending=Math.max(0,a.ordered-a.dispatched);
     a.pendingUnits=Math.max(0,a.orderedUnits-a.dispatchedUnits);
+    if(a.pending<=0)return;
     if(!byBrand[a.brand])byBrand[a.brand]={brand:a.brand,pending:0,pendingUnits:0,ordered:0,asins:[]};
     byBrand[a.brand].pending+=a.pending;
     byBrand[a.brand].pendingUnits+=a.pendingUnits;
