@@ -330,6 +330,9 @@
       <div id="table-wrap"></div>
     </div>
   </div>
+  <div class="supply-panel" id="preorder-panel" style="display:none;">
+    <div class="supply-header">
+      <div class="supply-title">📦 Pre-Order &amp; Pending Ship Revenue</div>
   <div class="supply-panel">
     <div class="supply-header">
       <div class="supply-title" id="supply-title">⚠️ Supply Gap Alerts</div>
@@ -339,6 +342,10 @@
       </div>
     </div>
     <div id="supply-items" style="overflow-x:auto;"></div>
+  </div>
+      <span style="font-size:11px;color:var(--text2);font-weight:600;">Ordered but not dispatched · ASINs with dispatch rate &lt;25%</span>
+    </div>
+    <div id="preorder-items"></div>
   </div>
 </main>
 
@@ -517,7 +524,7 @@ async function loadPeriod(periodVal){
     // but 6 of 7 days actually in June) when viewing June.
     return weekDayFractionInMonth(ws,periodVal)>0;
   });
-  var SNAP_COLS='week_start,asin,product_title,brand_classified,market,dispatched_revenue,dispatched_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy';
+  var SNAP_COLS='week_start,asin,product_title,brand_classified,market,dispatched_revenue,dispatched_units,ordered_revenue,ordered_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy';
   if(!weekStarts.length){
     document.getElementById('loading-screen').style.display='none';
     document.getElementById('main-content').style.display='grid';
@@ -537,7 +544,7 @@ async function loadPeriod(periodVal){
     // of days that actually fall in the target month. Prevents e.g. the 31 May week
     // (which runs into June) from either fully double-counting or fully dropping out.
     if(periodMode==='month'){
-      var NUMERIC_FIELDS=['dispatched_revenue','dispatched_units','glance_views','unfilled_units'];
+      var NUMERIC_FIELDS=['dispatched_revenue','dispatched_units','ordered_revenue','ordered_units','glance_views','unfilled_units'];
       allRows=allRows.map(function(r){
         var frac=weekDayFractionInMonth(r.week_start,periodVal);
         if(frac>=0.999)return r; // fully inside target month, no change needed
@@ -656,7 +663,7 @@ async function loadCustomRange(rangeStart,rangeEnd){
     return weekDayFractionInRange(ws,rangeStart,rangeEnd)>0;
   });
 
-  var SNAP_COLS='week_start,asin,product_title,brand_classified,market,dispatched_revenue,dispatched_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy';
+  var SNAP_COLS='week_start,asin,product_title,brand_classified,market,dispatched_revenue,dispatched_units,ordered_revenue,ordered_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy';
 
   if(!weekStarts.length){
     document.getElementById('loading-screen').style.display='none';
@@ -673,7 +680,7 @@ async function loadCustomRange(rangeStart,rangeEnd){
 
   // Pro-rate every overlapping week by the fraction of its days that actually
   // fall inside the chosen range — fully-inside weeks pass through unscaled.
-  var NUMERIC_FIELDS=['dispatched_revenue','dispatched_units','glance_views','unfilled_units'];
+  var NUMERIC_FIELDS=['dispatched_revenue','dispatched_units','ordered_revenue','ordered_units','glance_views','unfilled_units'];
   allRows=allRows.map(function(r){
     var frac=weekDayFractionInRange(r.week_start,rangeStart,rangeEnd);
     if(frac>=0.999)return r;
@@ -992,7 +999,13 @@ function renderOverallMetrics(){
     cvrSub=fmtNum(p.units)+' units';
   }
   var sOos=oosLabel(p.avgOos)==='green'?'happy':oosLabel(p.avgOos)==='amber'?'sad':'cry';
-  var sRep=p.repeatRate===null?null:p.repeatRate>=0.15?'happy':p.repeatRate>=0.08?'sad':'cry';
+  // Pre-order pipeline for the topline card: pending (ordered-not-dispatched)
+  // revenue and units across flagged ASINs. Recomputed every render, so as
+  // items ship their dispatch rate rises past 25% and they drop out — the
+  // number self-corrects as revenue converts to shipped.
+  var poGroups=computePreOrders();
+  var poRev=0,poUnits=0;
+  poGroups.forEach(function(g){poRev+=g.pending;poUnits+=g.pendingUnits;});
   var card=function(label,value,sub,sent){
     var emoji=sent?('<div class="metric-emoji">'+SC[sent].emoji+'</div>'):'';
     var cls=sent?(' m-'+SC[sent].cls):'';
@@ -1007,10 +1020,84 @@ function renderOverallMetrics(){
     card('Conversion Rate',p.conv.toFixed(2)+'%',cvrSub,sCvr)+
     card('ASP','€'+p.asp.toFixed(2),'per unit dispatched',null)+
     card('Avg OOS',p.avgOos.toFixed(1)+'%','target ≤6%',sOos)+
-    card('Repeat Purchase',p.repeatRate!==null?(p.repeatRate*100).toFixed(1)+'%':'—',p.repeatRate!==null?'customer-weighted · GB quarterly':'no loyalty data',sRep);
+    card('Pre-Order Pipeline',poRev>0?fmtEuro(poRev):'€0',fmtNum(poUnits)+' units · excl. from shipped revenue',null);
 }
 
-function buildDashboard(){renderOverallMetrics();renderSentimentBar();renderBrandCards();renderSupplyAlerts();if(selectedBrand)renderRCA(selectedBrand,currentTab);}
+// ─── PRE-ORDER / PENDING SHIP PIPELINE ─────────────────────────
+// Detection is at ASIN level, not brand level: within the selected period an
+// ASIN with meaningful ordered revenue but a dispatch rate under 25% is a
+// pre-order or pending-ship line (unreleased launches — Star Wars movie items,
+// Monopoly F1 — or heavily backordered stock). Brand-level ordered-minus-
+// dispatched alone would drown that signal in ordinary order-to-ship lag.
+var PREORDER_MIN_ORDERED=500;   // € floor so long-tail noise doesn't qualify
+var PREORDER_MAX_DISPATCH=0.25; // dispatch rate below this = pending
+
+function computePreOrders(){
+  var rows=allRows;
+  if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});
+  var byAsin={};
+  rows.forEach(function(r){
+    if(r.ordered_revenue==null)return;
+    var k=r.asin;
+    if(!byAsin[k])byAsin[k]={asin:r.asin,title:r.product_title,brand:r.brand_classified,ordered:0,dispatched:0,orderedUnits:0,dispatchedUnits:0};
+    byAsin[k].ordered+=r.ordered_revenue||0;
+    byAsin[k].dispatched+=r.dispatched_revenue||0;
+    byAsin[k].orderedUnits+=r.ordered_units||0;
+    byAsin[k].dispatchedUnits+=r.dispatched_units||0;
+  });
+  var flagged=Object.values(byAsin).filter(function(a){
+    return a.ordered>=PREORDER_MIN_ORDERED&&(a.dispatched/a.ordered)<PREORDER_MAX_DISPATCH;
+  });
+  var byBrand={};
+  flagged.forEach(function(a){
+    a.pending=a.ordered-a.dispatched;
+    a.pendingUnits=Math.max(0,a.orderedUnits-a.dispatchedUnits);
+    if(!byBrand[a.brand])byBrand[a.brand]={brand:a.brand,pending:0,pendingUnits:0,ordered:0,asins:[]};
+    byBrand[a.brand].pending+=a.pending;
+    byBrand[a.brand].pendingUnits+=a.pendingUnits;
+    byBrand[a.brand].ordered+=a.ordered;
+    byBrand[a.brand].asins.push(a);
+  });
+  return Object.values(byBrand).sort(function(x,y){return y.pending-x.pending;});
+}
+
+function renderPreOrders(){
+  var panel=document.getElementById('preorder-panel');
+  var el=document.getElementById('preorder-items');
+  if(!panel||!el)return;
+  var groups=computePreOrders();
+  if(!groups.length){panel.style.display='none';return;}
+  panel.style.display='';
+  var fmtEuro=function(v){return v>=1000000?'€'+(v/1000000).toFixed(1)+'M':v>=1000?'€'+(v/1000).toFixed(1)+'K':'€'+Math.round(v);};
+  var totalPending=groups.reduce(function(s,g){return s+g.pending;},0);
+  var html='<div style="padding:10px 0;font-family:\'Syne\',sans-serif;font-size:14px;font-weight:700;color:var(--text);">Total pending: '+fmtEuro(totalPending)+' across '+groups.reduce(function(s,g){return s+g.asins.length;},0)+' ASINs</div>';
+  groups.forEach(function(g){
+    var label=(typeof BRAND_LABELS!=='undefined'&&BRAND_LABELS[g.brand])?BRAND_LABELS[g.brand]:g.brand;
+    var top=g.asins.sort(function(a,b){return b.pending-a.pending;}).slice(0,8);
+    html+='<details style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:white;">'+
+      '<summary style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;list-style:none;">'+
+        '<span style="font-family:\'Syne\',sans-serif;font-weight:700;font-size:13px;flex:1;">'+label+'</span>'+
+        '<span style="font-size:11px;color:var(--text2);">'+g.asins.length+' ASIN'+(g.asins.length>1?'s':'')+'</span>'+
+        '<span style="font-family:\'DM Mono\',monospace;font-weight:700;font-size:13px;color:var(--purple);">'+fmtEuro(g.pending)+' pending</span>'+
+      '</summary>'+
+      '<div style="padding:4px 14px 12px;">'+
+        top.map(function(a){
+          var rate=a.ordered>0?(a.dispatched/a.ordered*100):0;
+          return'<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--border);font-size:11px;">'+
+            '<span style="font-family:\'DM Mono\',monospace;color:var(--text2);flex-shrink:0;">'+a.asin+'</span>'+
+            '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);" title="'+(a.title||'').replace(/"/g,'&quot;')+'">'+(a.title||'—')+'</span>'+
+            '<span style="color:var(--text2);flex-shrink:0;">'+Math.round(a.orderedUnits).toLocaleString()+' u</span>'+
+            '<span style="color:'+(rate<5?'var(--purple)':'var(--amber)')+';flex-shrink:0;font-weight:700;">'+rate.toFixed(0)+'% shipped</span>'+
+            '<span style="font-family:\'DM Mono\',monospace;font-weight:700;flex-shrink:0;">'+fmtEuro(a.pending)+'</span>'+
+          '</div>';
+        }).join('')+
+        (g.asins.length>8?'<div style="padding-top:6px;font-size:10px;color:var(--text3);">+'+(g.asins.length-8)+' more ASINs</div>':'')+
+      '</div></details>';
+  });
+  el.innerHTML=html;
+}
+
+function buildDashboard(){renderOverallMetrics();renderSentimentBar();renderBrandCards();renderSupplyAlerts();renderPreOrders();if(selectedBrand)renderRCA(selectedBrand,currentTab);}
 
 function renderSentimentBar(){
   var counts={happy:0,sad:0,cry:0};
@@ -1244,14 +1331,14 @@ function drawLineChart(canvasId,labels,data,color,fmt,thresholds){
   var step=Math.ceil(labels.length/6);ctx.fillStyle='#5A8DA0';ctx.font='9px Inter,sans-serif';ctx.textAlign='center';labels.forEach(function(l,i){if(i%step===0)ctx.fillText(l.substring(0,8),toX(i),h-pad.b+12);});
 }
 
-var supplySort={key:'uf',dir:'desc'};
+var supplySort={key:'gv',dir:'desc'}; // default: highest-demand SKUs first (biggest opportunity), unfilled as secondary
 function setSupplySort(key){if(supplySort.key===key)supplySort.dir=supplySort.dir==='asc'?'desc':'asc';else{supplySort.key=key;supplySort.dir='desc';}renderSupplyAlerts();}
 
 function renderSupplyAlerts(){
   var rows=allRows;if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});if(selectedBrand)rows=rows.filter(function(r){return r.brand_classified===selectedBrand;});
   var seen={},alerts=[];
   rows.forEach(function(r){var oos=r.oos_pct||0,uf=r.unfilled_units||0;if((oos>=10||uf>50)&&r.asin){var k=currentMarket==='ALL'?r.asin:r.asin+'_'+r.market;if(!seen[k]){seen[k]=1;alerts.push({asin:r.asin,name:r.product_title,market:r.market,oos:oos,uf:uf,gv:r.glance_views||0});}else if(currentMarket==='ALL'){var ex=alerts.find(function(a){return a.asin===r.asin;});if(ex){ex.uf+=uf;ex.gv+=(r.glance_views||0);}}}});
-  alerts.sort(function(a,b){return supplySort.dir==='asc'?a[supplySort.key]-b[supplySort.key]:b[supplySort.key]-a[supplySort.key];});
+  alerts.sort(function(a,b){var d=supplySort.dir==='asc'?a[supplySort.key]-b[supplySort.key]:b[supplySort.key]-a[supplySort.key];if(d!==0)return d;return b.uf-a.uf;}); // secondary sort: unfilled desc
   var g=document.getElementById('supply-items'),header=document.getElementById('supply-title'),resetBtn=document.getElementById('supply-reset-btn');
   if(header)header.textContent='⚠️ Supply Gap Alerts'+(selectedBrand?' — '+BRAND_LABELS[selectedBrand]:'');
   if(resetBtn)resetBtn.style.display=selectedBrand?'block':'none';
