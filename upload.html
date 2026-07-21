@@ -359,6 +359,23 @@ function snapWeek(y, mo, da) {
   return { start:fmt(d), end:fmt(e), label:`${fmtL(d)} – ${fmtL(e)}` };
 }
 
+
+// Refresh the preorder_pipeline materialized view so the dashboard's
+// pre-order book reflects this upload immediately. Fire-and-forget:
+// an error here must never fail the upload itself.
+async function refreshPreorderPipeline(logFn) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/refresh_preorder_pipeline`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    if (logFn) logFn(r.ok ? '↻ Pre-order book refreshed' : `⚠ Pre-order refresh failed (${r.status}) — book may be stale until next upload`, r.ok ? 'ok' : 'warn');
+  } catch (e) {
+    if (logFn) logFn('⚠ Pre-order refresh failed — book may be stale until next upload', 'warn');
+  }
+}
+
 function detectWeekFromFilename(name) {
   // DD-MM-YYYY_DD-MM-YYYY
   let m = name.match(/(\d{2})-(\d{2})-(\d{4})_(\d{2}-\d{2}-\d{4})/);
@@ -873,6 +890,7 @@ async function processVC() {
     await sbPost('/rest/v1/brand_health_weeks',{week_start:weekStart,week_label:fmtDate(weekStart)+' – '+fmtDate(weekEnd)});
     document.getElementById('overlay').classList.remove('on');
     log(`✅ Done! ${rows.length} rows uploaded for week ${weekStart}`,'ok');
+    await refreshPreorderPipeline(log);
     loadHistory();
   } catch(err){
     document.getElementById('overlay').classList.remove('on');
@@ -959,6 +977,7 @@ async function processAndUploadAds(file, weekStart) {
   }
 
   logA(`✅ Done! ${finalRows.length} rows for week ${weekStart}`,'ok');
+  await refreshPreorderPipeline(logA);
   if (!_processingQueue) loadHistory();
 }
 
