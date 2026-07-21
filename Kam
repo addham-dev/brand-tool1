@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>KAM Actions — Brand Health</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --blue:#009CDE;--blue-dark:#0077A8;--blue-light:#E5F6FF;
+    --bg:#F0F8FC;--white:#fff;--text:#003A54;--text2:#5A8DA0;
+    --text3:#A0C8D8;--border:#D0EAF5;
+    --green:#00B388;--green-bg:#E5FFF6;
+    --red:#E8423F;--red-bg:#FFF0F0;
+    --amber:#F5A623;--amber-bg:#FFF8EC;
+    --purple:#9B59B6;--purple-bg:#F5EEF8;
+    --shadow:0 2px 16px rgba(0,156,222,0.08);
+    --shadow-lg:0 8px 32px rgba(0,156,222,0.15);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{background:#0B2436;color:#fff;padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  header .title{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;}
+  header .sub{font-size:11px;opacity:0.7;}
+  .mkt-tabs{display:flex;gap:6px;margin-left:auto;}
+  .mkt-tab{padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.25);background:transparent;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;}
+  .mkt-tab.active{background:var(--blue);border-color:var(--blue);}
+  main{max-width:1400px;margin:0 auto;padding:20px 24px;display:grid;gap:20px;}
+  .section-title{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text2);margin-bottom:10px;}
+  .board{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;}
+  .action-card{background:var(--white);border-radius:14px;border:2px solid var(--border);box-shadow:var(--shadow);padding:14px;cursor:pointer;}
+  .action-card.sel{border-color:var(--blue);}
+  .ac-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .ac-name{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;}
+  .ac-count{font-family:'DM Mono',monospace;font-weight:700;font-size:16px;background:var(--blue-light);color:var(--blue-dark);border-radius:8px;padding:2px 9px;}
+  .ac-row{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:11px;border-top:1px solid var(--border);}
+  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .dot.Critical{background:var(--red);} .dot.High{background:var(--amber);} .dot.Medium{background:var(--blue);} .dot.OK{background:var(--green);}
+  .ac-row .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}
+  .ac-row .r{font-family:'DM Mono',monospace;color:var(--text2);flex-shrink:0;}
+  .alert{background:var(--red-bg);border:2px solid #FFD0D0;border-radius:14px;padding:12px 16px;font-size:13px;display:none;}
+  .alert b{font-family:'DM Mono',monospace;}
+  .filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .filters input,.filters select{padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-family:'Inter',sans-serif;font-size:12px;color:var(--text);background:var(--white);}
+  .filters input{min-width:220px;}
+  .btn{padding:8px 16px;border-radius:8px;border:none;background:var(--blue);color:#fff;font-weight:600;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;}
+  .panel{background:var(--white);border-radius:14px;border:2px solid var(--border);box-shadow:var(--shadow);overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th{font-family:'Syne',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);text-align:left;padding:10px 12px;border-bottom:2px solid var(--border);cursor:pointer;white-space:nowrap;user-select:none;}
+  td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tr.rowlink{cursor:pointer;} tr.rowlink:hover{background:var(--blue-light);}
+  .sev{font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap;}
+  .sev.Critical{background:var(--red-bg);color:var(--red);} .sev.High{background:var(--amber-bg);color:var(--amber);}
+  .sev.Medium{background:var(--blue-light);color:var(--blue-dark);} .sev.OK{background:var(--green-bg);color:var(--green);}
+  .mono{font-family:'DM Mono',monospace;}
+  /* Slide-out */
+  #detail{position:fixed;top:0;right:-520px;width:500px;max-width:95vw;height:100vh;background:var(--white);box-shadow:var(--shadow-lg);transition:right .25s;z-index:60;overflow-y:auto;padding:22px;border-left:2px solid var(--border);}
+  #detail.open{right:0;}
+  #detail h2{font-family:'Syne',sans-serif;font-size:16px;margin-bottom:2px;}
+  .d-close{float:right;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);}
+  .d-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0;}
+  .d-card{background:var(--bg);border-radius:10px;padding:10px;}
+  .d-card .l{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);font-weight:700;}
+  .d-card .v{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;margin-top:2px;}
+  .d-box{border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.5;}
+  .spark-label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin:12px 0 4px;}
+  /* Login */
+  #login{position:fixed;inset:0;background:#0B2436;display:flex;align-items:center;justify-content:center;z-index:100;}
+  #login .box{background:var(--white);border-radius:16px;padding:32px;width:320px;text-align:center;}
+  #login h1{font-family:'Syne',sans-serif;font-size:18px;margin-bottom:14px;}
+  #login input{width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-bottom:10px;font-size:14px;}
+  #loading{display:none;padding:40px;text-align:center;color:var(--text2);font-size:13px;}
+  #app{display:none;}
+  .badge{font-size:11px;color:var(--text3);}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="box">
+    <h1>🔐 KAM Actions</h1>
+    <input type="password" id="pw" placeholder="Password" onkeydown="if(event.key==='Enter')tryLogin()">
+    <button class="btn" style="width:100%" onclick="tryLogin()">Enter</button>
+    <div id="login-err" style="color:var(--red);font-size:11px;margin-top:8px;display:none;">Wrong password</div>
+  </div>
+</div>
+
+<div id="app">
+<header>
+  <div>
+    <div class="title">KAM Actions</div>
+    <div class="sub">ASIN-level · Phase 1 · <span id="week-badge">—</span></div>
+  </div>
+  <div class="mkt-tabs" id="mkt-tabs"></div>
+</header>
+
+<main>
+  <div class="alert" id="wasted-alert"></div>
+
+  <div>
+    <div class="section-title">Action Board</div>
+    <div class="board" id="board"></div>
+  </div>
+
+  <div>
+    <div class="section-title">All ASINs</div>
+    <div class="filters">
+      <input id="f-search" placeholder="Search ASIN or product…" oninput="renderTable()">
+      <select id="f-action" onchange="renderTable()"><option value="">All actions</option></select>
+      <select id="f-sev" onchange="renderTable()"><option value="">All severities</option><option>Critical</option><option>High</option><option>Medium</option><option>OK</option></select>
+      <select id="f-brand" onchange="renderTable()"><option value="">All brands</option></select>
+      <button class="btn" onclick="downloadCsv()">⬇ Download Action CSV</button>
+      <span class="badge" id="row-count"></span>
+    </div>
+    <div class="panel" style="margin-top:10px;">
+      <table>
+        <thead><tr>
+          <th onclick="setSort('asin')">ASIN</th><th onclick="setSort('title')">Product</th>
+          <th onclick="setSort('brand')">Brand</th><th onclick="setSort('action')">Action</th>
+          <th onclick="setSort('severity')">Severity</th><th onclick="setSort('weeklyRev')">Rev/wk</th>
+          <th onclick="setSort('weeklyGv')">GV/wk</th><th onclick="setSort('cvr')">CVR</th><th onclick="setSort('oosPct')">OOS</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+</div>
+
+<div id="loading">Loading 12 weeks of ASIN data…</div>
+
+<div id="detail">
+  <button class="d-close" onclick="closeDetail()">×</button>
+  <div id="detail-body"></div>
+</div>
+
+<script src="actionEngine.js"></script>
+<script>
+/* ── Access — own password, separate from exec dashboard ── */
+var KAM_PW='Hasbro2026'; // set per handoff step 2
+function tryLogin(){
+  var v=document.getElementById('pw').value;
+  if(v===KAM_PW){sessionStorage.setItem('kam_auth','1');document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';init();}
+  else document.getElementById('login-err').style.display='block';
+}
+if(sessionStorage.getItem('kam_auth')==='1'){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';}
+
+/* ── Supabase — same pattern as index.html ── */
+var SUPABASE_URL='https://rycqfwzgvpzwhphgclpb.supabase.co';
+var SUPABASE_KEY='sb_publishable_CbKFhpN2dWI_UXhwGkclqw_AMPSprs4';
+function sbFetch(path){
+  var sep=path.indexOf('?')>=0?'&':'?';
+  return fetch(SUPABASE_URL+path+sep+'limit=15000',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Range':'0-49999','Prefer':'count=none'}})
+  .then(function(r){if(!r.ok)throw new Error('Supabase '+r.status+': '+path.split('?')[0]);return r.json();})
+  .then(function(d){return Array.isArray(d)?d:[];});
+}
+
+var MARKETS=['GB','DE','FR','IT','ES'];
+var currentMarket='GB';
+var actions=[],wasted={total:0,parts:[]};
+var sortKey='severity',sortDir='asc';
+var SEV_ORDER={Critical:0,High:1,Medium:2,OK:3};
+var HIST_WEEKS=12;
+var SNAP_COLS='week_start,asin,product_title,brand_classified,market,dispatched_revenue,dispatched_units,ordered_revenue,ordered_units,glance_views,oos_pct,unfilled_units';
+
+function fmtEuro(v){v=Number(v)||0;return v>=1e6?'€'+(v/1e6).toFixed(1)+'M':v>=1e3?'€'+(v/1e3).toFixed(1)+'K':'€'+Math.round(v);}
+
+async function init(){
+  document.getElementById('mkt-tabs').innerHTML=MARKETS.map(function(m){return '<button class="mkt-tab'+(m===currentMarket?' active':'')+'" onclick="setMarket(\''+m+'\')">'+m+'</button>';}).join('');
+  document.getElementById('app').style.opacity='0.5';
+  document.getElementById('loading').style.display='block';
+  try{
+    var weeks=await sbFetch('/rest/v1/brand_health_weeks?select=week_start&order=week_start.desc');
+    var weekStarts=weeks.map(function(w){return w.week_start;}).slice(0,HIST_WEEKS).reverse();
+    if(!weekStarts.length){document.getElementById('loading').textContent='No data.';return;}
+    document.getElementById('week-badge').textContent=weekStarts[0]+' → '+weekStarts[weekStarts.length-1]+' · '+currentMarket;
+
+    var fetches=weekStarts.map(function(ws){return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&market=eq.'+currentMarket+'&select='+SNAP_COLS);});
+    // ads: last 4 weeks, this market → brand ROAS context + spend for wasted-spend estimate
+    var last4=weekStarts.slice(-4);
+    fetches.push(sbFetch('/rest/v1/brand_health_ads?week_start=in.('+last4.join(',')+')&market=eq.'+currentMarket+'&select=brand_classified,ad_revenue,ad_spend'));
+    fetches.push(sbFetch('/rest/v1/preorder_pipeline?market=eq.'+currentMarket+'&select=asin').catch(function(){return[];}));
+
+    var res=await Promise.all(fetches);
+    var adsRows=res[res.length-2],preRows=res[res.length-1];
+    var snapRows=[];for(var i=0;i<res.length-2;i++)snapRows=snapRows.concat(res[i]);
+
+    var adsRoasByBrand={},adsSpendByBrand={},agg={};
+    adsRows.forEach(function(r){var b=r.brand_classified;var a=agg[b]||(agg[b]={rev:0,sp:0});a.rev+=r.ad_revenue||0;a.sp+=r.ad_spend||0;});
+    Object.keys(agg).forEach(function(b){adsSpendByBrand[b]=agg[b].sp;if(agg[b].sp>0)adsRoasByBrand[b]=agg[b].rev/agg[b].sp;});
+    var preSet={};preRows.forEach(function(r){preSet[r.asin]=1;});
+
+    var out=ActionEngine.buildActions(snapRows,{market:currentMarket,preorderAsins:preSet,adsRoasByBrand:adsRoasByBrand,adsSpendByBrand:adsSpendByBrand});
+    actions=out.actions;wasted=out.wastedSpend;
+    buildFilters();renderBoard();renderTable();renderWasted();
+  }catch(e){
+    console.error(e);
+    document.getElementById('loading').textContent='Load failed: '+e.message;
+    return;
+  }
+  document.getElementById('loading').style.display='none';
+  document.getElementById('app').style.opacity='1';
+}
+
+function setMarket(m){currentMarket=m;init();}
+
+function renderWasted(){
+  var el=document.getElementById('wasted-alert');
+  if(wasted.total>10){
+    el.style.display='block';
+    el.innerHTML='⚠️ <b>Wasted spend to pause: '+fmtEuro(wasted.total)+'/4wk</b> — estimated brand spend flowing to OOS ASINs ('+wasted.parts.map(function(p){return p.brand+' '+fmtEuro(p.estimate);}).join(' · ')+'). Brand-level estimate — per-ASIN precision lands with Pacvue ASIN export.';
+  }else el.style.display='none';
+}
+
+function renderBoard(){
+  var groups={};
+  actions.forEach(function(a){if(a.action==='Monitor')return;var g=groups[a.action]||(groups[a.action]=[]);g.push(a);});
+  var order=['Fix Availability','Improve Conversion','Drive GV','Launch Support'];
+  var monitors=actions.filter(function(a){return a.action==='Monitor';}).length;
+  var html=order.filter(function(k){return groups[k];}).map(function(k){
+    var g=groups[k];
+    return '<div class="action-card" onclick="filterAction(\''+k+'\')"><div class="ac-head"><div class="ac-name">'+k+'</div><div class="ac-count">'+g.length+'</div></div>'+
+      g.slice(0,5).map(function(a){return '<div class="ac-row"><span class="dot '+a.severity+'"></span><span class="t" title="'+(a.title||'').replace(/"/g,'&quot;')+'">'+(a.title||a.asin)+'</span><span class="r">'+fmtEuro(a.weeklyRev)+'/wk</span></div>';}).join('')+
+      (g.length>5?'<div class="ac-row" style="color:var(--text3);border-top:1px solid var(--border);">+'+(g.length-5)+' more</div>':'')+'</div>';
+  }).join('');
+  html+='<div class="action-card" onclick="filterAction(\'Monitor\')"><div class="ac-head"><div class="ac-name">Monitor</div><div class="ac-count">'+monitors+'</div></div><div class="ac-row" style="border:none;color:var(--text2);">Within acceptable parameters</div></div>';
+  document.getElementById('board').innerHTML=html;
+}
+
+function buildFilters(){
+  var acts=Array.from(new Set(actions.map(function(a){return a.action;})));
+  document.getElementById('f-action').innerHTML='<option value="">All actions</option>'+acts.map(function(a){return '<option>'+a+'</option>';}).join('');
+  var brands=Array.from(new Set(actions.map(function(a){return a.brand;}))).sort();
+  document.getElementById('f-brand').innerHTML='<option value="">All brands</option>'+brands.map(function(b){return '<option>'+b+'</option>';}).join('');
+}
+function filterAction(a){document.getElementById('f-action').value=a;renderTable();}
+
+function setSort(k){if(sortKey===k)sortDir=sortDir==='asc'?'desc':'asc';else{sortKey=k;sortDir=k==='severity'?'asc':'desc';}renderTable();}
+
+function visibleRows(){
+  var q=(document.getElementById('f-search').value||'').toLowerCase();
+  var fa=document.getElementById('f-action').value,fs=document.getElementById('f-sev').value,fb=document.getElementById('f-brand').value;
+  var rows=actions.filter(function(a){
+    if(q&&(a.asin+' '+a.title).toLowerCase().indexOf(q)<0)return false;
+    if(fa&&a.action!==fa)return false;
+    if(fs&&a.severity!==fs)return false;
+    if(fb&&a.brand!==fb)return false;
+    return true;
+  });
+  rows.sort(function(x,y){
+    var a=x[sortKey],b=y[sortKey];
+    if(sortKey==='severity'){a=SEV_ORDER[x.severity];b=SEV_ORDER[y.severity];}
+    if(typeof a==='string')return sortDir==='asc'?a.localeCompare(b):b.localeCompare(a);
+    return sortDir==='asc'?a-b:b-a;
+  });
+  return rows;
+}
+
+function renderTable(){
+  var rows=visibleRows();
+  document.getElementById('row-count').textContent=rows.length+' ASINs';
+  document.getElementById('tbody').innerHTML=rows.slice(0,500).map(function(a,i){
+    return '<tr class="rowlink" onclick="openDetail(\''+a.asin+'\')">'+
+      '<td class="mono">'+a.asin+'</td>'+
+      '<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(a.title||'').replace(/"/g,'&quot;')+'">'+(a.title||'—')+'</td>'+
+      '<td>'+a.brand+'</td><td>'+a.action+'</td>'+
+      '<td><span class="sev '+a.severity+'">'+a.severity+'</span></td>'+
+      '<td class="mono">'+fmtEuro(a.weeklyRev)+'</td>'+
+      '<td class="mono">'+Math.round(a.weeklyGv)+'</td>'+
+      '<td class="mono">'+a.cvr.toFixed(1)+'%</td>'+
+      '<td class="mono">'+a.oosPct.toFixed(0)+'%</td></tr>';
+  }).join('');
+}
+
+/* ── Sparkline (inline SVG, last 6 weeks) ── */
+function spark(vals,color){
+  if(!vals.length)return'';
+  var w=440,h=46,max=Math.max.apply(null,vals.concat([1]));
+  var pts=vals.map(function(v,i){return (i*(w/(vals.length-1||1))).toFixed(1)+','+(h-4-(v/max)*(h-10)).toFixed(1);}).join(' ');
+  return '<svg width="100%" height="'+h+'" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round"/></svg>';
+}
+
+function openDetail(asin){
+  var a=actions.find(function(x){return x.asin===asin;});if(!a)return;
+  var l6=a.weeks.slice(-6);
+  var sevColor={Critical:'var(--red-bg)',High:'var(--amber-bg)',Medium:'var(--blue-light)',OK:'var(--green-bg)'}[a.severity];
+  document.getElementById('detail-body').innerHTML=
+    '<h2>'+(a.title||a.asin)+'</h2><div class="mono" style="color:var(--text2);font-size:11px;">'+a.asin+' · '+a.brand+' · '+a.market+'</div>'+
+    '<div class="d-box" style="background:'+sevColor+';"><b>'+a.action+' — '+a.severity+'</b><br>'+a.reason+'</div>'+
+    '<div class="d-box" style="background:var(--purple-bg);"><b>📣 '+a.adRec+'</b><br>'+a.adWhy+'</div>'+
+    '<div class="d-grid">'+
+      '<div class="d-card"><div class="l">Rev/wk (4wk avg)</div><div class="v">'+fmtEuro(a.weeklyRev)+'</div></div>'+
+      '<div class="d-card"><div class="l">GV/wk (4wk avg)</div><div class="v">'+Math.round(a.weeklyGv)+'</div></div>'+
+      '<div class="d-card"><div class="l">CVR</div><div class="v">'+a.cvr.toFixed(1)+'%</div></div>'+
+      '<div class="d-card"><div class="l">OOS last wk</div><div class="v">'+a.oosPct.toFixed(0)+'%</div></div>'+
+      '<div class="d-card"><div class="l">Projected demand</div><div class="v">'+a.projectedWeekly.toFixed(0)+' u/wk</div></div>'+
+      '<div class="d-card"><div class="l">Trend factor</div><div class="v">×'+a.trendFactor.toFixed(2)+'</div></div>'+
+    '</div>'+
+    '<div class="spark-label">Revenue — last 6 weeks</div>'+spark(l6.map(function(w){return w.rev;}),'#009CDE')+
+    '<div class="spark-label">Glance views — last 6 weeks</div>'+spark(l6.map(function(w){return w.gv;}),'#00B388');
+  document.getElementById('detail').classList.add('open');
+}
+function closeDetail(){document.getElementById('detail').classList.remove('open');}
+
+function downloadCsv(){
+  var csv=ActionEngine.actionsToCsv(visibleRows());
+  var d=new Date(),ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  var blob=new Blob([csv],{type:'text/csv'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='Hasbro_'+currentMarket+'_KAM_Actions_'+ds+'.csv';a.click();URL.revokeObjectURL(a.href);
+}
+</script>
+</body>
+</html>
