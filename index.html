@@ -1136,17 +1136,24 @@ function renderAdsMetrics(){
   rows.forEach(function(r){totRev+=r.dispatched_revenue||0;totGv+=r.glance_views||0;});
   var roas=spend>0?adRev/spend:0;
   var gvPct=totGv>0?adGv/totGv*100:0;
-  // ASIN-level advertising coverage from the quarterly brand_health_ads_coverage
-  // upload (advertised = ASINs with Sponsored Products). Latest quarter wins.
-  var covAdv=0,covTot=0,covQ=null;
+  // ASIN-level advertising coverage:
+  // NUMERATOR — advertised ASIN count from the quarterly coverage upload
+  //   (reliable: it's a list of ASINs with SP live).
+  // DENOMINATOR — distinct ASINs actually trading in the selected period,
+  //   from the already-loaded snapshots. The Pacvue export only contains
+  //   advertised ASINs, so using its own total would always read 100%.
+  var covAdv=0,covQ=null;
   Object.keys(adsCoverageData).forEach(function(bid){
     Object.keys(adsCoverageData[bid]).forEach(function(mkt){
       if(currentMarket!=='ALL'&&mkt!==currentMarket)return;
       var v=adsCoverageData[bid][mkt];
-      covAdv+=v.sp||0;covTot+=v.total||0;if(v.quarter)covQ=v.quarter;
+      covAdv+=v.sp||0;if(v.quarter)covQ=v.quarter;
     });
   });
-  var advPct=covTot>0?covAdv/covTot*100:null;
+  var catAsins={};
+  rows.forEach(function(r){if(r.asin)catAsins[r.asin]=1;});
+  var covTot=Object.keys(catAsins).length;
+  var advPct=covTot>0&&covAdv>0?Math.min(100,covAdv/covTot*100):null;
   var sRoas=spend<=0?null:roas>=4?'happy':roas>=2?'sad':'cry';
   var card=function(label,value,sub,sent){
     var emoji=sent?('<div class="metric-emoji">'+SC[sent].emoji+'</div>'):'';
@@ -1158,7 +1165,7 @@ function renderAdsMetrics(){
     card('Ad Attributed Revenue',fmtEuro(adRev),totRev>0?(adRev/totRev*100).toFixed(1)+'% of total revenue':'—',null)+
     card('Ad-Driven Glance Views',fmtNum(adGv),gvPct.toFixed(1)+'% of total GVs',null)+
     card('ROAS',spend>0?roas.toFixed(1)+'x':'—','AMS attributed',sRoas)+
-    card('Portfolio Advertised',advPct!==null?advPct.toFixed(0)+'%':'—',advPct!==null?fmtNum(covAdv)+' of '+fmtNum(covTot)+' ASINs with SP'+(covQ?' · '+covQ:''):'no coverage data — upload quarterly file',null);
+    card('Portfolio Advertised',advPct!==null?advPct.toFixed(1)+'%':'—',advPct!==null?fmtNum(covAdv)+' SP ASINs of '+fmtNum(covTot)+' active in period'+(covQ?' · '+covQ:''):'no coverage data — upload quarterly file',null);
 }
 
 function buildDashboard(){renderOverallMetrics();renderAdsMetrics();renderSentimentBar();renderBrandCards();renderSupplyAlerts();renderPreOrders();if(selectedBrand)renderRCA(selectedBrand,currentTab);}
