@@ -260,7 +260,7 @@
   <div>
     <div class="section-title">Key Metrics — Portfolio Overview</div>
     <div class="metrics-grid" id="overall-metrics"></div>
-    <div class="section-title" style="margin-top:16px;">Key Metrics — Advertising (AMS)</div>
+    <div class="section-title" style="margin-top:16px;">Key Metrics — Advertising</div>
     <div class="metrics-grid" id="ads-metrics"></div>
   </div>
   <div>
@@ -1058,12 +1058,12 @@ function renderAdsMetrics(){
   var fmtEuro=function(v){return v>=1000000?'€'+(v/1000000).toFixed(1)+'M':v>=1000?'€'+(v/1000).toFixed(0)+'K':'€'+Math.round(v);};
   var fmtNum=function(v){return v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'K':Math.round(v).toLocaleString();};
   // Ads totals for the selected period + market (AMS only — DSP not captured)
-  var spend=0,adRev=0,adGv=0,activeBrands={},allBrands={};
+  var spend=0,adRev=0,adGv=0,imps=0,activeBrands={},allBrands={};
   Object.keys(adsData).forEach(function(bid){
     Object.keys(adsData[bid]).forEach(function(mkt){
       if(currentMarket!=='ALL'&&mkt!==currentMarket)return;
       var v=adsData[bid][mkt];
-      spend+=v.ad_spend||0;adRev+=v.ad_revenue||0;adGv+=v.ad_glance_views||0;
+      spend+=v.ad_spend||0;adRev+=v.ad_revenue||0;adGv+=v.ad_glance_views||0;imps+=v.ad_impressions||0;
       if((v.ad_spend||0)>10)activeBrands[bid]=1;
     });
   });
@@ -1077,14 +1077,14 @@ function renderAdsMetrics(){
   // total ad investment, not the AMS/DSP org chart. DPVs stand in for ad-driven
   // GVs on the DSP side (closest funnel equivalent to a glance view).
   var periodWeeks={};allRows.forEach(function(r){periodWeeks[r.week_start]=1;});
-  var dspSpend=0,dspRev=0,dspDpv=0;
+  var dspSpend=0,dspRev=0,dspDpv=0,dspImps=0;
   dspRows.forEach(function(r){
     if(!periodWeeks[r.week_start])return;
     if(currentMarket!=='ALL'&&r.market!==currentMarket)return;
-    dspSpend+=Number(r.dsp_spend)||0;dspRev+=Number(r.dsp_revenue)||0;dspDpv+=Number(r.dsp_dpv)||0;
+    dspSpend+=Number(r.dsp_spend)||0;dspRev+=Number(r.dsp_revenue)||0;dspDpv+=Number(r.dsp_dpv)||0;dspImps+=Number(r.dsp_impressions)||0;
   });
   var hasDsp=dspSpend>0;
-  spend+=dspSpend;adRev+=dspRev;adGv+=dspDpv;
+  spend+=dspSpend;adRev+=dspRev;adGv+=dspDpv;imps+=dspImps;
   var roas=spend>0?adRev/spend:0;
   var gvPct=totGv>0?adGv/totGv*100:0;
   // ASIN-level advertising coverage:
@@ -1115,6 +1115,7 @@ function renderAdsMetrics(){
     card('Ad Spend',spend>0?fmtEuro(spend):'€0',spend>0?(hasDsp?'AMS '+fmtEuro(spend-dspSpend)+' + DSP '+fmtEuro(dspSpend):'AMS only — no DSP data for period'):'no ads data for period',null)+
     card('Ad Attributed Revenue',fmtEuro(adRev),totRev>0?(adRev/totRev*100).toFixed(1)+'% of total revenue':'—',null)+
     card('Ad-Driven Glance Views',fmtNum(adGv),gvPct.toFixed(1)+'% of total GVs'+(hasDsp?' · incl. DSP DPVs':''),null)+
+    card('Impressions',fmtNum(imps),'served · '+(hasDsp?'AMS + DSP':'AMS only'),null)+
     card('ROAS',spend>0?roas.toFixed(1)+'x':'—',hasDsp?'blended AMS + DSP':'AMS attributed',sRoas)+
     card('Portfolio Advertised',advPct!==null?advPct.toFixed(1)+'%':'—',advPct!==null?fmtNum(covAdv)+' SP ASINs of '+fmtNum(covTot)+' active in period'+(covQ?' · '+covQ:''):'no coverage data — upload quarterly file',null);
 }
