@@ -396,7 +396,8 @@ var allRows=[],loyaltyData={},adsData={},allWeeks=[],adsDataAllWeeks={},adsCover
 // Populate by running the FY25 benchmark SQL in Supabase and pasting the
 // result here. While null, the card falls back to the fixed 10%/5% thresholds.
 var FY25_CVR_BENCHMARK=6.69;
-var preorderData=[]; // cumulative YTD ordered-vs-dispatched per ASIN+market, from the preorder_pipeline view // FY2025 EU5 portfolio avg CVR — from Supabase, units/GVs across all 2025 weeks
+var preorderData=[]; // cumulative YTD ordered-vs-dispatched per ASIN+market, from the preorder_pipeline view
+var dspRows=[]; // DSP brand/market/week rows from brand_health_dsp (one-off June load; empty = AMS-only display) // FY2025 EU5 portfolio avg CVR — from Supabase, units/GVs across all 2025 weeks
 var periodMode='week',currentPeriod=null;
 
 function oosClass(p){return p<=6?'oos-green':p<=9?'oos-amber':'oos-red';}
@@ -459,10 +460,12 @@ async function init(){
       sbFetch('/rest/v1/brand_health_weeks?select=*&order=week_start.desc'),
       sbFetch('/rest/v1/brand_health_loyalty?select=*&order=uploaded_at.desc'),
       sbFetch('/rest/v1/brand_health_ads?select=week_start,brand_classified,market,ad_revenue,ad_spend,ad_impressions,ad_clicks,ad_glance_views&order=week_start.desc'),
-      sbFetch('/rest/v1/preorder_pipeline?select=*').catch(function(e){console.warn('preorder_pipeline view missing — run the CREATE VIEW SQL. Pre-order panel disabled.',e);return[];})
+      sbFetch('/rest/v1/preorder_pipeline?select=*').catch(function(e){console.warn('preorder_pipeline view missing — run the CREATE VIEW SQL. Pre-order panel disabled.',e);return[];}),
+      sbFetch('/rest/v1/brand_health_dsp?select=*').catch(function(){return[];})
     ]);
     var weeksRes=results[0],loyaltyRes=results[1],adsRes=results[2];
     preorderData=results[3]||[];
+    dspRows=results[4]||[];
     allWeeks=weeksRes;
     // Deduplicate allWeeks by week_start
     var seenWks={};
@@ -1134,6 +1137,19 @@ function renderAdsMetrics(){
   var rows=currentMarket==='ALL'?allRows:allRows.filter(function(r){return r.market===currentMarket;});
   var totRev=0,totGv=0;
   rows.forEach(function(r){totRev+=r.dispatched_revenue||0;totGv+=r.glance_views||0;});
+  // Blend DSP (brand_health_dsp) for whatever weeks of the selected period have
+  // DSP rows. Combined view per the business call: the audience cares about
+  // total ad investment, not the AMS/DSP org chart. DPVs stand in for ad-driven
+  // GVs on the DSP side (closest funnel equivalent to a glance view).
+  var periodWeeks={};allRows.forEach(function(r){periodWeeks[r.week_start]=1;});
+  var dspSpend=0,dspRev=0,dspDpv=0;
+  dspRows.forEach(function(r){
+    if(!periodWeeks[r.week_start])return;
+    if(currentMarket!=='ALL'&&r.market!==currentMarket)return;
+    dspSpend+=Number(r.dsp_spend)||0;dspRev+=Number(r.dsp_revenue)||0;dspDpv+=Number(r.dsp_dpv)||0;
+  });
+  var hasDsp=dspSpend>0;
+  spend+=dspSpend;adRev+=dspRev;adGv+=dspDpv;
   var roas=spend>0?adRev/spend:0;
   var gvPct=totGv>0?adGv/totGv*100:0;
   // ASIN-level advertising coverage:
@@ -1161,10 +1177,10 @@ function renderAdsMetrics(){
     return'<div class="metric-card'+cls+'">'+emoji+'<div class="metric-label">'+label+'</div><div class="metric-value">'+value+'</div><div class="metric-sub">'+sub+'</div></div>';
   };
   el.innerHTML=
-    card('AMS Spend',spend>0?fmtEuro(spend):'€0',spend>0?'excl. DSP':'no ads data for period',null)+
+    card('Ad Spend',spend>0?fmtEuro(spend):'€0',spend>0?(hasDsp?'AMS '+fmtEuro(spend-dspSpend)+' + DSP '+fmtEuro(dspSpend):'AMS only — no DSP data for period'):'no ads data for period',null)+
     card('Ad Attributed Revenue',fmtEuro(adRev),totRev>0?(adRev/totRev*100).toFixed(1)+'% of total revenue':'—',null)+
-    card('Ad-Driven Glance Views',fmtNum(adGv),gvPct.toFixed(1)+'% of total GVs',null)+
-    card('ROAS',spend>0?roas.toFixed(1)+'x':'—','AMS attributed',sRoas)+
+    card('Ad-Driven Glance Views',fmtNum(adGv),gvPct.toFixed(1)+'% of total GVs'+(hasDsp?' · incl. DSP DPVs':''),null)+
+    card('ROAS',spend>0?roas.toFixed(1)+'x':'—',hasDsp?'blended AMS + DSP':'AMS attributed',sRoas)+
     card('Portfolio Advertised',advPct!==null?advPct.toFixed(1)+'%':'—',advPct!==null?fmtNum(covAdv)+' SP ASINs of '+fmtNum(covTot)+' active in period'+(covQ?' · '+covQ:''):'no coverage data — upload quarterly file',null);
 }
 
