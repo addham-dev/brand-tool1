@@ -1,315 +1,1456 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="robots" content="noindex, nofollow">
-<title>KAM Actions — Brand Health</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --blue:#009CDE;--blue-dark:#0077A8;--blue-light:#E5F6FF;
-    --bg:#F0F8FC;--white:#fff;--text:#003A54;--text2:#5A8DA0;
-    --text3:#A0C8D8;--border:#D0EAF5;
-    --green:#00B388;--green-bg:#E5FFF6;
-    --red:#E8423F;--red-bg:#FFF0F0;
-    --amber:#F5A623;--amber-bg:#FFF8EC;
-    --purple:#9B59B6;--purple-bg:#F5EEF8;
-    --shadow:0 2px 16px rgba(0,156,222,0.08);
-    --shadow-lg:0 8px 32px rgba(0,156,222,0.15);
-  }
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
-  header{background:#0B2436;color:#fff;padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
-  header .title{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;}
-  header .sub{font-size:11px;opacity:0.7;}
-  .mkt-tabs{display:flex;gap:6px;margin-left:auto;}
-  .mkt-tab{padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.25);background:transparent;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;}
-  .mkt-tab.active{background:var(--blue);border-color:var(--blue);}
-  main{max-width:1400px;margin:0 auto;padding:20px 24px;display:grid;gap:20px;}
-  .section-title{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text2);margin-bottom:10px;}
-  .board{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;}
-  .action-card{background:var(--white);border-radius:14px;border:2px solid var(--border);box-shadow:var(--shadow);padding:14px;cursor:pointer;}
-  .action-card.sel{border-color:var(--blue);}
-  .ac-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-  .ac-name{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;}
-  .ac-count{font-family:'DM Mono',monospace;font-weight:700;font-size:16px;background:var(--blue-light);color:var(--blue-dark);border-radius:8px;padding:2px 9px;}
-  .ac-row{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:11px;border-top:1px solid var(--border);}
-  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-  .dot.Critical{background:var(--red);} .dot.High{background:var(--amber);} .dot.Medium{background:var(--blue);} .dot.OK{background:var(--green);}
-  .ac-row .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}
-  .ac-row .r{font-family:'DM Mono',monospace;color:var(--text2);flex-shrink:0;}
-  .alert{background:var(--red-bg);border:2px solid #FFD0D0;border-radius:14px;padding:12px 16px;font-size:13px;display:none;}
-  .alert b{font-family:'DM Mono',monospace;}
-  .filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
-  .filters input,.filters select{padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-family:'Inter',sans-serif;font-size:12px;color:var(--text);background:var(--white);}
-  .filters input{min-width:220px;}
-  .btn{padding:8px 16px;border-radius:8px;border:none;background:var(--blue);color:#fff;font-weight:600;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;}
-  .panel{background:var(--white);border-radius:14px;border:2px solid var(--border);box-shadow:var(--shadow);overflow-x:auto;}
-  table{width:100%;border-collapse:collapse;font-size:12px;}
-  th{font-family:'Syne',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);text-align:left;padding:10px 12px;border-bottom:2px solid var(--border);cursor:pointer;white-space:nowrap;user-select:none;}
-  td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
-  tr.rowlink{cursor:pointer;} tr.rowlink:hover{background:var(--blue-light);}
-  .sev{font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap;}
-  .sev.Critical{background:var(--red-bg);color:var(--red);} .sev.High{background:var(--amber-bg);color:var(--amber);}
-  .sev.Medium{background:var(--blue-light);color:var(--blue-dark);} .sev.OK{background:var(--green-bg);color:var(--green);}
-  .mono{font-family:'DM Mono',monospace;}
-  /* Slide-out */
-  #detail{position:fixed;top:0;right:-520px;width:500px;max-width:95vw;height:100vh;background:var(--white);box-shadow:var(--shadow-lg);transition:right .25s;z-index:60;overflow-y:auto;padding:22px;border-left:2px solid var(--border);}
-  #detail.open{right:0;}
-  #detail h2{font-family:'Syne',sans-serif;font-size:16px;margin-bottom:2px;}
-  .d-close{float:right;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);}
-  .d-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0;}
-  .d-card{background:var(--bg);border-radius:10px;padding:10px;}
-  .d-card .l{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);font-weight:700;}
-  .d-card .v{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;margin-top:2px;}
-  .d-box{border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.5;}
-  .spark-label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin:12px 0 4px;}
-  /* Login */
-  #login{position:fixed;inset:0;background:#0B2436;display:flex;align-items:center;justify-content:center;z-index:100;}
-  #login .box{background:var(--white);border-radius:16px;padding:32px;width:320px;text-align:center;}
-  #login h1{font-family:'Syne',sans-serif;font-size:18px;margin-bottom:14px;}
-  #login input{width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin-bottom:10px;font-size:14px;}
-  #loading{display:none;padding:40px;text-align:center;color:var(--text2);font-size:13px;}
-  #app{display:none;}
-  .badge{font-size:11px;color:var(--text3);}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Hasbro EU Brand Health</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue:#009CDE;--blue-dark:#0077A8;--blue-light:#E5F6FF;
+      --bg:#F0F8FC;--white:#fff;--text:#003A54;--text2:#5A8DA0;
+      --text3:#A0C8D8;--border:#D0EAF5;
+      --green:#00B388;--green-bg:#E5FFF6;
+      --red:#E8423F;--red-bg:#FFF0F0;
+      --amber:#F5A623;--amber-bg:#FFF8EC;
+      --purple:#9B59B6;--purple-bg:#F5EEF8;
+      --ad-color:#4F46E5;--ad-bg:#EEF2FF;
+      --org-color:#009CDE;--org-bg:#E5F6FF;
+      --shadow:0 2px 16px rgba(0,156,222,0.08);
+      --shadow-lg:0 8px 32px rgba(0,156,222,0.15);
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;}
+    header{background:#1F1646;padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:68px;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
+    .logo{display:flex;align-items:center;gap:16px;}
+    .logo-img{height:36px;width:auto;display:block;}
+    .logo-divider{width:1px;height:32px;background:rgba(255,255,255,0.2);}
+    .logo-text{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:white;letter-spacing:0.5px;}
+    .logo-sub{font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;}
+    .header-right{display:flex;align-items:center;gap:14px;}
+    .nav-links{display:flex;gap:4px;}
+    .nav-link{padding:6px 16px;border-radius:6px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:rgba(255,255,255,0.65);text-decoration:none;transition:all 0.2s;cursor:pointer;}
+    .nav-link:hover{background:rgba(255,255,255,0.1);color:white;}
+    .nav-link.active{background:var(--blue);color:white;}
+    .week-badge{background:rgba(255,255,255,0.1);border-radius:6px;padding:6px 12px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,0.8);}
+    .currency-toggle{display:flex;background:rgba(255,255,255,0.1);border-radius:6px;overflow:hidden;}
+    .currency-btn{padding:6px 12px;border:none;background:transparent;color:rgba(255,255,255,0.6);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;}
+    .currency-btn.active{background:var(--blue);color:white;}
+    .filter-bar{background:white;padding:10px 40px;display:flex;align-items:center;gap:14px;border-bottom:2px solid var(--border);box-shadow:var(--shadow);flex-wrap:wrap;}
+    .filter-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;}
+    .market-tabs,.sort-tabs,.period-tabs{display:flex;gap:4px;}
+    .market-tab,.sort-tab,.period-tab{padding:6px 14px;border-radius:6px;border:2px solid var(--border);background:var(--blue-light);color:var(--blue-dark);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;}
+    .market-tab.active,.sort-tab.active,.period-tab.active{background:var(--blue);color:white;border-color:var(--blue);}
+    .divider{width:1px;height:24px;background:var(--border);flex-shrink:0;}
+    .week-select{padding:6px 12px;border-radius:6px;border:2px solid var(--border);background:var(--blue-light);color:var(--blue-dark);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;outline:none;}
+    main{padding:24px 40px;max-width:1600px;margin:0 auto;display:grid;gap:28px;}
+    .section-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+    .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+    .sentiment-bar{display:flex;gap:16px;flex-wrap:wrap;}
+    .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;}
+    .metric-card{background:white;border-radius:14px;border:2px solid var(--border);padding:16px;position:relative;box-shadow:var(--shadow);}
+    .metric-card.m-happy{border-color:var(--green);}
+    .metric-card.m-sad{border-color:var(--amber);}
+    .metric-card.m-cry{border-color:var(--red);}
+    .metric-emoji{position:absolute;top:12px;right:12px;font-size:22px;line-height:1;}
+    .metric-label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+    .metric-value{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--text);line-height:1.1;}
+    .metric-sub{font-size:11px;color:var(--text2);margin-top:6px;font-family:'DM Mono',monospace;}
+    .metric-sub .yoy-up{color:var(--green);font-weight:700;}
+    .metric-sub .yoy-down{color:var(--red);font-weight:700;}
+    .sentiment-pill{display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:50px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;border:2px solid;}
+    .sentiment-pill.happy{background:var(--green-bg);border-color:var(--green);color:var(--green);}
+    .sentiment-pill.sad{background:var(--amber-bg);border-color:var(--amber);color:var(--amber);}
+    .sentiment-pill.cry{background:var(--red-bg);border-color:var(--red);color:var(--red);}
+    .brand-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;}
+    .brand-card{background:white;border-radius:14px;padding:18px;box-shadow:var(--shadow);border:2px solid var(--border);cursor:pointer;transition:all 0.25s;position:relative;overflow:hidden;}
+    .brand-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-3px);}
+    .brand-card.selected{box-shadow:var(--shadow-lg);border-width:3px;}
+    .brand-card.happy{border-color:var(--green);}
+    .brand-card.sad{border-color:var(--amber);}
+    .brand-card.cry{border-color:var(--red);}
+    .brand-card-accent{position:absolute;top:0;left:0;right:0;height:4px;}
+    .brand-sentiment-emoji{position:absolute;top:14px;right:14px;font-size:26px;line-height:1;}
+    .brand-card-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--text);margin-bottom:3px;padding-right:40px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .brand-sentiment-label{font-size:10px;font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;}
+    .brand-sentiment-label.happy{color:var(--green);}
+    .brand-sentiment-label.sad{color:var(--amber);}
+    .brand-sentiment-label.cry{color:var(--red);}
+    .brand-metrics{display:grid;gap:6px;}
+    .bm-row{display:flex;justify-content:space-between;align-items:center;}
+    .bm-label{font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;}
+    .bm-right{display:flex;align-items:center;gap:4px;}
+    .bm-value{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:var(--text);}
+    .yoy{font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;}
+    .yoy-up{color:var(--green);background:var(--green-bg);}
+    .yoy-down{color:var(--red);background:var(--red-bg);}
+    .yoy-na{color:var(--text3);}
+    .brand-divider{height:1px;background:var(--border);margin:8px 0;}
+    .ltv-badge{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--purple);background:var(--purple-bg);padding:2px 6px;border-radius:4px;}
+    .supply-alert{margin-top:8px;padding:5px 8px;border-radius:5px;font-size:10px;font-weight:700;text-align:center;}
+    .supply-alert.show-red{background:var(--red-bg);color:var(--red);}
+    .supply-alert.show-amber{background:var(--amber-bg);color:var(--amber);}
+    .bm-expand-row{display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+    .bm-expand-row:hover .bm-label{color:var(--blue);}
+    .expand-toggle{font-size:9px;color:var(--text3);transition:transform 0.2s;display:inline-block;}
+    .expand-toggle.open{transform:rotate(90deg);}
+    .bm-sub-rows{display:none;margin-left:8px;margin-top:4px;border-left:2px solid var(--border);padding-left:8px;}
+    .bm-sub-rows.open{display:grid;gap:3px;}
+    .bm-sub-row{display:flex;justify-content:space-between;align-items:center;}
+    .bm-sub-label{font-size:9px;color:var(--text2);font-weight:600;}
+    .bm-sub-value{font-family:'DM Mono',monospace;font-size:10px;color:var(--text);}
+    .dot-org{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--org-color);margin-right:3px;}
+    .dot-ad{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ad-color);margin-right:3px;}
+    .rca-panel{background:white;border-radius:16px;box-shadow:var(--shadow);border:2px solid var(--border);overflow:hidden;}
+    .rca-header{background:var(--blue-light);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--border);}
+    .rca-brand{display:flex;align-items:center;gap:12px;}
+    .rca-emoji{font-size:32px;}
+    .rca-name{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--blue-dark);}
+    .rca-subtitle{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+    .rca-tabs{display:flex;gap:4px;flex-wrap:wrap;}
+    .rca-tab{padding:7px 14px;border-radius:6px;border:2px solid var(--border);background:white;color:var(--text2);font-family:'Inter',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.2s;text-transform:uppercase;letter-spacing:0.5px;}
+    .rca-tab.active{background:var(--blue);color:white;border-color:var(--blue);}
+    .rca-content{padding:20px 24px;}
+    .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+    .kpi-card{background:var(--bg);border-radius:10px;padding:14px;border:1px solid var(--border);}
+    .kpi-label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+    .kpi-value{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;line-height:1;}
+    .kpi-value.c-blue{color:var(--blue);}
+    .kpi-value.c-green{color:var(--green);}
+    .kpi-value.c-amber{color:var(--amber);}
+    .kpi-value.c-red{color:var(--red);}
+    .kpi-value.c-purple{color:var(--purple);}
+    .kpi-value.c-text{color:var(--text);}
+    .kpi-yoy{font-size:11px;font-weight:600;margin-top:4px;color:var(--text2);}
+    .kpi-ads-split{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+    .kpi-split-pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;}
+    .kpi-split-pill.org{background:var(--org-bg);color:var(--org-color);}
+    .kpi-split-pill.ad{background:var(--ad-bg);color:var(--ad-color);}
+    .data-table{width:100%;border-collapse:collapse;}
+    .data-table th{text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;border-bottom:2px solid var(--border);white-space:nowrap;}
+    .data-table th.r{text-align:right;}
+    .data-table td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:12px;}
+    .data-table tr:last-child td{border-bottom:none;}
+    .data-table tr:hover td{background:var(--blue-light);}
+    .td-asin{font-family:'DM Mono',monospace;font-size:10px;color:var(--blue);}
+    .td-name{color:var(--text2);font-weight:500;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
+    .td-val{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);text-align:right;}
+    .td-yoy{font-size:10px;font-weight:700;text-align:right;}
+    .mp{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;}
+    .mp-GB{background:#E8F4FF;color:#0077A8;}
+    .mp-DE{background:#FFF3E0;color:#E65100;}
+    .mp-FR{background:#F3E5F5;color:#6A1B9A;}
+    .mp-IT{background:#E8F5E9;color:#2E7D32;}
+    .mp-ES{background:#FFF8E1;color:#F57F17;}
+    .bar-bg{height:4px;background:var(--border);border-radius:2px;margin-top:3px;}
+    .bar-fg{height:100%;background:var(--blue);border-radius:2px;}
+    .flag{font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px;}
+    .flag-ad{background:var(--ad-bg);color:var(--ad-color);}
+    .pivot-table-wrap{overflow-x:auto;}
+    .pivot-table{width:100%;border-collapse:collapse;min-width:600px;}
+    .pivot-table th{text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;border-bottom:2px solid var(--border);white-space:nowrap;background:var(--bg);}
+    .pivot-table th.r{text-align:right;}
+    .pivot-table td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:12px;}
+    .pivot-table tr:hover td{background:var(--blue-light);}
+    .pivot-table tr:last-child td{border-bottom:none;font-weight:700;background:var(--blue-light);}
+    .supply-panel{background:white;border-radius:16px;box-shadow:var(--shadow);border:2px solid #FFD0D0;overflow:hidden;}
+    .supply-header{background:linear-gradient(135deg,#FFF0F0,#FFF8EC);padding:16px 24px;border-bottom:2px solid #FFD0D0;display:flex;align-items:center;justify-content:space-between;}
+    .supply-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:1px;}
+    .loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;height:400px;gap:16px;}
+    .loading-text{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text2);}
+    .loading-bar{width:200px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+    .loading-bar::after{content:'';display:block;height:100%;width:40%;background:var(--blue);border-radius:2px;animation:lb 1.2s ease infinite;}
+    @keyframes lb{0%{transform:translateX(-150%)}100%{transform:translateX(400%)}}
+    .no-data{text-align:center;padding:80px 40px;}
+    .no-data-emoji{font-size:64px;margin-bottom:16px;}
+    .no-data-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--text2);margin-bottom:8px;}
+    .empty{text-align:center;padding:40px;color:var(--text3);font-size:13px;}
+    .oos-green{color:var(--green);font-weight:700;}
+    .oos-amber{color:var(--amber);font-weight:700;}
+    .oos-red{color:var(--red);font-weight:700;}
+    .cvr-green{color:var(--green);font-weight:700;}
+    .cvr-amber{color:var(--amber);font-weight:700;}
+    .cvr-red{color:var(--red);font-weight:700;}
+    #adam-fab{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;align-items:flex-end;font-family:'Inter',sans-serif;}
+    #adam-trigger{display:flex;align-items:center;gap:8px;background:#1F1646;color:#fff;border:none;border-radius:999px;padding:8px 16px 8px 8px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.22);font-size:13px;font-weight:600;transition:transform 0.15s,box-shadow 0.15s;position:relative;font-family:'Inter',sans-serif;}
+    #adam-trigger:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(0,0,0,0.28);}
+    #adam-trigger img{width:34px;height:34px;border-radius:50%;object-fit:cover;}
+    #adam-uat-badge{position:absolute;top:-6px;right:-4px;background:#F5A623;color:#1F1646;font-size:9px;font-weight:700;padding:2px 6px;border-radius:999px;border:2px solid #F0F8FC;}
+    #adam-pulse{position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;background:#F5A623;display:none;}
+    #adam-pulse::after{content:'';position:absolute;inset:0;border-radius:50%;background:#F5A623;animation:adamPulse 1.4s ease-out infinite;}
+    @keyframes adamPulse{0%{transform:scale(1);opacity:0.9}100%{transform:scale(2.6);opacity:0}}
+    #adam-panel{display:none;flex-direction:column;width:380px;height:520px;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.16);overflow:hidden;margin-bottom:10px;border:1px solid #D0EAF5;}
+    #adam-panel.open{display:flex;}
+    #adam-header{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#1F1646;color:#fff;flex-shrink:0;}
+    #adam-header img{width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(255,255,255,0.25);}
+    #adam-header-info{flex:1;}
+    #adam-header-info .name{font-size:14px;font-weight:600;}
+    #adam-header-info .sub{font-size:11px;color:rgba(255,255,255,0.55);}
+    #adam-uat-label{background:#F5A623;color:#1F1646;font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;}
+    #adam-close{background:none;border:none;color:rgba(255,255,255,0.6);font-size:18px;cursor:pointer;line-height:1;padding:0 2px;}
+    #adam-close:hover{color:#fff;}
+    #adam-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;background:#F0F8FC;}
+    .adam-msg{display:flex;gap:8px;align-items:flex-start;}
+    .adam-msg.user{flex-direction:row-reverse;}
+    .adam-msg .avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;object-fit:cover;border:1px solid #D0EAF5;}
+    .adam-msg .avatar.user-av{background:#E5F6FF;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#0077A8;border:none;}
+    .adam-bubble{max-width:82%;font-size:13px;line-height:1.55;padding:9px 12px;border-radius:4px 12px 12px 12px;background:#fff;border:1px solid #D0EAF5;color:#003A54;white-space:pre-wrap;}
+    .adam-msg.user .adam-bubble{background:#1F1646;color:#fff;border-color:#1F1646;border-radius:12px 4px 12px 12px;}
+    #adam-suggestions{padding:0 10px 8px;display:flex;flex-wrap:wrap;gap:5px;background:#F0F8FC;flex-shrink:0;}
+    .adam-chip{font-size:11px;padding:4px 10px;border:1px solid #D0EAF5;border-radius:999px;cursor:pointer;background:#fff;color:#5A8DA0;font-family:'Inter',sans-serif;}
+    .adam-chip:hover{background:#E5F6FF;}
+    #adam-input-row{display:flex;gap:6px;padding:10px;border-top:1px solid #D0EAF5;background:#fff;flex-shrink:0;}
+    #adam-input{flex:1;font-size:13px;padding:8px 10px;border:1px solid #D0EAF5;border-radius:8px;outline:none;resize:none;font-family:'Inter',sans-serif;background:#F0F8FC;color:#003A54;line-height:1.4;}
+    #adam-input:focus{border-color:#009CDE;background:#fff;}
+    #adam-send{padding:8px 14px;border-radius:8px;border:none;background:#1F1646;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;}
+    #adam-send:disabled{opacity:0.35;cursor:default;}
+    .adam-typing span{display:inline-block;width:6px;height:6px;border-radius:50%;background:#A0C8D8;animation:adamBounce 1.2s ease-in-out infinite;margin-right:3px;}
+    .adam-typing span:nth-child(2){animation-delay:0.2s;}
+    .adam-typing span:nth-child(3){animation-delay:0.4s;margin-right:0;}
+    @keyframes adamBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+  </style>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-RF2D8HGXG0"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-RF2D8HGXG0');</script>
 </head>
 <body>
-
-<div id="login">
-  <div class="box">
-    <h1>🔐 KAM Actions</h1>
-    <input type="password" id="pw" placeholder="Password" onkeydown="if(event.key==='Enter')tryLogin()">
-    <button class="btn" style="width:100%" onclick="tryLogin()">Enter</button>
-    <div id="login-err" style="color:var(--red);font-size:11px;margin-top:8px;display:none;">Wrong password</div>
+<header>
+  <div class="logo">
+    <img src="https://corporate.hasbro.com/_next/image?url=%2Fimages%2Fhasbro_logo.png&w=256&q=75" alt="Hasbro" class="logo-img">
+    <div class="logo-divider"></div>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon" class="logo-img" style="height:22px;filter:brightness(0) invert(1);opacity:0.85;">
+    <div class="logo-divider"></div>
+    <div>
+      <div class="logo-text">Brand Health Dashboard</div>
+      <div class="logo-sub">EU5 Weekly Performance</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="nav-links">
+      <a class="nav-link active" href="index.html">Dashboard</a>
+      <a class="nav-link" href="insights.html">Insights</a>
+      <a class="nav-link" href="upload.html">Upload</a>
+      <a class="nav-link" href="https://addham-dev.github.io/hasbro-sales-ticker/" target="_blank">Live Sales ↗</a>
+    </div>
+    <div class="week-badge" id="week-badge">Loading...</div>
+    <div class="currency-toggle">
+      <button class="currency-btn active" id="btn-eur" onclick="setCurrency('eur')">€ EUR</button>
+      <button class="currency-btn" id="btn-gbp" onclick="setCurrency('gbp')">£ GBP</button>
+      <button class="currency-btn" id="btn-usd" onclick="setCurrency('usd')">$ USD</button>
+    </div>
+  </div>
+</header>
+<div class="filter-bar">
+  <span class="filter-label">View</span>
+  <div class="period-tabs">
+    <button class="period-tab active" onclick="setPeriodMode('week',this)">Weekly</button>
+    <button class="period-tab" onclick="setPeriodMode('month',this)">Monthly</button>
+    <button class="period-tab" onclick="setPeriodMode('quarter',this)">Quarterly</button>
+    <button class="period-tab" onclick="setPeriodMode('year',this)">Annual</button>
+    <button class="period-tab" onclick="setPeriodMode('custom',this)">Custom</button>
+  </div>
+  <div class="divider"></div>
+  <span class="filter-label">vs</span>
+  <div class="period-tabs">
+    <button class="period-tab comp-tab active" onclick="setComparison('wow',this)">WoW</button>
+    <button class="period-tab comp-tab" onclick="setComparison('4w',this)">4W</button>
+    <button class="period-tab comp-tab" onclick="setComparison('yoy',this)">YoY</button>
+  </div>
+  <div class="divider"></div>
+  <span class="filter-label">Market</span>
+  <div class="market-tabs">
+    <button class="market-tab active" onclick="setMarket('ALL',this)">All EU5</button>
+    <button class="market-tab" onclick="setMarket('GB',this)">🇬🇧 GB</button>
+    <button class="market-tab" onclick="setMarket('DE',this)">🇩🇪 DE</button>
+    <button class="market-tab" onclick="setMarket('FR',this)">🇫🇷 FR</button>
+    <button class="market-tab" onclick="setMarket('IT',this)">🇮🇹 IT</button>
+    <button class="market-tab" onclick="setMarket('ES',this)">🇪🇸 ES</button>
+  </div>
+  <div class="divider"></div>
+  <span class="filter-label" id="period-label">Week</span>
+  <select class="week-select" id="week-select" onchange="loadPeriod(this.value)"><option>Loading...</option></select>
+  <span id="custom-range-controls" style="display:none;align-items:center;gap:8px;">
+    <input type="date" id="custom-start-date" class="week-select" style="font-family:inherit;" onchange="onCustomRangeChange()">
+    <span style="color:var(--text2);font-size:12px;">to</span>
+    <input type="date" id="custom-end-date" class="week-select" style="font-family:inherit;" onchange="onCustomRangeChange()">
+  </span>
+  <div class="divider"></div>
+  <span class="filter-label">Sort</span>
+  <div class="sort-tabs">
+    <button class="sort-tab active" onclick="setSort('revenue',this)">Revenue</button>
+    <button class="sort-tab" onclick="setSort('sentiment',this)">Sentiment</button>
+    <button class="sort-tab" onclick="setSort('ltv',this)">LTV</button>
   </div>
 </div>
-
-<div id="app">
-<header>
+<div id="loading-screen" class="loading-screen">
+  <div class="loading-text">Loading brand data...</div>
+  <div class="loading-bar"></div>
+</div>
+<div id="no-data-screen" class="no-data" style="display:none">
+  <div class="no-data-emoji">📭</div>
+  <div class="no-data-title">No data uploaded yet</div>
+</div>
+<main id="main-content" style="display:none">
   <div>
-    <div class="title">KAM Actions</div>
-    <div class="sub">ASIN-level · Phase 1 · <span id="week-badge">—</span></div>
+    <div class="section-title">Key Metrics — Portfolio Overview</div>
+    <div class="metrics-grid" id="overall-metrics"></div>
+    <div class="section-title" style="margin-top:16px;">Key Metrics — Advertising (AMS)</div>
+    <div class="metrics-grid" id="ads-metrics"></div>
   </div>
-  <div class="mkt-tabs" id="mkt-tabs"></div>
-</header>
-
-<main>
-  <div class="alert" id="wasted-alert"></div>
-
   <div>
-    <div class="section-title">Action Board</div>
-    <div class="board" id="board"></div>
+    <div class="section-title">Portfolio Health Summary</div>
+    <div class="sentiment-bar" id="sentiment-bar"></div>
   </div>
-
   <div>
-    <div class="section-title">All ASINs</div>
-    <div class="filters">
-      <input id="f-search" placeholder="Search ASIN or product…" oninput="renderTable()">
-      <select id="f-action" onchange="renderTable()"><option value="">All actions</option></select>
-      <select id="f-sev" onchange="renderTable()"><option value="">All severities</option><option>Critical</option><option>High</option><option>Medium</option><option>OK</option></select>
-      <select id="f-brand" onchange="renderTable()"><option value="">All brands</option></select>
-      <button class="btn" onclick="downloadCsv()">⬇ Download Action CSV</button>
-      <span class="badge" id="row-count"></span>
+    <div class="section-title">Brand Scorecards — click for Root Cause Analysis</div>
+    <div class="brand-grid" id="brand-grid"></div>
+  </div>
+  <div class="rca-panel" id="rca-panel" style="display:none">
+    <div class="rca-header">
+      <div class="rca-brand">
+        <div class="rca-emoji" id="rca-emoji">—</div>
+        <div>
+          <div class="rca-name" id="rca-name">—</div>
+          <div class="rca-subtitle">Root Cause Analysis</div>
+        </div>
+      </div>
+      <div class="rca-tabs">
+        <button class="rca-tab active" onclick="setTab('revenue',this)">Revenue</button>
+        <button class="rca-tab" onclick="setTab('traffic',this)">Traffic</button>
+        <button class="rca-tab" onclick="setTab('conversion',this)">Conversion</button>
+        <button class="rca-tab" onclick="setTab('supply',this)">Supply &amp; OOS</button>
+        <button class="rca-tab" onclick="setTab('ads',this)">Ads</button>
+        <button class="rca-tab" onclick="setTab('adopp',this)">Ad Opportunities</button>
+        <button class="rca-tab" onclick="setTab('search',this)">🔍 Search Terms</button>
+        <button class="rca-tab" onclick="setTab('trends',this)">Trends</button>
+      </div>
     </div>
-    <div class="panel" style="margin-top:10px;">
-      <table>
-        <thead><tr>
-          <th onclick="setSort('asin')">ASIN</th><th onclick="setSort('title')">Product</th>
-          <th onclick="setSort('brand')">Brand</th><th onclick="setSort('action')">Action</th>
-          <th onclick="setSort('severity')">Severity</th><th onclick="setSort('weeklyRev')">Rev/wk</th>
-          <th onclick="setSort('weeklyGv')">GV/wk</th><th onclick="setSort('cvr')">CVR</th><th onclick="setSort('oosPct')">OOS</th>
-        </tr></thead>
-        <tbody id="tbody"></tbody>
-      </table>
+    <div class="rca-content">
+      <div class="kpi-row" id="kpi-row"></div>
+      <div id="table-wrap"></div>
     </div>
+  </div>
+  <div class="supply-panel" id="preorder-panel" style="display:none;">
+    <div class="supply-header">
+      <div class="supply-title">📦 Pre-Order &amp; Pending Ship Revenue</div>
+      <span style="font-size:11px;color:var(--text2);font-weight:600;">Cumulative YTD order book · drains as units ship · independent of period selector</span>
+    </div>
+    <div id="preorder-items"></div>
+  </div>
+  <div class="supply-panel">
+    <div class="supply-header">
+      <div class="supply-title" id="supply-title">⚠️ Supply Gap Alerts</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button id="supply-reset-btn" onclick="resetSupplyFilter()" style="display:none;padding:4px 10px;border-radius:5px;border:1px solid var(--red);background:var(--red-bg);color:var(--red);font-size:10px;font-weight:700;cursor:pointer;">Show All Brands</button>
+        <span style="font-size:11px;color:var(--text2);font-weight:600;">OOS &gt; 10% or Unfilled &gt; 50</span>
+      </div>
+    </div>
+    <div id="supply-items" style="overflow-x:auto;"></div>
   </div>
 </main>
+
+<div id="adam-fab">
+  <div id="adam-panel">
+    <div id="adam-header">
+      <img src="https://attic.sh/arz5gqoevz38gefaczkyj07h42iz" alt="Adam">
+      <div id="adam-header-info">
+        <div class="name">Adam</div>
+        <div class="sub">Hasbro EU Campaign Analyst</div>
+      </div>
+      <span id="adam-uat-label">UAT</span>
+      <button id="adam-close" onclick="adamToggle()">✕</button>
+    </div>
+    <div id="adam-messages"></div>
+    <div id="adam-suggestions">
+      <button class="adam-chip" onclick="adamSend('Which brand had the best week?')">Best brand this week?</button>
+      <button class="adam-chip" onclick="adamSend('Which brand has the worst OOS right now?')">Worst OOS?</button>
+      <button class="adam-chip" onclick="adamSend('Is our ad spend driving incremental revenue or just claiming organic?')">Ad spend incremental?</button>
+      <button class="adam-chip" onclick="adamSend('What should I check after a campaign goes live?')">Post-campaign checklist?</button>
+    </div>
+    <div id="adam-input-row">
+      <textarea id="adam-input" rows="1" placeholder="Ask about brands, ASINs, campaigns…"></textarea>
+      <button id="adam-send" onclick="adamSend()">Send</button>
+    </div>
+  </div>
+  <button id="adam-trigger" onclick="adamToggle()">
+    <img src="https://attic.sh/arz5gqoevz38gefaczkyj07h42iz" alt="Adam">
+    Ask Adam
+    <span id="adam-uat-badge">UAT</span>
+    <span id="adam-pulse"></span>
+  </button>
 </div>
 
-<div id="loading">Loading 12 weeks of ASIN data…</div>
-
-<div id="detail">
-  <button class="d-close" onclick="closeDetail()">×</button>
-  <div id="detail-body"></div>
-</div>
-
-<script src="actionEngine.js"></script>
 <script>
-/* ── Access — own password, separate from exec dashboard ── */
-var KAM_PW='Hasbro2026'; // set per handoff step 2
-function tryLogin(){
-  var v=document.getElementById('pw').value;
-  if(v===KAM_PW){sessionStorage.setItem('kam_auth','1');document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';init();}
-  else document.getElementById('login-err').style.display='block';
-}
-if(sessionStorage.getItem('kam_auth')==='1'){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';}
-
-/* ── Supabase — same pattern as index.html ── */
 var SUPABASE_URL='https://rycqfwzgvpzwhphgclpb.supabase.co';
 var SUPABASE_KEY='sb_publishable_CbKFhpN2dWI_UXhwGkclqw_AMPSprs4';
+var FX={eur:1,gbp:0.862,usd:1.09};
+var BRAND_COLORS={DISNEY_KIDS:'#9B59B6',MARVEL:'#E8423F',STAR_WARS:'#1a1a2e',MONOPOLY:'#B22222',GAMES:'#009CDE',PLAY_DOH:'#E91E8C',PEPPA_PIG:'#FF6B9D',TRANSFORMERS:'#F5A623',BEYBLADE:'#00B388',NERF:'#FF6B00',OTHER:'#A0C8D8'};
+var BRAND_LABELS={DISNEY_KIDS:'Disney Kids',MARVEL:'Marvel / Spider-Man',STAR_WARS:'Star Wars',MONOPOLY:'Monopoly',GAMES:'Games',PLAY_DOH:'Play-Doh',PEPPA_PIG:'Peppa Pig',TRANSFORMERS:'Transformers',BEYBLADE:'Beyblade',NERF:'Nerf',OTHER:'Other'};
+var BRAND_ORDER=['DISNEY_KIDS','MARVEL','STAR_WARS','MONOPOLY','GAMES','PLAY_DOH','PEPPA_PIG','TRANSFORMERS','BEYBLADE','NERF','OTHER'];
+var currency='eur',currentMarket='ALL',currentSort='revenue',selectedBrand=null,currentTab='revenue';
+var allRows=[],loyaltyData={},adsData={},allWeeks=[],adsDataAllWeeks={},adsCoverageData={},searchTermsData=[];
+// FY2025 portfolio average conversion rate (%, units/glance views across all
+// 2025 weeks, EU5). Used as the benchmark on the Key Metrics CVR card.
+// Populate by running the FY25 benchmark SQL in Supabase and pasting the
+// result here. While null, the card falls back to the fixed 10%/5% thresholds.
+var FY25_CVR_BENCHMARK=6.69;
+var preorderData=[]; // cumulative YTD ordered-vs-dispatched per ASIN+market, from the preorder_pipeline view // FY2025 EU5 portfolio avg CVR — from Supabase, units/GVs across all 2025 weeks
+var periodMode='week',currentPeriod=null;
+
+function oosClass(p){return p<=6?'oos-green':p<=9?'oos-amber':'oos-red';}
+function oosLabel(p){return p<=6?'green':p<=9?'amber':'red';}
+function cvrClass(p){return p>=10?'cvr-green':p>=5?'cvr-amber':'cvr-red';}
+function cvrLevel(p){return p>=10?'good':p>=5?'ok':'bad';}
+function getMonthKey(d){var x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0');}
+function getQuarterKey(d){var x=new Date(d);return x.getFullYear()+'-Q'+Math.ceil((x.getMonth()+1)/3);}
+function getYearKey(d){return String(new Date(d).getFullYear());}
+function periodKey(d){
+  // Use week START date for all period attribution (Amazon weeks Sun-Sat)
+  if(periodMode==='week')return d;
+  if(periodMode==='month')return getMonthKey(d);
+  if(periodMode==='quarter')return getQuarterKey(d);
+  return getYearKey(d);
+}
+function periodLabel(k){if(periodMode==='week'){var p=k.split('-');return p[2]+'/'+p[1]+'/'+p[0];}return k;}
+
+// For monthly view only: a week that starts in one calendar month can run into the next
+// (e.g. week_start 2026-05-31 covers 31 May through 6 June). Rather than dumping the whole
+// week into whichever month the start date falls in, work out exactly how many of its 7 days
+// sit inside the target month and return that as a fraction (1.0 = fully inside, 0.0 = fully outside).
+// Used to pro-rate numeric fields so monthly totals don't over/under count boundary weeks.
+function weekDayFractionInMonth(weekStart, monthKey){
+  var start=new Date(weekStart+'T00:00:00');
+  var daysInMonth=0;
+  for(var i=0;i<7;i++){
+    var d=new Date(start);
+    d.setDate(d.getDate()+i);
+    var mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    if(mk===monthKey)daysInMonth++;
+  }
+  return daysInMonth/7;
+}
+
+// THE FIX: Range header forces Supabase to return up to 50000 rows
 function sbFetch(path){
   var sep=path.indexOf('?')>=0?'&':'?';
-  return fetch(SUPABASE_URL+path+sep+'limit=15000',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Range':'0-49999','Prefer':'count=none'}})
-  .then(function(r){if(!r.ok)throw new Error('Supabase '+r.status+': '+path.split('?')[0]);return r.json();})
-  .then(function(d){return Array.isArray(d)?d:[];});
+  return fetch(SUPABASE_URL+path+sep+'limit=15000',{headers:{
+    'apikey':SUPABASE_KEY,
+    'Authorization':'Bearer '+SUPABASE_KEY,
+    'Range':'0-49999',
+    'Prefer':'count=none'
+  }})
+  .then(function(r){
+    if(!r.ok) throw new Error('Supabase '+r.status+': '+path.split('?')[0]);
+    return r.json();
+  })
+  .then(function(d){return Array.isArray(d)?d:[];})
+  .catch(function(e){console.warn('sbFetch error:',e.message);return[];});
 }
 
-var MARKETS=['GB','DE','FR','IT','ES'];
-var currentMarket='GB';
-var actions=[],wasted={total:0,parts:[]};
-var sortKey='severity',sortDir='asc';
-var SEV_ORDER={Critical:0,High:1,Medium:2,OK:3};
-var HIST_WEEKS=12;
-var SNAP_COLS='week_start,asin,product_title,brand_classified,market,dispatched_revenue,dispatched_units,ordered_revenue,ordered_units,glance_views,oos_pct,unfilled_units';
-
-function fmtEuro(v){v=Number(v)||0;return v>=1e6?'€'+(v/1e6).toFixed(1)+'M':v>=1e3?'€'+(v/1e3).toFixed(1)+'K':'€'+Math.round(v);}
+var _initRunning=false;
 
 async function init(){
-  document.getElementById('mkt-tabs').innerHTML=MARKETS.map(function(m){return '<button class="mkt-tab'+(m===currentMarket?' active':'')+'" onclick="setMarket(\''+m+'\')">'+m+'</button>';}).join('');
-  document.getElementById('app').style.opacity='0.5';
-  document.getElementById('loading').style.display='block';
+  if(_initRunning)return;
+  _initRunning=true;
   try{
-    var weeks=await sbFetch('/rest/v1/brand_health_weeks?select=week_start&order=week_start.desc');
-    var weekStarts=weeks.map(function(w){return w.week_start;}).slice(0,HIST_WEEKS).reverse();
-    if(!weekStarts.length){document.getElementById('loading').textContent='No data.';return;}
-    document.getElementById('week-badge').textContent=weekStarts[0]+' → '+weekStarts[weekStarts.length-1]+' · '+currentMarket;
+    var results=await Promise.all([
+      sbFetch('/rest/v1/brand_health_weeks?select=*&order=week_start.desc'),
+      sbFetch('/rest/v1/brand_health_loyalty?select=*&order=uploaded_at.desc'),
+      sbFetch('/rest/v1/brand_health_ads?select=week_start,brand_classified,market,ad_revenue,ad_spend,ad_impressions,ad_clicks,ad_glance_views&order=week_start.desc'),
+      sbFetch('/rest/v1/preorder_pipeline?select=*').catch(function(e){console.warn('preorder_pipeline view missing — run the CREATE VIEW SQL. Pre-order panel disabled.',e);return[];})
+    ]);
+    var weeksRes=results[0],loyaltyRes=results[1],adsRes=results[2];
+    preorderData=results[3]||[];
+    allWeeks=weeksRes;
+    // Deduplicate allWeeks by week_start
+    var seenWks={};
+    allWeeks=allWeeks.filter(function(w){if(seenWks[w.week_start])return false;seenWks[w.week_start]=1;return true;});
+    loyaltyData={};
+    loyaltyRes.forEach(function(r){if(!loyaltyData[r.brand_classified])loyaltyData[r.brand_classified]=r;});
+    adsDataAllWeeks={};
+    adsRes.forEach(function(r){
+      var d=new Date(r.week_start);
+      if(d.getDay()===6){d.setDate(d.getDate()+1);}
+      var normWs=d.toISOString().split('T')[0];
+      var k=normWs+'||'+r.brand_classified+'||'+(r.market||'ALL');
+      if(!adsDataAllWeeks[k]){
+        adsDataAllWeeks[k]=Object.assign({},r,{week_start:normWs});
+      }else{
+        adsDataAllWeeks[k].ad_revenue=(adsDataAllWeeks[k].ad_revenue||0)+(r.ad_revenue||0);
+        adsDataAllWeeks[k].ad_spend=(adsDataAllWeeks[k].ad_spend||0)+(r.ad_spend||0);
+        adsDataAllWeeks[k].ad_clicks=(adsDataAllWeeks[k].ad_clicks||0)+(r.ad_clicks||0);
+        adsDataAllWeeks[k].ad_impressions=(adsDataAllWeeks[k].ad_impressions||0)+(r.ad_impressions||0);
+        adsDataAllWeeks[k].ad_glance_views=(adsDataAllWeeks[k].ad_glance_views||0)+(r.ad_glance_views||0);
+      }
+    });
+    if(!allWeeks.length){document.getElementById('loading-screen').style.display='none';document.getElementById('no-data-screen').style.display='block';return;}
+    buildPeriodSelect();
+    await loadPeriod(currentPeriod);
+    setTimeout(async function(){
+      try{var cr=await sbFetch('/rest/v1/brand_health_ads_coverage?select=*&order=quarter.asc');if(Array.isArray(cr)){adsCoverageData={};cr.forEach(function(r){if(!adsCoverageData[r.brand_classified])adsCoverageData[r.brand_classified]={};adsCoverageData[r.brand_classified][r.market]={total:r.total_asins,sp:r.sp_asins,sb:r.sb_asins,quarter:r.quarter};});}}catch(e){}
+      try{var sr=await sbFetch('/rest/v1/brand_health_search_terms?select=*&order=week_start.desc,rank.asc');if(Array.isArray(sr)){searchTermsData=sr;renderBrandCards();}}catch(e){}
+    },100);
+  }catch(err){
+    document.getElementById('loading-screen').innerHTML='<div style="color:var(--red);font-size:12px;text-align:center;padding:40px">Error: '+err.message+'</div>';
+  }finally{
+    _initRunning=false;
+  }
+}
 
-    var fetches=weekStarts.map(function(ws){return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&market=eq.'+currentMarket+'&select='+SNAP_COLS);});
-    // ads: last 4 weeks, this market → brand ROAS context + spend for wasted-spend estimate
-    var last4=weekStarts.slice(-4);
-    fetches.push(sbFetch('/rest/v1/brand_health_ads?week_start=in.('+last4.join(',')+')&market=eq.'+currentMarket+'&select=brand_classified,ad_revenue,ad_spend'));
-    fetches.push(sbFetch('/rest/v1/preorder_pipeline?market=eq.'+currentMarket+'&select=asin').catch(function(){return[];}));
+function buildPeriodSelect(){
+  var seen={},options=[];
+  allWeeks.forEach(function(w){
+    var k=periodKey(w.week_start);
+    if(!seen[k]){
+      seen[k]=1;
+      var label=periodMode==='week'?(w.week_label||w.week_start):k;
+      options.push({value:k,label:label});
+    }
+  });
+  // Sort descending
+  options.sort(function(a,b){return b.value>a.value?1:-1;});
+  var sel=document.getElementById('week-select');
+  sel.innerHTML=options.map(function(o){return'<option value="'+o.value+'">'+o.label+'</option>';}).join('');
+  document.getElementById('period-label').textContent=periodMode.charAt(0).toUpperCase()+periodMode.slice(1);
+  if(options.length)currentPeriod=options[0].value;
+}
 
-    var res=await Promise.all(fetches);
-    var adsRows=res[res.length-2],preRows=res[res.length-1];
-    var snapRows=[];for(var i=0;i<res.length-2;i++)snapRows=snapRows.concat(res[i]);
+async function loadPeriod(periodVal){
+  if(!periodVal)return;
+  currentPeriod=periodVal;
+  document.getElementById('loading-screen').style.display='flex';
+  document.getElementById('main-content').style.display='none';
+  var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){
+    if(periodMode!=='month')return periodKey(ws)===periodVal;
+    // In month mode, include this week if ANY of its days fall in the target month —
+    // not just if its start date does. Catches weeks like 31 May (week_start in May,
+    // but 6 of 7 days actually in June) when viewing June.
+    return weekDayFractionInMonth(ws,periodVal)>0;
+  });
+  var SNAP_COLS='week_start,asin,product_title,brand_classified,market,dispatched_revenue,dispatched_units,ordered_revenue,ordered_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy';
+  if(!weekStarts.length){
+    document.getElementById('loading-screen').style.display='none';
+    document.getElementById('main-content').style.display='grid';
+    buildDashboard();return;
+  }
+  if(periodMode==='week'&&weekStarts.length===1){
+    allRows=await sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+weekStarts[0]+'&select='+SNAP_COLS);
+  }else{
+    // Fetch each week in parallel then combine
+    var weekArrays=await Promise.all(weekStarts.map(function(ws){
+      return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select='+SNAP_COLS);
+    }));
+    allRows=weekArrays.reduce(function(a,b){return a.concat(b);},[]);
 
-    var adsRoasByBrand={},adsSpendByBrand={},agg={};
-    adsRows.forEach(function(r){var b=r.brand_classified;var a=agg[b]||(agg[b]={rev:0,sp:0});a.rev+=r.ad_revenue||0;a.sp+=r.ad_spend||0;});
-    Object.keys(agg).forEach(function(b){adsSpendByBrand[b]=agg[b].sp;if(agg[b].sp>0)adsRoasByBrand[b]=agg[b].rev/agg[b].sp;});
-    var preSet={};preRows.forEach(function(r){preSet[r.asin]=1;});
+    // MONTH-BOUNDARY FIX: if we're in month view, any week whose 7 days don't sit
+    // 100% inside this calendar month gets its numeric fields scaled by the fraction
+    // of days that actually fall in the target month. Prevents e.g. the 31 May week
+    // (which runs into June) from either fully double-counting or fully dropping out.
+    if(periodMode==='month'){
+      var NUMERIC_FIELDS=['dispatched_revenue','dispatched_units','ordered_revenue','ordered_units','glance_views','unfilled_units'];
+      allRows=allRows.map(function(r){
+        var frac=weekDayFractionInMonth(r.week_start,periodVal);
+        if(frac>=0.999)return r; // fully inside target month, no change needed
+        if(frac<=0.001)return null; // fully outside, shouldn't normally happen given weekStarts filter, but guard anyway
+        var scaled=Object.assign({},r);
+        NUMERIC_FIELDS.forEach(function(f){
+          if(scaled[f]!=null)scaled[f]=scaled[f]*frac;
+        });
+        // revenue_yoy / glance_views_yoy are ratios, not absolutes — leave untouched, they don't need scaling
+        return scaled;
+      }).filter(function(r){return r!==null;});
+    }
+  }
+  // Build ads for this period
+  adsData={};
+  Object.keys(adsDataAllWeeks).forEach(function(k){
+    var parts=k.split('||'),ws=parts[0],bid=parts[1],mkt=parts[2]||'ALL';
+    if(weekStarts.indexOf(ws)===-1)return;
+    var v=adsDataAllWeeks[k];
+    // Same boundary-week pro-rating as snapshots: if this ad week straddles two
+    // months and we're in month view, scale its contribution to this fraction only.
+    var fracAds=periodMode==='month'?weekDayFractionInMonth(ws,periodVal):1;
+    if(!adsData[bid])adsData[bid]={};
+    if(!adsData[bid][mkt])adsData[bid][mkt]={ad_revenue:0,ad_spend:0,ad_glance_views:0,ad_clicks:0,ad_impressions:0};
+    adsData[bid][mkt].ad_revenue+=(v.ad_revenue||0)*fracAds;
+    adsData[bid][mkt].ad_spend+=(v.ad_spend||0)*fracAds;
+    adsData[bid][mkt].ad_glance_views+=(v.ad_glance_views||0)*fracAds;
+    adsData[bid][mkt].ad_clicks+=(v.ad_clicks||0)*fracAds;
+    adsData[bid][mkt].ad_impressions+=(v.ad_impressions||0)*fracAds;
+  });
+  await loadPriorData();
+  var sel=document.getElementById('week-select');
+  var selOpt=sel.options[sel.selectedIndex];
+  var badgeLabel=periodMode==='week'?(selOpt?selOpt.text:periodVal):periodMode==='month'?'Month: '+periodVal:periodMode==='quarter'?'Quarter: '+periodVal:'Year: '+periodVal;
+  document.getElementById('week-badge').textContent=badgeLabel;
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('main-content').style.display='grid';
+  buildDashboard();
+}
 
-    var out=ActionEngine.buildActions(snapRows,{market:currentMarket,preorderAsins:preSet,adsRoasByBrand:adsRoasByBrand,adsSpendByBrand:adsSpendByBrand});
-    actions=out.actions;wasted=out.wastedSpend;
-    buildFilters();renderBoard();renderTable();renderWasted();
-  }catch(e){
-    console.error(e);
-    document.getElementById('loading').textContent='Load failed: '+e.message;
+function setPeriodMode(mode,btn){
+  periodMode=mode;
+  document.querySelectorAll('.period-tab').forEach(function(b){
+    if(b.classList.contains('comp-tab'))return; // don't touch the WoW/4W/YoY tabs, they're a separate group
+    b.classList.remove('active');
+  });
+  btn.classList.add('active');
+
+  var dropdownEl=document.getElementById('week-select');
+  var customEl=document.getElementById('custom-range-controls');
+
+  if(mode==='custom'){
+    // Swap the normal month/quarter/year dropdown out for the two date pickers.
+    // Don't auto-run a query yet — wait until the person has actually picked both dates.
+    dropdownEl.style.display='none';
+    customEl.style.display='inline-flex';
+    document.getElementById('period-label').textContent='Range';
+    // Pre-fill with the most recent 4 weeks of available data, not the earliest —
+    // sorted[0] on YYYY-MM-DD strings is the OLDEST date, not newest, which previously
+    // caused the default to span the entire dataset (a year+) instead of a sensible window.
+    if(allWeeks.length&&!document.getElementById('custom-start-date').value){
+      var sorted=allWeeks.map(function(w){return w.week_start;}).sort();
+      var latestWeekStart=sorted[sorted.length-1]; // last element after ascending sort = most recent
+      var idx=sorted.length-4; // go back 4 weeks for a sensible default window
+      var defaultStart=sorted[idx>=0?idx:0];
+      var endDate=new Date(latestWeekStart+'T00:00:00');
+      endDate.setDate(endDate.getDate()+6); // end of that final week (Saturday)
+      document.getElementById('custom-start-date').value=defaultStart;
+      document.getElementById('custom-end-date').value=endDate.toISOString().split('T')[0];
+    }
     return;
   }
-  document.getElementById('loading').style.display='none';
-  document.getElementById('app').style.opacity='1';
+
+  // Leaving custom mode — restore the normal dropdown-driven flow
+  dropdownEl.style.display='';
+  customEl.style.display='none';
+  buildPeriodSelect();
+  if(currentPeriod)loadPeriod(currentPeriod);
 }
 
-function setMarket(m){currentMarket=m;init();}
-
-function renderWasted(){
-  var el=document.getElementById('wasted-alert');
-  if(wasted.total>10){
-    el.style.display='block';
-    el.innerHTML='⚠️ <b>Wasted spend to pause: '+fmtEuro(wasted.total)+'/4wk</b> — estimated brand spend flowing to OOS ASINs ('+wasted.parts.map(function(p){return p.brand+' '+fmtEuro(p.estimate);}).join(' · ')+'). Brand-level estimate — per-ASIN precision lands with Pacvue ASIN export.';
-  }else el.style.display='none';
+function onCustomRangeChange(){
+  var startVal=document.getElementById('custom-start-date').value;
+  var endVal=document.getElementById('custom-end-date').value;
+  if(!startVal||!endVal)return; // wait for both
+  if(startVal>endVal){
+    alert('Start date must be before end date.');
+    return;
+  }
+  loadCustomRange(startVal,endVal);
 }
 
-function renderBoard(){
-  var groups={};
-  actions.forEach(function(a){if(a.action==='Monitor')return;var g=groups[a.action]||(groups[a.action]=[]);g.push(a);});
-  var order=['Fix Availability','Improve Conversion','Drive GV','Launch Support'];
-  var monitors=actions.filter(function(a){return a.action==='Monitor';}).length;
-  var html=order.filter(function(k){return groups[k];}).map(function(k){
-    var g=groups[k];
-    return '<div class="action-card" onclick="filterAction(\''+k+'\')"><div class="ac-head"><div class="ac-name">'+k+'</div><div class="ac-count">'+g.length+'</div></div>'+
-      g.slice(0,5).map(function(a){return '<div class="ac-row"><span class="dot '+a.severity+'"></span><span class="t" title="'+(a.title||'').replace(/"/g,'&quot;')+'">'+(a.title||a.asin)+'</span><span class="r">'+fmtEuro(a.weeklyRev)+'/wk</span></div>';}).join('')+
-      (g.length>5?'<div class="ac-row" style="color:var(--text3);border-top:1px solid var(--border);">+'+(g.length-5)+' more</div>':'')+'</div>';
-  }).join('');
-  html+='<div class="action-card" onclick="filterAction(\'Monitor\')"><div class="ac-head"><div class="ac-name">Monitor</div><div class="ac-count">'+monitors+'</div></div><div class="ac-row" style="border:none;color:var(--text2);">Within acceptable parameters</div></div>';
-  document.getElementById('board').innerHTML=html;
+// How many of a week's 7 days (starting at weekStart) fall between rangeStart and rangeEnd inclusive.
+// Same idea as weekDayFractionInMonth, generalised to an arbitrary date range rather than a calendar month.
+function weekDayFractionInRange(weekStart,rangeStart,rangeEnd){
+  var start=new Date(weekStart+'T00:00:00');
+  var rs=new Date(rangeStart+'T00:00:00');
+  var re=new Date(rangeEnd+'T00:00:00');
+  var daysInRange=0;
+  for(var i=0;i<7;i++){
+    var d=new Date(start);
+    d.setDate(d.getDate()+i);
+    if(d>=rs&&d<=re)daysInRange++;
+  }
+  return daysInRange/7;
 }
 
-function buildFilters(){
-  var acts=Array.from(new Set(actions.map(function(a){return a.action;})));
-  document.getElementById('f-action').innerHTML='<option value="">All actions</option>'+acts.map(function(a){return '<option>'+a+'</option>';}).join('');
-  var brands=Array.from(new Set(actions.map(function(a){return a.brand;}))).sort();
-  document.getElementById('f-brand').innerHTML='<option value="">All brands</option>'+brands.map(function(b){return '<option>'+b+'</option>';}).join('');
-}
-function filterAction(a){document.getElementById('f-action').value=a;renderTable();}
+async function loadCustomRange(rangeStart,rangeEnd){
+  currentPeriod=null; // custom ranges don't map to a single dropdown value
+  document.getElementById('loading-screen').style.display='flex';
+  document.getElementById('main-content').style.display='none';
 
-function setSort(k){if(sortKey===k)sortDir=sortDir==='asc'?'desc':'asc';else{sortKey=k;sortDir=k==='severity'?'asc':'desc';}renderTable();}
-
-function visibleRows(){
-  var q=(document.getElementById('f-search').value||'').toLowerCase();
-  var fa=document.getElementById('f-action').value,fs=document.getElementById('f-sev').value,fb=document.getElementById('f-brand').value;
-  var rows=actions.filter(function(a){
-    if(q&&(a.asin+' '+a.title).toLowerCase().indexOf(q)<0)return false;
-    if(fa&&a.action!==fa)return false;
-    if(fs&&a.severity!==fs)return false;
-    if(fb&&a.brand!==fb)return false;
-    return true;
+  // Pull in any week that overlaps the range at all, even partially —
+  // same principle as the month-boundary fix: a week_start before rangeStart
+  // can still contribute days that fall inside the range (and vice versa at the far end).
+  var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){
+    return weekDayFractionInRange(ws,rangeStart,rangeEnd)>0;
   });
-  rows.sort(function(x,y){
-    var a=x[sortKey],b=y[sortKey];
-    if(sortKey==='severity'){a=SEV_ORDER[x.severity];b=SEV_ORDER[y.severity];}
-    if(typeof a==='string')return sortDir==='asc'?a.localeCompare(b):b.localeCompare(a);
-    return sortDir==='asc'?a-b:b-a;
+
+  var SNAP_COLS='week_start,asin,product_title,brand_classified,market,dispatched_revenue,dispatched_units,ordered_revenue,ordered_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy';
+
+  if(!weekStarts.length){
+    document.getElementById('loading-screen').style.display='none';
+    document.getElementById('main-content').style.display='grid';
+    document.getElementById('week-badge').textContent='Range: '+rangeStart+' to '+rangeEnd+' (no data)';
+    buildDashboard();
+    return;
+  }
+
+  var weekArrays=await Promise.all(weekStarts.map(function(ws){
+    return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select='+SNAP_COLS);
+  }));
+  allRows=weekArrays.reduce(function(a,b){return a.concat(b);},[]);
+
+  // Pro-rate every overlapping week by the fraction of its days that actually
+  // fall inside the chosen range — fully-inside weeks pass through unscaled.
+  var NUMERIC_FIELDS=['dispatched_revenue','dispatched_units','ordered_revenue','ordered_units','glance_views','unfilled_units'];
+  allRows=allRows.map(function(r){
+    var frac=weekDayFractionInRange(r.week_start,rangeStart,rangeEnd);
+    if(frac>=0.999)return r;
+    if(frac<=0.001)return null;
+    var scaled=Object.assign({},r);
+    NUMERIC_FIELDS.forEach(function(f){
+      if(scaled[f]!=null)scaled[f]=scaled[f]*frac;
+    });
+    return scaled;
+  }).filter(function(r){return r!==null;});
+
+  // Same pro-rating applied to ads data for the same overlapping weeks
+  adsData={};
+  Object.keys(adsDataAllWeeks).forEach(function(k){
+    var parts=k.split('||'),ws=parts[0],bid=parts[1],mkt=parts[2]||'ALL';
+    if(weekStarts.indexOf(ws)===-1)return;
+    var v=adsDataAllWeeks[k];
+    var fracAds=weekDayFractionInRange(ws,rangeStart,rangeEnd);
+    if(!adsData[bid])adsData[bid]={};
+    if(!adsData[bid][mkt])adsData[bid][mkt]={ad_revenue:0,ad_spend:0,ad_glance_views:0,ad_clicks:0,ad_impressions:0};
+    adsData[bid][mkt].ad_revenue+=(v.ad_revenue||0)*fracAds;
+    adsData[bid][mkt].ad_spend+=(v.ad_spend||0)*fracAds;
+    adsData[bid][mkt].ad_glance_views+=(v.ad_glance_views||0)*fracAds;
+    adsData[bid][mkt].ad_clicks+=(v.ad_clicks||0)*fracAds;
+    adsData[bid][mkt].ad_impressions+=(v.ad_impressions||0)*fracAds;
   });
-  return rows;
+
+  // Pull comparison data for whichever WoW/4W/YoY toggle is currently selected,
+  // shifted back from this custom range, so a comparison is available immediately
+  // on load rather than only after manually re-clicking the comparison toggle.
+  await loadCustomRangePriorData(rangeStart,rangeEnd);
+
+  var fmtDate=function(s){var p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
+  document.getElementById('week-badge').textContent='Range: '+fmtDate(rangeStart)+' – '+fmtDate(rangeEnd);
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('main-content').style.display='grid';
+  buildDashboard();
 }
 
-function renderTable(){
-  var rows=visibleRows();
-  document.getElementById('row-count').textContent=rows.length+' ASINs';
-  document.getElementById('tbody').innerHTML=rows.slice(0,500).map(function(a,i){
-    return '<tr class="rowlink" onclick="openDetail(\''+a.asin+'\')">'+
-      '<td class="mono">'+a.asin+'</td>'+
-      '<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(a.title||'').replace(/"/g,'&quot;')+'">'+(a.title||'—')+'</td>'+
-      '<td>'+a.brand+'</td><td>'+a.action+'</td>'+
-      '<td><span class="sev '+a.severity+'">'+a.severity+'</span></td>'+
-      '<td class="mono">'+fmtEuro(a.weeklyRev)+'</td>'+
-      '<td class="mono">'+Math.round(a.weeklyGv)+'</td>'+
-      '<td class="mono">'+a.cvr.toFixed(1)+'%</td>'+
-      '<td class="mono">'+a.oosPct.toFixed(0)+'%</td></tr>';
+var currentComparison='wow';
+var priorData={};
+
+function setComparison(mode,btn){
+  currentComparison=mode;
+  document.querySelectorAll('.comp-tab').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+
+  if(periodMode==='custom'){
+    // currentPeriod is intentionally null in custom mode, so the normal
+    // loadPriorData() (which keys off currentPeriod) can't find anything and
+    // silently no-ops — that's what caused WoW/YoY to look frozen here.
+    // Re-derive the prior comparison window directly from the chosen custom dates instead.
+    var startVal=document.getElementById('custom-start-date').value;
+    var endVal=document.getElementById('custom-end-date').value;
+    if(startVal&&endVal){
+      loadCustomRangePriorData(startVal,endVal).then(function(){buildDashboard();});
+    }
+    return;
+  }
+
+  loadPriorData().then(function(){buildDashboard();});
+}
+
+// Equivalent of loadPriorData(), but for an arbitrary custom range rather than a
+// dropdown-selected week/month/quarter. Shifts the whole range back by the chosen
+// comparison window (7 days for WoW, 28 days for 4W, 364 days for YoY) and pulls
+// whatever weeks overlap that shifted range, using the same day-fraction pro-rating
+// as the main custom-range load so the comparison is genuinely apples-to-apples.
+async function loadCustomRangePriorData(rangeStart,rangeEnd){
+  priorData={};
+  var shiftDays=currentComparison==='yoy'?364:currentComparison==='4w'?28:7;
+  var rs=new Date(rangeStart+'T00:00:00');var re=new Date(rangeEnd+'T00:00:00');
+  rs.setDate(rs.getDate()-shiftDays);re.setDate(re.getDate()-shiftDays);
+  var priorStart=rs.toISOString().split('T')[0];
+  var priorEnd=re.toISOString().split('T')[0];
+
+  var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){
+    return weekDayFractionInRange(ws,priorStart,priorEnd)>0;
+  });
+  if(!weekStarts.length)return;
+
+  try{
+    var results=await Promise.all(weekStarts.map(function(ws){
+      return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=brand_classified,market,dispatched_revenue,dispatched_units,glance_views');
+    }));
+    results.forEach(function(rows,i){
+      var frac=weekDayFractionInRange(weekStarts[i],priorStart,priorEnd);
+      (rows||[]).forEach(function(r){
+        var k=r.brand_classified+'||'+(r.market||'');
+        if(!priorData[k])priorData[k]={revenue:0,gviews:0,units:0};
+        priorData[k].revenue+=(r.dispatched_revenue||0)*frac;
+        priorData[k].gviews+=(r.glance_views||0)*frac;
+        priorData[k].units+=(r.dispatched_units||0)*frac;
+      });
+    });
+  }catch(e){console.warn('loadCustomRangePriorData error:',e);priorData={};}
+}
+
+// Calendar date range of the currently selected period (month/quarter/year modes).
+function periodDateRange(){
+  if(periodMode==='month'){
+    var y=parseInt(currentPeriod.slice(0,4)),m=parseInt(currentPeriod.slice(5,7));
+    var last=new Date(y,m,0).getDate();
+    return[currentPeriod+'-01',currentPeriod+'-'+String(last).padStart(2,'0')];
+  }
+  if(periodMode==='quarter'){
+    var y=parseInt(currentPeriod.slice(0,4)),q=parseInt(currentPeriod.slice(6));
+    var sm=(q-1)*3+1,em=sm+2;
+    var last=new Date(y,em,0).getDate();
+    return[y+'-'+String(sm).padStart(2,'0')+'-01',y+'-'+String(em).padStart(2,'0')+'-'+String(last).padStart(2,'0')];
+  }
+  if(periodMode==='year')return[currentPeriod+'-01-01',currentPeriod+'-12-31'];
+  return null;
+}
+
+var _priorToken=0;
+var priorCoverage=null; // {cur, pri} — fraction-weeks available in current vs prior range
+
+// Prior-period comparison data.
+// WEEK mode: unchanged — date-targeted single week (WoW -7d, 4W -28d, YoY -364d ±14d tolerance).
+// MONTH/QUARTER/YEAR: the old logic walked back 52 ARRAY POSITIONS in the list of
+// weeks that happen to exist in the DB — not 52 calendar weeks — so any gap in the
+// history silently shifted the whole comparison onto the wrong weeks and inflated
+// YoY. Now: take the period's real calendar range, shift it back 364d (YoY) or 28d
+// (WoW/4W), and pull whatever weeks overlap that shifted range with the same
+// day-fraction pro-rating the current period uses. Also records coverage so a
+// partially-missing prior year is flagged rather than silently inflating the number.
+async function loadPriorData(){
+  var token=++_priorToken;
+  priorData={};priorCoverage=null;
+  try{
+    if(periodMode==='week'){
+      var wsArr=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){return periodKey(ws)===currentPeriod;});
+      if(!wsArr.length||token!==_priorToken)return;
+      var sorted=allWeeks.map(function(w){return w.week_start;}).sort();
+      var ws=wsArr[0],idx=sorted.indexOf(ws),prior=null;
+      if(currentComparison==='wow'&&idx>=1)prior=sorted[idx-1];
+      else if(currentComparison==='4w'&&idx>=4)prior=sorted[idx-4];
+      else if(currentComparison==='yoy'){
+        var target=new Date(ws);target.setDate(target.getDate()-364);
+        var bestDiff=Infinity;
+        sorted.forEach(function(w){var d=Math.abs(new Date(w)-target);if(d<bestDiff&&d<=14*24*60*60*1000){bestDiff=d;prior=w;}});
+      }
+      if(!prior)return;
+      var rows=await sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+prior+'&select=brand_classified,market,dispatched_revenue,dispatched_units,glance_views');
+      if(token!==_priorToken)return;
+      (rows||[]).forEach(function(r){
+        var k=r.brand_classified+'||'+(r.market||'');
+        if(!priorData[k])priorData[k]={revenue:0,gviews:0,units:0};
+        priorData[k].revenue+=r.dispatched_revenue||0;
+        priorData[k].gviews+=r.glance_views||0;
+        priorData[k].units+=r.dispatched_units||0;
+      });
+      return;
+    }
+
+    // month / quarter / year
+    var range=periodDateRange();
+    if(!range||token!==_priorToken)return;
+    var shiftDays=currentComparison==='yoy'?364:28;
+    var rs=new Date(range[0]+'T00:00:00');var re=new Date(range[1]+'T00:00:00');
+    rs.setDate(rs.getDate()-shiftDays);re.setDate(re.getDate()-shiftDays);
+    var priorStart=rs.toISOString().split('T')[0];
+    var priorEnd=re.toISOString().split('T')[0];
+
+    var allWs=allWeeks.map(function(w){return w.week_start;});
+    var priorWs=allWs.filter(function(ws){return weekDayFractionInRange(ws,priorStart,priorEnd)>0;});
+
+    // Coverage: fraction-weeks of data available in each range. If the prior
+    // range is missing weeks the current range has, the YoY is not like-for-like.
+    var curFrac=0,priFrac=0;
+    allWs.forEach(function(ws){curFrac+=weekDayFractionInRange(ws,range[0],range[1]);});
+    priorWs.forEach(function(ws){priFrac+=weekDayFractionInRange(ws,priorStart,priorEnd);});
+    priorCoverage={cur:curFrac,pri:priFrac};
+
+    if(!priorWs.length||token!==_priorToken)return;
+    var results=await Promise.all(priorWs.map(function(ws){
+      return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=brand_classified,market,dispatched_revenue,dispatched_units,glance_views');
+    }));
+    if(token!==_priorToken)return;
+    priorData={};
+    results.forEach(function(rows,i){
+      var frac=weekDayFractionInRange(priorWs[i],priorStart,priorEnd);
+      (rows||[]).forEach(function(r){
+        var k=r.brand_classified+'||'+(r.market||'');
+        if(!priorData[k])priorData[k]={revenue:0,gviews:0,units:0};
+        priorData[k].revenue+=(r.dispatched_revenue||0)*frac;
+        priorData[k].gviews+=(r.glance_views||0)*frac;
+        priorData[k].units+=(r.dispatched_units||0)*frac;
+      });
+    });
+  }catch(e){console.warn('loadPriorData error:',e);if(token===_priorToken){priorData={};priorCoverage=null;}}
+}
+
+function aggregateBrand(brandId){
+  var rows=allRows.filter(function(r){return r.brand_classified===brandId;});
+  if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});
+  var revenue=0,units=0,gviews=0,unfilled=0,oosVals=[];
+  rows.forEach(function(r){
+    revenue+=r.dispatched_revenue||0;
+    units+=r.dispatched_units||0;
+    gviews+=r.glance_views||0;
+    unfilled+=r.unfilled_units||0;
+    if(r.oos_pct!=null)oosVals.push(r.oos_pct);
+  });
+  var priorRevenue=0,priorGviews=0;
+  if(currentMarket==='ALL'){
+    ['GB','DE','FR','IT','ES'].forEach(function(mkt){var k=brandId+'||'+mkt;if(priorData[k]){priorRevenue+=priorData[k].revenue;priorGviews+=priorData[k].gviews;}});
+  }else{
+    var k=brandId+'||'+currentMarket;
+    if(priorData[k]){priorRevenue=priorData[k].revenue;priorGviews=priorData[k].gviews;}
+  }
+  var revenueYoy=priorRevenue>0?(revenue-priorRevenue)/priorRevenue:null;
+  var gviewsYoy=priorGviews>0?(gviews-priorGviews)/priorGviews:null;
+  var avgOos=oosVals.length>0?oosVals.reduce(function(a,b){return a+b;},0)/oosVals.length:0;
+  var conv=gviews>0?(units/gviews)*100:0,asp=units>0?revenue/units:0;
+  var loyalty=loyaltyData[brandId],repeatRate=loyalty?loyalty.repeat_rate:null;
+  var ltv=repeatRate&&repeatRate<1&&asp>0?asp/(1-repeatRate):null;
+  var ads=null;
+  if(adsData[brandId]){
+    var mkts=currentMarket==='ALL'?Object.keys(adsData[brandId]):[currentMarket];
+    ads={ad_revenue:0,ad_spend:0,ad_impressions:0,ad_clicks:0,ad_glance_views:0};
+    mkts.forEach(function(mk){var a=adsData[brandId][mk];if(a){ads.ad_revenue+=(a.ad_revenue||0);ads.ad_spend+=(a.ad_spend||0);ads.ad_glance_views+=(a.ad_glance_views||0);ads.ad_clicks+=(a.ad_clicks||0);ads.ad_impressions+=(a.ad_impressions||0);}});
+    if(ads.ad_revenue===0&&ads.ad_spend===0)ads=null;
+  }
+  return{revenue:revenue,revenueYoy:revenueYoy,units:units,asp:asp,conv:conv,gviews:gviews,gviewsYoy:gviewsYoy,unfilled:unfilled,avgOos:avgOos,repeatRate:repeatRate,ltv:ltv,ads:ads};
+}
+
+function getToysRank(brandId){
+  if(!searchTermsData.length)return null;
+  var weeks=searchTermsData.map(function(t){return t.week_start;}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
+  if(!weeks.length)return null;
+  var latestWeek=weeks[weeks.length-1],priorWeek=weeks.length>=2?weeks[weeks.length-2]:null;
+  var brandTerms=searchTermsData.filter(function(t){return t.brand_classified===brandId&&t.week_start===latestWeek&&(t.top_clicked_category||'').toLowerCase().indexOf('toy')>=0&&t.rank;});
+  if(!brandTerms.length)return null;
+  var bestRank=Math.min.apply(null,brandTerms.map(function(t){return t.rank;}));
+  var priorRank=null;
+  if(priorWeek){var pt=searchTermsData.filter(function(t){return t.brand_classified===brandId&&t.week_start===priorWeek&&(t.top_clicked_category||'').toLowerCase().indexOf('toy')>=0&&t.rank;});if(pt.length)priorRank=Math.min.apply(null,pt.map(function(t){return t.rank;}));}
+  return{rank:bestRank,priorRank:priorRank,change:priorRank?priorRank-bestRank:null};
+}
+
+function getSentiment(d){
+  var revDown=d.revenueYoy!==null&&d.revenueYoy<-0.02;
+  var revUp=d.revenueYoy!==null&&d.revenueYoy>0.02;
+  var gvDown=d.gviewsYoy!==null&&d.gviewsYoy<-0.05;
+  var cvrBad=cvrLevel(d.conv)==='bad';
+  var oosRed=oosLabel(d.avgOos)==='red';
+  if(d.avgOos>20)return'cry';
+  if(oosRed&&cvrBad)return'cry';
+  if(revDown&&gvDown)return'cry';
+  if(revUp&&!cvrBad&&!oosRed)return'happy';
+  return'sad';
+}
+var SC={happy:{emoji:'🤑',label:'Happy',cls:'happy'},sad:{emoji:'🧐',label:'Mixed',cls:'sad'},cry:{emoji:'😭',label:'Needs Attention',cls:'cry'}};
+
+// ─── PORTFOLIO-LEVEL AGGREGATION (Key Metrics section) ────────
+// Mirrors aggregateBrand exactly but across ALL rows in the current
+// period/market selection, so the overall numbers always reconcile
+// with the sum of the brand cards below.
+function aggregatePortfolio(){
+  var rows=allRows;
+  if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});
+  var revenue=0,units=0,gviews=0,oosVals=[];
+  rows.forEach(function(r){
+    revenue+=r.dispatched_revenue||0;
+    units+=r.dispatched_units||0;
+    gviews+=r.glance_views||0;
+    if(r.oos_pct!=null)oosVals.push(r.oos_pct);
+  });
+  // Prior period totals: sum every brand||market key in priorData that
+  // matches the current market filter — same source the brand cards use.
+  var priorRevenue=0,priorGviews=0,priorUnits=0;
+  Object.keys(priorData).forEach(function(k){
+    var mkt=k.split('||')[1];
+    if(currentMarket!=='ALL'&&mkt!==currentMarket)return;
+    priorRevenue+=priorData[k].revenue||0;
+    priorGviews+=priorData[k].gviews||0;
+    priorUnits+=priorData[k].units||0;
+  });
+  var revenueYoy=priorRevenue>0?(revenue-priorRevenue)/priorRevenue:null;
+  var gviewsYoy=priorGviews>0?(gviews-priorGviews)/priorGviews:null;
+  var priorAsp=priorUnits>0?priorRevenue/priorUnits:0;
+  var avgOos=oosVals.length>0?oosVals.reduce(function(a,b){return a+b;},0)/oosVals.length:0;
+  var conv=gviews>0?(units/gviews)*100:0,asp=units>0?revenue/units:0;
+  var aspYoy=priorAsp>0&&asp>0?(asp-priorAsp)/priorAsp:null;
+  // Portfolio repeat rate: customer-weighted across brands, NOT a simple
+  // average of brand rates — sum(repeat customers)/sum(total customers).
+  var repeatCust=0,totalCust=0;
+  Object.keys(loyaltyData).forEach(function(bid){
+    var l=loyaltyData[bid];
+    if(l&&l.total_customers){repeatCust+=(l.repeat_customers||0);totalCust+=l.total_customers;}
+  });
+  var repeatRate=totalCust>0?repeatCust/totalCust:null;
+  return{revenue:revenue,revenueYoy:revenueYoy,units:units,gviews:gviews,gviewsYoy:gviewsYoy,conv:conv,asp:asp,aspYoy:aspYoy,avgOos:avgOos,repeatRate:repeatRate};
+}
+
+function renderOverallMetrics(){
+  var p=aggregatePortfolio();
+  var fmtEuro=function(v){return v>=1000000?'€'+(v/1000000).toFixed(1)+'M':v>=1000?'€'+(v/1000).toFixed(0)+'K':'€'+Math.round(v);};
+  var fmtNum=function(v){return v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'K':Math.round(v).toLocaleString();};
+  var yoyHtml=function(y){
+    if(y===null)return'<span style="opacity:0.6">no prior data</span>';
+    var cls=y>=0?'yoy-up':'yoy-down';var arr=y>=0?'▲':'▼';
+    // Flag comparisons where the prior range is missing weeks the current range
+    // has — the % is then not like-for-like and will read inflated.
+    var warn=(priorCoverage&&priorCoverage.pri<priorCoverage.cur-0.15)?' <span title="Prior period is missing '+((priorCoverage.cur-priorCoverage.pri)).toFixed(1)+' weeks of data — comparison not like-for-like">⚠️</span>':'';
+    return'<span class="'+cls+'">'+arr+Math.abs(y*100).toFixed(1)+'% '+(currentComparison==='yoy'?'YoY':currentComparison==='4w'?'vs 4W':'WoW')+'</span>'+warn;
+  };
+  // Per-metric sentiment, reusing the exact thresholds the brand cards use
+  // (getSentiment ±2% revenue, ±5% GVs; cvrLevel; oosLabel).
+  var sRev=p.revenueYoy===null?'sad':p.revenueYoy>0.02?'happy':p.revenueYoy<-0.02?'cry':'sad';
+  var sGv=p.gviewsYoy===null?'sad':p.gviewsYoy>0.05?'happy':p.gviewsYoy<-0.05?'cry':'sad';
+  // CVR judged against the FY25 portfolio average when available: at or above
+  // benchmark = happy, within 10% relative = mixed, below that = attention.
+  // Falls back to the fixed cvrLevel thresholds until the benchmark is set.
+  var sCvr,cvrSub;
+  if(FY25_CVR_BENCHMARK!==null){
+    sCvr=p.conv>=FY25_CVR_BENCHMARK?'happy':p.conv>=FY25_CVR_BENCHMARK*0.9?'sad':'cry';
+    cvrSub='FY25 avg: '+FY25_CVR_BENCHMARK.toFixed(2)+'%  ·  '+fmtNum(p.units)+' units';
+  }else{
+    sCvr=cvrLevel(p.conv)==='good'?'happy':cvrLevel(p.conv)==='ok'?'sad':'cry';
+    cvrSub=fmtNum(p.units)+' units';
+  }
+  var sOos=oosLabel(p.avgOos)==='green'?'happy':oosLabel(p.avgOos)==='amber'?'sad':'cry';
+  // Pre-order pipeline for the topline card: pending (ordered-not-dispatched)
+  // revenue and units across flagged ASINs. Recomputed every render, so as
+  // items ship their dispatch rate rises past 25% and they drop out — the
+  // number self-corrects as revenue converts to shipped.
+  var poGroups=computePreOrders();
+  var poRev=0,poUnits=0;
+  poGroups.forEach(function(g){poRev+=g.pending;poUnits+=g.pendingUnits;});
+  // Secondary line: orders placed on book ASINs within the SELECTED period —
+  // moves with the week/month selector while the headline stays cumulative.
+  var flaggedAsins={};
+  poGroups.forEach(function(g){g.asins.forEach(function(a){flaggedAsins[a.asin]=1;});});
+  var poNewRev=0;
+  var poRows=currentMarket==='ALL'?allRows:allRows.filter(function(r){return r.market===currentMarket;});
+  poRows.forEach(function(r){if(flaggedAsins[r.asin])poNewRev+=r.ordered_revenue||0;});
+  var card=function(label,value,sub,sent){
+    var emoji=sent?('<div class="metric-emoji">'+SC[sent].emoji+'</div>'):'';
+    var cls=sent?(' m-'+SC[sent].cls):'';
+    return'<div class="metric-card'+cls+'">'+emoji+
+      '<div class="metric-label">'+label+'</div>'+
+      '<div class="metric-value">'+value+'</div>'+
+      '<div class="metric-sub">'+sub+'</div></div>';
+  };
+  document.getElementById('overall-metrics').innerHTML=
+    card('Revenue',fmtEuro(p.revenue),yoyHtml(p.revenueYoy),sRev)+
+    card('Glance Views',fmtNum(p.gviews),yoyHtml(p.gviewsYoy),sGv)+
+    card('Conversion Rate',p.conv.toFixed(2)+'%',cvrSub,sCvr)+
+    card('ASP','€'+p.asp.toFixed(2),yoyHtml(p.aspYoy),null)+
+    card('Avg OOS',p.avgOos.toFixed(1)+'%','target ≤6%',sOos)+
+    card('Pre-Order Pipeline',poRev>0?fmtEuro(poRev):'€0',fmtNum(poUnits)+' units · excl. shipped rev'+(poNewRev>0?'<br>+'+fmtEuro(poNewRev)+' ordered in period':''),null);
+}
+
+// ─── PRE-ORDER / PENDING SHIP PIPELINE ─────────────────────────
+// Detection is at ASIN level, not brand level: within the selected period an
+// ASIN with meaningful ordered revenue but a dispatch rate under 25% is a
+// pre-order or pending-ship line (unreleased launches — Star Wars movie items,
+// Monopoly F1 — or heavily backordered stock). Brand-level ordered-minus-
+// dispatched alone would drown that signal in ordinary order-to-ship lag.
+// Thresholds now live in the preorder_pipeline VIEW in Supabase (>=€500
+// cumulative ordered, dispatch rate <25%) — tune them there, not here.
+// The view is cumulative YTD per ASIN+market: an order stays in the book
+// from the week it's placed until the week it ships, then drains out as
+// dispatched revenue catches up. Period-independent by design — the book
+// is a running total, so it does NOT change with the week/month selector.
+function computePreOrders(){
+  var rows=preorderData;
+  if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});
+  var byAsin={};
+  rows.forEach(function(r){
+    var k=r.asin;
+    if(!byAsin[k])byAsin[k]={asin:r.asin,title:r.product_title,brand:r.brand_classified,ordered:0,dispatched:0,orderedUnits:0,dispatchedUnits:0};
+    byAsin[k].ordered+=r.ordered_revenue||0;
+    byAsin[k].dispatched+=r.dispatched_revenue||0;
+    byAsin[k].orderedUnits+=r.ordered_units||0;
+    byAsin[k].dispatchedUnits+=r.dispatched_units||0;
+  });
+  var byBrand={};
+  Object.values(byAsin).forEach(function(a){
+    a.pending=Math.max(0,a.ordered-a.dispatched);
+    a.pendingUnits=Math.max(0,a.orderedUnits-a.dispatchedUnits);
+    if(a.pending<=0)return;
+    if(!byBrand[a.brand])byBrand[a.brand]={brand:a.brand,pending:0,pendingUnits:0,ordered:0,asins:[]};
+    byBrand[a.brand].pending+=a.pending;
+    byBrand[a.brand].pendingUnits+=a.pendingUnits;
+    byBrand[a.brand].ordered+=a.ordered;
+    byBrand[a.brand].asins.push(a);
+  });
+  return Object.values(byBrand).sort(function(x,y){return y.pending-x.pending;});
+}
+
+function renderPreOrders(){
+  var panel=document.getElementById('preorder-panel');
+  var el=document.getElementById('preorder-items');
+  if(!panel||!el)return;
+  var groups=computePreOrders();
+  if(!groups.length){panel.style.display='none';return;}
+  panel.style.display='';
+  var fmtEuro=function(v){return v>=1000000?'€'+(v/1000000).toFixed(1)+'M':v>=1000?'€'+(v/1000).toFixed(1)+'K':'€'+Math.round(v);};
+  var totalPending=groups.reduce(function(s,g){return s+g.pending;},0);
+  var html='<div style="padding:10px 0;font-family:\'Syne\',sans-serif;font-size:14px;font-weight:700;color:var(--text);">Total pending: '+fmtEuro(totalPending)+' across '+groups.reduce(function(s,g){return s+g.asins.length;},0)+' ASINs</div>';
+  groups.forEach(function(g){
+    var label=(typeof BRAND_LABELS!=='undefined'&&BRAND_LABELS[g.brand])?BRAND_LABELS[g.brand]:g.brand;
+    var top=g.asins.sort(function(a,b){return b.pending-a.pending;}).slice(0,8);
+    html+='<details style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:white;">'+
+      '<summary style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;list-style:none;">'+
+        '<span style="font-family:\'Syne\',sans-serif;font-weight:700;font-size:13px;flex:1;">'+label+'</span>'+
+        '<span style="font-size:11px;color:var(--text2);">'+g.asins.length+' ASIN'+(g.asins.length>1?'s':'')+'</span>'+
+        '<span style="font-family:\'DM Mono\',monospace;font-weight:700;font-size:13px;color:var(--purple);">'+fmtEuro(g.pending)+' pending</span>'+
+      '</summary>'+
+      '<div style="padding:4px 14px 12px;">'+
+        top.map(function(a){
+          var rate=a.ordered>0?(a.dispatched/a.ordered*100):0;
+          return'<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--border);font-size:11px;">'+
+            '<span style="font-family:\'DM Mono\',monospace;color:var(--text2);flex-shrink:0;">'+a.asin+'</span>'+
+            '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);" title="'+(a.title||'').replace(/"/g,'&quot;')+'">'+(a.title||'—')+'</span>'+
+            '<span style="color:var(--text2);flex-shrink:0;">'+Math.round(a.orderedUnits).toLocaleString()+' u</span>'+
+            '<span style="color:'+(rate<5?'var(--purple)':'var(--amber)')+';flex-shrink:0;font-weight:700;">'+rate.toFixed(0)+'% shipped</span>'+
+            '<span style="font-family:\'DM Mono\',monospace;font-weight:700;flex-shrink:0;">'+fmtEuro(a.pending)+'</span>'+
+          '</div>';
+        }).join('')+
+        (g.asins.length>8?'<div style="padding-top:6px;font-size:10px;color:var(--text3);">+'+(g.asins.length-8)+' more ASINs</div>':'')+
+      '</div></details>';
+  });
+  el.innerHTML=html;
+}
+
+function renderAdsMetrics(){
+  var el=document.getElementById('ads-metrics');if(!el)return;
+  var fmtEuro=function(v){return v>=1000000?'€'+(v/1000000).toFixed(1)+'M':v>=1000?'€'+(v/1000).toFixed(0)+'K':'€'+Math.round(v);};
+  var fmtNum=function(v){return v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'K':Math.round(v).toLocaleString();};
+  // Ads totals for the selected period + market (AMS only — DSP not captured)
+  var spend=0,adRev=0,adGv=0,activeBrands={},allBrands={};
+  Object.keys(adsData).forEach(function(bid){
+    Object.keys(adsData[bid]).forEach(function(mkt){
+      if(currentMarket!=='ALL'&&mkt!==currentMarket)return;
+      var v=adsData[bid][mkt];
+      spend+=v.ad_spend||0;adRev+=v.ad_revenue||0;adGv+=v.ad_glance_views||0;
+      if((v.ad_spend||0)>10)activeBrands[bid]=1;
+    });
+  });
+  // Revenue-weighted advertised share: portfolio revenue behind brands with
+  // active spend / total portfolio revenue (brand-grain ads — best available).
+  var rows=currentMarket==='ALL'?allRows:allRows.filter(function(r){return r.market===currentMarket;});
+  var totRev=0,totGv=0;
+  rows.forEach(function(r){totRev+=r.dispatched_revenue||0;totGv+=r.glance_views||0;});
+  var roas=spend>0?adRev/spend:0;
+  var gvPct=totGv>0?adGv/totGv*100:0;
+  // ASIN-level advertising coverage from the quarterly brand_health_ads_coverage
+  // upload (advertised = ASINs with Sponsored Products). Latest quarter wins.
+  var covAdv=0,covTot=0,covQ=null;
+  Object.keys(adsCoverageData).forEach(function(bid){
+    Object.keys(adsCoverageData[bid]).forEach(function(mkt){
+      if(currentMarket!=='ALL'&&mkt!==currentMarket)return;
+      var v=adsCoverageData[bid][mkt];
+      covAdv+=v.sp||0;covTot+=v.total||0;if(v.quarter)covQ=v.quarter;
+    });
+  });
+  var advPct=covTot>0?covAdv/covTot*100:null;
+  var sRoas=spend<=0?null:roas>=4?'happy':roas>=2?'sad':'cry';
+  var card=function(label,value,sub,sent){
+    var emoji=sent?('<div class="metric-emoji">'+SC[sent].emoji+'</div>'):'';
+    var cls=sent?(' m-'+SC[sent].cls):'';
+    return'<div class="metric-card'+cls+'">'+emoji+'<div class="metric-label">'+label+'</div><div class="metric-value">'+value+'</div><div class="metric-sub">'+sub+'</div></div>';
+  };
+  el.innerHTML=
+    card('AMS Spend',spend>0?fmtEuro(spend):'€0',spend>0?'excl. DSP':'no ads data for period',null)+
+    card('Ad Attributed Revenue',fmtEuro(adRev),totRev>0?(adRev/totRev*100).toFixed(1)+'% of total revenue':'—',null)+
+    card('Ad-Driven Glance Views',fmtNum(adGv),gvPct.toFixed(1)+'% of total GVs',null)+
+    card('ROAS',spend>0?roas.toFixed(1)+'x':'—','AMS attributed',sRoas)+
+    card('Portfolio Advertised',advPct!==null?advPct.toFixed(0)+'%':'—',advPct!==null?fmtNum(covAdv)+' of '+fmtNum(covTot)+' ASINs with SP'+(covQ?' · '+covQ:''):'no coverage data — upload quarterly file',null);
+}
+
+function buildDashboard(){renderOverallMetrics();renderAdsMetrics();renderSentimentBar();renderBrandCards();renderSupplyAlerts();renderPreOrders();if(selectedBrand)renderRCA(selectedBrand,currentTab);}
+
+function renderSentimentBar(){
+  var counts={happy:0,sad:0,cry:0};
+  BRAND_ORDER.forEach(function(id){var d=aggregateBrand(id);if(d.revenue===0&&d.gviews===0)return;counts[getSentiment(d)]++;});
+  document.getElementById('sentiment-bar').innerHTML=
+    '<div class="sentiment-pill happy"><span style="font-size:20px">🤑</span><span style="font-size:22px;font-weight:800">'+counts.happy+'</span><span style="font-size:12px;font-weight:600;opacity:0.8">Brands Happy</span></div>'+
+    '<div class="sentiment-pill sad"><span style="font-size:20px">🧐</span><span style="font-size:22px;font-weight:800">'+counts.sad+'</span><span style="font-size:12px;font-weight:600;opacity:0.8">Brands Mixed</span></div>'+
+    '<div class="sentiment-pill cry"><span style="font-size:20px">😭</span><span style="font-size:22px;font-weight:800">'+counts.cry+'</span><span style="font-size:12px;font-weight:600;opacity:0.8">Need Attention</span></div>';
+}
+
+function getSortedBrands(){
+  var brands=BRAND_ORDER.map(function(id){return{id:id,data:aggregateBrand(id)};}).filter(function(b){return b.data.revenue>0||b.data.gviews>0;});
+  if(currentSort==='revenue')brands.sort(function(a,b){return b.data.revenue-a.data.revenue;});
+  else if(currentSort==='sentiment'){var order={cry:0,sad:1,happy:2};brands.sort(function(a,b){return order[getSentiment(a.data)]-order[getSentiment(b.data)];});}
+  else if(currentSort==='ltv')brands.sort(function(a,b){return(b.data.ltv||0)-(a.data.ltv||0);});
+  return brands;
+}
+
+function renderBrandCards(){
+  var grid=document.getElementById('brand-grid');grid.innerHTML='';
+  getSortedBrands().forEach(function(item){
+    var id=item.id,d=item.data,s=getSentiment(d),sc=SC[s],color=BRAND_COLORS[id];
+    var issueCount=0;
+    if(oosLabel(d.avgOos)==='red')issueCount++;if(oosLabel(d.avgOos)==='amber')issueCount+=0.5;
+    if(cvrLevel(d.conv)==='bad')issueCount++;if(cvrLevel(d.conv)==='ok')issueCount+=0.5;
+    if(d.revenueYoy!==null&&d.revenueYoy<-0.05)issueCount++;if(d.gviewsYoy!==null&&d.gviewsYoy<-0.1)issueCount+=0.5;
+    var issueInt=Math.ceil(issueCount);
+    var supplyClass=issueCount>=2?'show-red':issueCount>=1?'show-amber':'';
+    var supplyText=issueCount>=1?'⚠️ Root Cause ('+issueInt+' issue'+(issueInt>1?'s':'')+')':'';
+    var ads=d.ads,hasAds=ads!=null&&(ads.ad_spend>0||ads.ad_revenue>0);
+    var adRevPct=hasAds&&d.revenue>0?((ads.ad_revenue/d.revenue)*100).toFixed(0):null;
+    var adGvPct=hasAds&&d.gviews>0?((ads.ad_glance_views/d.gviews)*100).toFixed(0):null;
+    var orgRev=hasAds?Math.max(0,d.revenue-(ads.ad_revenue||0)):0;
+    var orgGv=hasAds?Math.max(0,d.gviews-(ads.ad_glance_views||0)):0;
+    var subRevHtml=hasAds?
+      '<div class="bm-sub-row"><span class="bm-sub-label"><span class="dot-org"></span>Organic</span><span class="bm-sub-value">'+fmtCur(orgRev)+'</span></div>'+
+      '<div class="bm-sub-row"><span class="bm-sub-label"><span class="dot-ad"></span>Ad Attributed</span><span class="bm-sub-value">'+fmtCur(ads.ad_revenue||0)+' <span style="color:var(--ad-color);font-size:9px">'+adRevPct+'%</span></span></div>'+
+      '<div class="bm-sub-row"><span class="bm-sub-label" style="color:var(--ad-color)">◆ ROAS</span><span class="bm-sub-value" style="font-weight:700">'+(ads.ad_spend>0?(ads.ad_revenue/ads.ad_spend).toFixed(2)+'x':'—')+'</span></div>':
+      '<div class="bm-sub-row"><span class="bm-sub-label" style="color:var(--text3)">No ads data</span></div>';
+    var subGvHtml=hasAds?
+      '<div class="bm-sub-row"><span class="bm-sub-label"><span class="dot-org"></span>Organic</span><span class="bm-sub-value">'+fmtNum(orgGv)+'</span></div>'+
+      '<div class="bm-sub-row"><span class="bm-sub-label"><span class="dot-ad"></span>Ad Traffic</span><span class="bm-sub-value">'+fmtNum(ads.ad_glance_views||0)+' <span style="color:var(--ad-color);font-size:9px">'+adGvPct+'%</span></span></div>':
+      '<div class="bm-sub-row"><span class="bm-sub-label" style="color:var(--text3)">No ads data</span></div>';
+    var card=document.createElement('div');
+    card.className='brand-card '+sc.cls+(selectedBrand===id?' selected':'');
+    card.onclick=(function(bid,c){return function(){selectBrand(bid,c);};})(id,card);
+    card.innerHTML=
+      '<div class="brand-card-accent" style="background:'+color+'"></div>'+
+      '<div class="brand-sentiment-emoji">'+sc.emoji+'</div>'+
+      '<div class="brand-card-name">'+BRAND_LABELS[id]+'</div>'+
+      '<div class="brand-sentiment-label '+sc.cls+'">'+sc.label+'</div>'+
+      '<div class="brand-metrics">'+
+      '<div class="bm-expand-row" onclick="toggleExpand(event,\'rev-'+id+'\')"><span class="bm-label">Revenue <span class="expand-toggle" id="tog-rev-'+id+'">▶</span></span><span class="bm-right"><span class="bm-value">'+fmtCur(d.revenue)+'</span>'+fmtYoy(d.revenueYoy)+'</span></div>'+
+      '<div class="bm-sub-rows" id="rev-'+id+'">'+subRevHtml+'</div>'+
+      '<div class="bm-expand-row" onclick="toggleExpand(event,\'gv-'+id+'\')"><span class="bm-label">Glance Views <span class="expand-toggle" id="tog-gv-'+id+'">▶</span></span><span class="bm-right"><span class="bm-value">'+fmtNum(d.gviews)+'</span>'+fmtYoy(d.gviewsYoy)+'</span></div>'+
+      '<div class="bm-sub-rows" id="gv-'+id+'">'+subGvHtml+'</div>'+
+      '<div class="bm-row"><span class="bm-label">Conversion</span><span class="bm-right"><span class="bm-value '+cvrClass(d.conv)+'">'+d.conv.toFixed(2)+'%</span></span></div>'+
+      '<div class="bm-row"><span class="bm-label">ASP</span><span class="bm-right"><span class="bm-value">'+fmtCur(d.asp)+'</span></span></div>'+
+      '<div class="bm-row"><span class="bm-label">OOS</span><span class="bm-right"><span class="bm-value '+oosClass(d.avgOos)+'">'+d.avgOos.toFixed(1)+'%</span></span></div>'+
+      (function(){var tr=getToysRank(id);if(!tr)return'';var ch='';if(tr.change!==null){var cls=tr.change>0?'yoy-up':tr.change<0?'yoy-down':'yoy-na';var arr=tr.change>0?'▲':tr.change<0?'▼':'';ch='<span class="yoy '+cls+'">'+arr+Math.abs(tr.change)+'</span>';}return'<div class="bm-row"><span class="bm-label">🔍 Toys Rank</span><span class="bm-right"><span class="bm-value">#'+tr.rank.toLocaleString()+'</span>'+ch+'</span></div>';})()+
+      '<div class="brand-divider"></div>'+
+      '<div class="bm-row"><span class="bm-label">Repeat Rate</span><span class="bm-right"><span class="bm-value">'+(d.repeatRate!==null?(d.repeatRate*100).toFixed(1)+'%':'<span style="color:var(--text3);font-size:9px">No data</span>')+'</span></span></div>'+
+      '<div class="bm-row"><span class="bm-label">Est. LTV</span><span class="bm-right"><span class="ltv-badge" style="'+(d.ltv?'':'opacity:0.35')+'">'+(d.ltv?fmtCur(d.ltv):'—')+'</span></span></div>'+
+      '</div>'+(supplyClass?'<div class="supply-alert '+supplyClass+'">'+supplyText+'</div>':'');
+    grid.appendChild(card);
+  });
+}
+
+function toggleExpand(evt,id){evt.stopPropagation();var el=document.getElementById(id);var tog=document.getElementById('tog-'+id);if(!el)return;var open=el.classList.toggle('open');if(tog)tog.classList.toggle('open',open);}
+
+function selectBrand(brandId,cardEl){
+  selectedBrand=brandId;
+  document.querySelectorAll('.brand-card').forEach(function(c){c.classList.remove('selected');});
+  if(cardEl)cardEl.classList.add('selected');
+  var d=aggregateBrand(brandId);
+  document.getElementById('rca-emoji').textContent=SC[getSentiment(d)].emoji;
+  document.getElementById('rca-name').textContent=BRAND_LABELS[brandId];
+  document.getElementById('rca-panel').style.display='block';
+  renderRCA(brandId,currentTab);renderSupplyAlerts();
+  setTimeout(function(){document.getElementById('rca-panel').scrollIntoView({behavior:'smooth',block:'start'});},100);
+}
+function setTab(tab,btn){currentTab=tab;document.querySelectorAll('.rca-tab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');if(selectedBrand)renderRCA(selectedBrand,tab);}
+
+function renderRCA(brandId,tab){
+  var rows=allRows.filter(function(r){return r.brand_classified===brandId;});
+  if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});
+  var d=aggregateBrand(brandId),ads=d.ads;
+  var adRevPct=ads&&d.revenue>0?((ads.ad_revenue/d.revenue)*100).toFixed(0):null;
+  var rcaOrgRev=ads?Math.max(0,d.revenue-(ads.ad_revenue||0)):0;
+  var rcaOrgGv=ads?Math.max(0,d.gviews-(ads.ad_glance_views||0)):0;
+  var compLabel=currentComparison==='wow'?'vs last week':currentComparison==='4w'?'vs 4 weeks ago':'vs last year';
+  document.getElementById('kpi-row').innerHTML=
+    '<div class="kpi-card"><div class="kpi-label">Revenue</div><div class="kpi-value c-blue">'+fmtCur(d.revenue)+'</div><div class="kpi-yoy">'+fmtYoyText(d.revenueYoy)+' '+compLabel+'</div>'+(ads?'<div class="kpi-ads-split"><span class="kpi-split-pill org">🌿 Org '+fmtCur(rcaOrgRev)+'</span><span class="kpi-split-pill ad">🎯 Ads '+fmtCur(ads.ad_revenue||0)+' ('+adRevPct+'%)</span></div>':'')+'</div>'+
+    '<div class="kpi-card"><div class="kpi-label">Glance Views</div><div class="kpi-value c-green">'+fmtNum(d.gviews)+'</div><div class="kpi-yoy">'+fmtYoyText(d.gviewsYoy)+' '+compLabel+'</div>'+(ads?'<div class="kpi-ads-split"><span class="kpi-split-pill org">🌿 Org '+fmtNum(rcaOrgGv)+'</span><span class="kpi-split-pill ad">🎯 Ad '+fmtNum(ads.ad_glance_views||0)+'</span></div>':'')+'</div>'+
+    '<div class="kpi-card"><div class="kpi-label">Conversion Rate</div><div class="kpi-value '+(cvrLevel(d.conv)==='good'?'c-green':cvrLevel(d.conv)==='ok'?'c-amber':'c-red')+'">'+d.conv.toFixed(2)+'%</div><div class="kpi-yoy">'+(d.conv>=10?'✅ Good (≥10%)':d.conv>=5?'⚠️ Average (5–9%)':'🔴 Low (<5%)')+'</div></div>'+
+    '<div class="kpi-card"><div class="kpi-label">Avg OOS</div><div class="kpi-value '+(oosLabel(d.avgOos)==='green'?'c-green':oosLabel(d.avgOos)==='amber'?'c-amber':'c-red')+'">'+d.avgOos.toFixed(1)+'%</div><div class="kpi-yoy">'+(d.avgOos<=6?'✅ Good (≤6%)':d.avgOos<=9?'⚠️ Monitor (7–9%)':'🔴 High (≥10%)')+' · Unfilled: '+Math.round(d.unfilled)+'</div></div>';
+  var wrap=document.getElementById('table-wrap');
+  if(tab==='revenue')renderRevenueTab(rows,wrap);
+  else if(tab==='traffic')renderTrafficTab(rows,wrap);
+  else if(tab==='conversion')renderConversionTab(rows,wrap);
+  else if(tab==='supply')renderSupplyTab(rows,wrap);
+  else if(tab==='ads')renderAdsTab(brandId,d,ads,wrap);
+  else if(tab==='adopp')renderAdOppTab(rows,wrap);
+  else if(tab==='search')renderSearchTab(brandId,wrap);
+  else if(tab==='trends')renderTrendsTab(brandId,wrap);
+}
+
+function buildAsinMap(rows,extractor){
+  var useMarket=currentMarket!=='ALL',m={},noSumKeys=['revYoy','gvYoy','oos'];
+  rows.forEach(function(r){
+    var k=useMarket?r.asin+'_'+r.market:r.asin;
+    if(!m[k]){m[k]={asin:r.asin,name:r.product_title,market:useMarket?r.market:'EU5',markets:{}};var vals=extractor(r);Object.keys(vals).forEach(function(key){m[k][key]=typeof vals[key]==='number'?0:null;});}
+    m[k].markets[r.market]=1;
+    if(!useMarket&&r.product_title&&r.product_title.length>(m[k].name||'').length)m[k].name=r.product_title;
+    var vals=extractor(r);
+    Object.keys(vals).forEach(function(key){var val=vals[key];if(val!=null){if(noSumKeys.indexOf(key)>=0){if(m[k][key]===null)m[k][key]=val;else m[k][key]=(m[k][key]+val)/2;}else{m[k][key]=(m[k][key]||0)+val;}}});
+  });
+  Object.keys(m).forEach(function(k){m[k].marketsStr=currentMarket!=='ALL'?m[k].market:Object.keys(m[k].markets).sort().join(' ');delete m[k].markets;});
+  return m;
+}
+
+var sortState={};
+function buildSortableTable(cols,data,defaultKey,defaultDir,rowRenderer,tabId){
+  var st=sortState[tabId]||{key:defaultKey,dir:defaultDir};sortState[tabId]=st;
+  var sorted=data.slice().sort(function(a,b){var va=a[st.key]!=null?a[st.key]:(st.dir==='asc'?Infinity:-Infinity);var vb=b[st.key]!=null?b[st.key]:(st.dir==='asc'?Infinity:-Infinity);return st.dir==='asc'?va-vb:vb-va;});
+  var headers=cols.map(function(c){
+    if(c.k==='#'||c.k==='asin'||c.k==='name'||c.k==='markets')return'<th>'+c.label+'</th>';
+    var active=st.key===c.k,arrow=active?(st.dir==='asc'?' ↑':' ↓'):' ↕';
+    var nextDir=active?(st.dir==='asc'?'desc':'asc'):(c.dir||'desc');
+    return'<th class="'+(c.r?'r':'')+'" style="cursor:pointer;'+(active?'color:var(--blue);':'')+'" onclick="rcaSort(\''+tabId+'\',\''+c.k+'\',\''+nextDir+'\')">'+c.label+'<span style="font-size:9px;opacity:0.6">'+arrow+'</span></th>';
   }).join('');
+  var trs=sorted.map(function(r){return'<tr>'+rowRenderer(r)+'</tr>';}).join('');
+  return'<table class="data-table"><thead><tr>'+headers+'</tr></thead><tbody>'+trs+'</tbody></table>';
+}
+function rcaSort(tabId,key,dir){sortState[tabId]={key:key,dir:dir};if(selectedBrand)renderRCA(selectedBrand,tabId);}
+
+function renderRevenueTab(rows,wrap){
+  var m=buildAsinMap(rows,function(r){return{rev:r.dispatched_revenue||0,revYoy:r.revenue_yoy,units:r.dispatched_units||0};});
+  var data=Object.values(m).sort(function(a,b){return b.rev-a.rev;}).slice(0,30);var maxR=data[0]?data[0].rev:1;
+  wrap.innerHTML=buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'rev',label:'Revenue',r:true,dir:'desc'},{k:'revYoy',label:'YoY',r:true},{k:'units',label:'Units',r:true}],data,'rev','desc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name" title="'+r.name+'">'+r.name+'</span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val">'+fmtCur(r.rev)+'<div class="bar-bg"><div class="bar-fg" style="width:'+((r.rev/maxR)*100).toFixed(1)+'%"></div></div></td><td class="td-yoy">'+fmtYoyText(r.revYoy)+'</td><td class="td-val">'+Math.round(r.units).toLocaleString()+'</td>';},'revenue');
+}
+function renderTrafficTab(rows,wrap){
+  var m=buildAsinMap(rows,function(r){return{gv:r.glance_views||0,gvYoy:r.glance_views_yoy};});
+  var data=Object.values(m).sort(function(a,b){return b.gv-a.gv;}).slice(0,30);var maxG=data[0]?data[0].gv:1;
+  wrap.innerHTML=buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'gv',label:'Glance Views',r:true,dir:'desc'},{k:'gvYoy',label:'YoY',r:true}],data,'gv','desc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name">'+r.name+'</span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val">'+r.gv.toLocaleString()+'<div class="bar-bg"><div class="bar-fg" style="width:'+((r.gv/maxG)*100).toFixed(1)+'%"></div></div></td><td class="td-yoy">'+fmtYoyText(r.gvYoy)+'</td>';},'traffic');
+}
+function renderConversionTab(rows,wrap){
+  var m=buildAsinMap(rows,function(r){return{gv:r.glance_views||0,units:r.dispatched_units||0,rev:r.dispatched_revenue||0};});
+  var data=Object.values(m).filter(function(r){return r.gv>50;}).map(function(r){return Object.assign({},r,{conv:r.gv>0?(r.units/r.gv)*100:0,asp:r.units>0?r.rev/r.units:0});}).sort(function(a,b){return a.conv-b.conv;}).slice(0,30);
+  wrap.innerHTML='<div style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text2);"><b style="color:var(--amber)">Thresholds:</b> ≥10% green ✅ · 5–9% amber ⚠️ · &lt;5% red 🔴</div>'+buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'conv',label:'CVR %',r:true,dir:'asc'},{k:'asp',label:'ASP',r:true},{k:'gv',label:'Views',r:true},{k:'units',label:'Units',r:true}],data,'conv','asc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name">'+r.name+'</span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val"><span class="'+cvrClass(r.conv)+'">'+r.conv.toFixed(2)+'%</span></td><td class="td-val">'+fmtCur(r.asp)+'</td><td class="td-val">'+r.gv.toLocaleString()+'</td><td class="td-val">'+Math.round(r.units).toLocaleString()+'</td>';},'conversion');
+}
+function renderSupplyTab(rows,wrap){
+  var m=buildAsinMap(rows,function(r){return{oos:r.oos_pct||0,unfilled:r.unfilled_units||0,rev:r.dispatched_revenue||0};});
+  var data=Object.values(m).filter(function(r){return r.oos>0||r.unfilled>0;}).map(function(r){return Object.assign({},r,{risk:r.oos>=10?r.rev*(r.oos/100):0});}).sort(function(a,b){return b.risk-a.risk||b.unfilled-a.unfilled;}).slice(0,30);
+  wrap.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text2);"><b style="color:var(--red)">OOS Thresholds:</b> ≤6% green ✅ · 7–9% amber ⚠️ · ≥10% red 🔴</div>'+buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'oos',label:'OOS %',r:true},{k:'unfilled',label:'Unfilled',r:true},{k:'rev',label:'Revenue',r:true},{k:'risk',label:'Rev at Risk',r:true,dir:'desc'}],data,'risk','desc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name">'+r.name+'</span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val"><span class="'+oosClass(r.oos)+'">'+r.oos.toFixed(1)+'%</span></td><td class="td-val" style="color:'+(r.unfilled>100?'var(--red)':r.unfilled>50?'var(--amber)':'var(--text)')+'">'+Math.round(r.unfilled).toLocaleString()+'</td><td class="td-val">'+fmtCur(r.rev)+'</td><td class="td-val" style="color:var(--red);font-weight:700">'+(r.risk>0?fmtCur(r.risk):'—')+'</td>';},'supply');
 }
 
-/* ── Sparkline (inline SVG, last 6 weeks) ── */
-function spark(vals,color){
-  if(!vals.length)return'';
-  var w=440,h=46,max=Math.max.apply(null,vals.concat([1]));
-  var pts=vals.map(function(v,i){return (i*(w/(vals.length-1||1))).toFixed(1)+','+(h-4-(v/max)*(h-10)).toFixed(1);}).join(' ');
-  return '<svg width="100%" height="'+h+'" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round"/></svg>';
+async function renderAdsTab(brandId,d,ads,wrap){
+  if(!ads||(!ads.ad_revenue&&!ads.ad_spend)){wrap.innerHTML='<div class="empty">📊 No ads data uploaded for this brand/period.</div>';return;}
+  var roas=ads.ad_spend>0?(ads.ad_revenue/ads.ad_spend).toFixed(2):null;
+  var blendedRoas=ads.ad_spend>0?(d.revenue/ads.ad_spend).toFixed(1):null;
+  var acos=ads.ad_revenue>0?((ads.ad_spend/ads.ad_revenue)*100).toFixed(1):null;
+  var adRevPct2=d.revenue>0?(((ads.ad_revenue||0)/d.revenue)*100).toFixed(0):null;
+  var roasNum=parseFloat(roas)||0;
+  wrap.innerHTML='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">'+
+    ['True ROAS','Blended ROAS','Ad Spend','ACoS'].map(function(l,i){
+      var vals=[roas?roas+'x':'—',blendedRoas?blendedRoas+'x':'—',fmtCur(ads.ad_spend||0),(acos||'—')+'%'];
+      var cols=[roasNum>=4?'var(--green)':roasNum>=2?'var(--amber)':'var(--red)','var(--text)','var(--ad-color)',parseFloat(acos)>30?'var(--red)':parseFloat(acos)>20?'var(--amber)':'var(--green)'];
+      return'<div style="background:var(--bg);border-radius:10px;padding:12px;border:1px solid var(--border);"><div style="font-size:10px;color:var(--text2);font-weight:600;margin-bottom:4px">'+l+'</div><div style="font-family:\'Syne\',sans-serif;font-size:22px;font-weight:800;color:'+cols[i]+'">'+vals[i]+'</div></div>';
+    }).join('')+'</div>'+
+    '<div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:20px;overflow:hidden;"><div style="width:'+adRevPct2+'%;height:100%;background:var(--ad-color);border-radius:2px;"></div></div>';
 }
 
-function openDetail(asin){
-  var a=actions.find(function(x){return x.asin===asin;});if(!a)return;
-  var l6=a.weeks.slice(-6);
-  var sevColor={Critical:'var(--red-bg)',High:'var(--amber-bg)',Medium:'var(--blue-light)',OK:'var(--green-bg)'}[a.severity];
-  document.getElementById('detail-body').innerHTML=
-    '<h2>'+(a.title||a.asin)+'</h2><div class="mono" style="color:var(--text2);font-size:11px;">'+a.asin+' · '+a.brand+' · '+a.market+'</div>'+
-    '<div class="d-box" style="background:'+sevColor+';"><b>'+a.action+' — '+a.severity+'</b><br>'+a.reason+'</div>'+
-    '<div class="d-box" style="background:var(--purple-bg);"><b>📣 '+a.adRec+'</b><br>'+a.adWhy+'</div>'+
-    '<div class="d-grid">'+
-      '<div class="d-card"><div class="l">Rev/wk (4wk avg)</div><div class="v">'+fmtEuro(a.weeklyRev)+'</div></div>'+
-      '<div class="d-card"><div class="l">GV/wk (4wk avg)</div><div class="v">'+Math.round(a.weeklyGv)+'</div></div>'+
-      '<div class="d-card"><div class="l">CVR</div><div class="v">'+a.cvr.toFixed(1)+'%</div></div>'+
-      '<div class="d-card"><div class="l">OOS last wk</div><div class="v">'+a.oosPct.toFixed(0)+'%</div></div>'+
-      '<div class="d-card"><div class="l">Projected demand</div><div class="v">'+a.projectedWeekly.toFixed(0)+' u/wk</div></div>'+
-      '<div class="d-card"><div class="l">Trend factor</div><div class="v">×'+a.trendFactor.toFixed(2)+'</div></div>'+
-    '</div>'+
-    '<div class="spark-label">Revenue — last 6 weeks</div>'+spark(l6.map(function(w){return w.rev;}),'#009CDE')+
-    '<div class="spark-label">Glance views — last 6 weeks</div>'+spark(l6.map(function(w){return w.gv;}),'#00B388');
-  document.getElementById('detail').classList.add('open');
+function renderAdOppTab(rows,wrap){
+  var m=buildAsinMap(rows,function(r){return{rev:r.dispatched_revenue||0,units:r.dispatched_units||0,gv:r.glance_views||0,oos:r.oos_pct||0};});
+  var data=Object.values(m).filter(function(r){return r.gv>50;}).map(function(r){return Object.assign({},r,{asp:r.units>0?r.rev/r.units:0,conv:r.gv>0?(r.units/r.gv)*100:0});}).filter(function(r){return r.asp>5&&r.oos<10;}).map(function(r){return Object.assign({},r,{score:Math.round((r.asp*r.gv/1000)*(1-(r.conv/8)))});}).sort(function(a,b){return b.score-a.score;}).slice(0,30);
+  wrap.innerHTML='<div style="background:var(--ad-bg);border:1px solid var(--ad-color);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text2);"><b style="color:var(--ad-color)">💡 Ad Opportunity:</b> High ASP + low CVR + traffic + in stock.</div>'+(data.length===0?'<div class="empty">No strong ad opportunities identified.</div>':buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'asp',label:'ASP',r:true},{k:'conv',label:'CVR',r:true},{k:'gv',label:'Views',r:true},{k:'oos',label:'OOS',r:true},{k:'score',label:'Score',r:true,dir:'desc'}],data,'score','desc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name">'+r.name+'<span class="flag flag-ad">AD OPP</span></span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val" style="color:var(--amber);font-weight:700">'+fmtCur(r.asp)+'</td><td class="td-val"><span class="'+cvrClass(r.conv)+'">'+r.conv.toFixed(2)+'%</span></td><td class="td-val">'+r.gv.toLocaleString()+'</td><td class="td-val"><span class="'+oosClass(r.oos)+'">'+r.oos.toFixed(1)+'%</span></td><td class="td-val" style="color:var(--ad-color);font-weight:700">'+r.score+'</td>';},'adopp'));
 }
-function closeDetail(){document.getElementById('detail').classList.remove('open');}
 
-function downloadCsv(){
-  var csv=ActionEngine.actionsToCsv(visibleRows());
-  var d=new Date(),ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  var blob=new Blob([csv],{type:'text/csv'});
-  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='Hasbro_'+currentMarket+'_KAM_Actions_'+ds+'.csv';a.click();URL.revokeObjectURL(a.href);
+function renderSearchTab(brandId,wrap){
+  if(!searchTermsData.length){wrap.innerHTML='<div class="empty">🔍 No search terms data uploaded yet.</div>';return;}
+  var activeView=window._searchView||'brand';
+  var top500=searchTermsData.filter(function(t){return t.category==='TOP500';});
+  var brandTerms=searchTermsData.filter(function(t){return t.category==='BRAND'&&t.brand_classified===brandId;});
+  var toysOnly=brandTerms.filter(function(t){return(t.top_clicked_category||'').toLowerCase().indexOf('toy')>=0;});
+  var viewData=activeView==='top500'?top500:activeView==='toys'?toysOnly:brandTerms;
+  var viewBtns=[{k:'top500',label:'🌐 Top 500 ('+top500.length+')'},{k:'brand',label:'🎯 '+BRAND_LABELS[brandId]+' ('+brandTerms.length+')'},{k:'toys',label:'🧸 Toys ('+toysOnly.length+')'}].map(function(v){return'<button onclick="setSearchView(\''+brandId+'\',\''+v.k+'\')" style="padding:6px 14px;border-radius:6px;border:2px solid '+(activeView===v.k?'var(--blue)':'var(--border)')+';background:'+(activeView===v.k?'var(--blue)':'var(--blue-light)')+';color:'+(activeView===v.k?'white':'var(--blue-dark)')+';font-size:11px;font-weight:700;cursor:pointer;">'+v.label+'</button>';}).join('');
+  if(!viewData.length){wrap.innerHTML='<div style="margin-bottom:12px;display:flex;gap:8px;">'+viewBtns+'</div><div class="empty">No terms found.</div>';return;}
+  var sorted=viewData.slice().sort(function(a,b){return(a.rank||999999)-(b.rank||999999);});
+  var rows=sorted.slice(0,100).map(function(t){var isHasbro=t.brand_classified&&t.brand_classified!=='PLATFORM';var rowStyle=activeView==='top500'&&isHasbro?'background:var(--blue-light);':'';return'<tr style="'+rowStyle+'"><td style="font-family:\'DM Mono\',monospace;font-size:11px;font-weight:700;color:'+(t.rank<=500?'var(--blue)':t.rank<=5000?'var(--green)':'var(--text2)')+'">'+( t.rank?t.rank.toLocaleString():'—')+'</td><td style="font-weight:600;color:var(--text)">'+t.term+'</td><td><span style="font-size:10px;color:var(--text2);background:var(--bg);padding:2px 6px;border-radius:4px;border:1px solid var(--border)">'+(t.top_clicked_category||'—').replace(/_/g,' ')+'</span></td><td class="td-val">'+(t.est_weekly_searches?t.est_weekly_searches.toLocaleString():'—')+'</td><td style="font-size:11px;color:var(--text2);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(t.product_title_1||t.asin1||'—')+'</td><td class="td-val">'+(t.click_share_1!=null?t.click_share_1.toFixed(1)+'%':'—')+'</td><td class="td-val">'+(t.cvr_1!=null?t.cvr_1.toFixed(1)+'%':'—')+'</td></tr>';}).join('');
+  wrap.innerHTML='<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">'+viewBtns+'</div><table class="data-table"><thead><tr><th style="width:50px">Rank</th><th>Search Term</th><th>Category</th><th class="r">Est. Searches/wk</th><th>Top Clicked</th><th class="r">Click Share</th><th class="r">CVR %</th></tr></thead><tbody>'+rows+'</tbody></table>'+(sorted.length>100?'<div style="text-align:center;padding:12px;font-size:11px;color:var(--text3)">Showing 100 of '+sorted.length+' terms</div>':'');
 }
+function setSearchView(brandId,view){window._searchView=view;renderRCA(brandId,'search');}
+
+async function renderTrendsTab(brandId,wrap){
+  wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--text2);font-size:13px;">Loading trend data...</div>';
+  var trendRows=await sbFetch('/rest/v1/brand_health_snapshots?select=week_start,brand_classified,market,dispatched_revenue,dispatched_units,glance_views,oos_pct&brand_classified=eq.'+brandId+'&order=week_start.asc');
+  if(currentMarket!=='ALL')trendRows=trendRows.filter(function(r){return r.market===currentMarket;});
+  var byWeek={};
+  trendRows.forEach(function(r){if(!byWeek[r.week_start])byWeek[r.week_start]={revenue:0,gviews:0,units:0,oos:[]};byWeek[r.week_start].revenue+=(r.dispatched_revenue||0);byWeek[r.week_start].gviews+=(r.glance_views||0);byWeek[r.week_start].units+=(r.dispatched_units||0);if(r.oos_pct!=null)byWeek[r.week_start].oos.push(r.oos_pct);});
+  var byPeriod={};
+  Object.keys(byWeek).forEach(function(ws){var pk=periodKey(ws);if(!byPeriod[pk])byPeriod[pk]={revenue:0,gviews:0,units:0,oos:[],label:periodLabel(pk)};var d=byWeek[ws];byPeriod[pk].revenue+=d.revenue;byPeriod[pk].gviews+=d.gviews;byPeriod[pk].units+=d.units;byPeriod[pk].oos=byPeriod[pk].oos.concat(d.oos);});
+  var periods=Object.keys(byPeriod).sort().slice(-26);
+  if(!periods.length){wrap.innerHTML='<div class="empty">Not enough historical data yet.</div>';return;}
+  var labels=periods.map(function(p){return byPeriod[p].label||p;});
+  var revenues=periods.map(function(p){return byPeriod[p].revenue;});
+  var gviews=periods.map(function(p){return byPeriod[p].gviews;});
+  var convs=periods.map(function(p){var pd=byPeriod[p];return pd.gviews>0?(pd.units/pd.gviews)*100:0;});
+  var ooss=periods.map(function(p){var pd=byPeriod[p];return pd.oos.length>0?pd.oos.reduce(function(a,b){return a+b;},0)/pd.oos.length:0;});
+  var tableRows=periods.map(function(p){var pd=byPeriod[p],conv=pd.gviews>0?(pd.units/pd.gviews)*100:0,oos=pd.oos.length>0?pd.oos.reduce(function(a,b){return a+b;},0)/pd.oos.length:0;return'<tr><td style="font-weight:600">'+(pd.label||p)+'</td><td class="td-val">'+fmtCur(pd.revenue)+'</td><td class="td-val">'+fmtNum(pd.gviews)+'</td><td class="td-val"><span class="'+cvrClass(conv)+'">'+conv.toFixed(2)+'%</span></td><td class="td-val"><span class="'+oosClass(oos)+'">'+oos.toFixed(1)+'%</span></td></tr>';}).join('');
+  wrap.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;"><div style="background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:14px;"><div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Revenue Trend</div><canvas id="c-rev" height="120"></canvas></div><div style="background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:14px;"><div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Glance Views Trend</div><canvas id="c-gv" height="120"></canvas></div><div style="background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:14px;"><div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Conversion Rate %</div><canvas id="c-cvr" height="120"></canvas></div><div style="background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:14px;"><div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">OOS % (avg)</div><canvas id="c-oos" height="120"></canvas></div></div><div class="pivot-table-wrap"><table class="pivot-table"><thead><tr><th>'+periodMode.charAt(0).toUpperCase()+periodMode.slice(1)+'</th><th class="r">Revenue</th><th class="r">Glance Views</th><th class="r">CVR %</th><th class="r">Avg OOS %</th></tr></thead><tbody>'+tableRows+'<tr><td>TOTAL / AVG</td><td class="td-val">'+fmtCur(revenues.reduce(function(a,b){return a+b;},0))+'</td><td class="td-val">'+fmtNum(gviews.reduce(function(a,b){return a+b;},0))+'</td><td class="td-val">'+(convs.reduce(function(a,b){return a+b;},0)/convs.length).toFixed(2)+'%</td><td class="td-val">'+(ooss.reduce(function(a,b){return a+b;},0)/ooss.length).toFixed(1)+'%</td></tr></tbody></table></div>';
+  requestAnimationFrame(function(){drawLineChart('c-rev',labels,revenues,'#009CDE',function(v){return fmtCur(v);});drawLineChart('c-gv',labels,gviews,'#00B388',function(v){return fmtNum(v);});drawLineChart('c-cvr',labels,convs,'#F5A623',function(v){return v.toFixed(1)+'%';},[5,10]);drawLineChart('c-oos',labels,ooss,'#E8423F',function(v){return v.toFixed(1)+'%';},[6,10]);});
+}
+
+function drawLineChart(canvasId,labels,data,color,fmt,thresholds){
+  var canvas=document.getElementById(canvasId);if(!canvas)return;
+  var dpr=window.devicePixelRatio||1,w=canvas.clientWidth||300,h=parseInt(canvas.getAttribute('height'))||120;
+  canvas.width=w*dpr;canvas.height=h*dpr;
+  var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+  var pad={t:10,r:10,b:30,l:50},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;
+  if(!data.length)return;
+  var min=Math.min.apply(null,data)*0.9,max=Math.max.apply(null,data)*1.1,range=max-min||1;
+  var toX=function(i){return pad.l+i*(cw/(data.length-1||1));};
+  var toY=function(v){return pad.t+ch-(((v-min)/range)*ch);};
+  ctx.strokeStyle='rgba(208,234,245,0.8)';ctx.lineWidth=1;
+  [0,0.25,0.5,0.75,1].forEach(function(t){var y=pad.t+t*ch;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();ctx.fillStyle='#5A8DA0';ctx.font='9px Inter,sans-serif';ctx.textAlign='right';ctx.fillText(fmt(min+(1-t)*range),pad.l-4,y+3);});
+  ctx.beginPath();ctx.moveTo(toX(0),toY(data[0]));data.forEach(function(v,i){if(i>0)ctx.lineTo(toX(i),toY(v));});ctx.lineTo(toX(data.length-1),h-pad.b);ctx.lineTo(toX(0),h-pad.b);ctx.closePath();
+  var grad=ctx.createLinearGradient(0,pad.t,0,h-pad.b);grad.addColorStop(0,color+'33');grad.addColorStop(1,color+'00');ctx.fillStyle=grad;ctx.fill();
+  ctx.beginPath();ctx.moveTo(toX(0),toY(data[0]));data.forEach(function(v,i){if(i>0)ctx.lineTo(toX(i),toY(v));});ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();
+  data.forEach(function(v,i){ctx.beginPath();ctx.arc(toX(i),toY(v),3,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();});
+  var step=Math.ceil(labels.length/6);ctx.fillStyle='#5A8DA0';ctx.font='9px Inter,sans-serif';ctx.textAlign='center';labels.forEach(function(l,i){if(i%step===0)ctx.fillText(l.substring(0,8),toX(i),h-pad.b+12);});
+}
+
+var supplySort={key:'gv',dir:'desc'}; // default: highest-demand SKUs first (biggest opportunity), unfilled as secondary
+function setSupplySort(key){if(supplySort.key===key)supplySort.dir=supplySort.dir==='asc'?'desc':'asc';else{supplySort.key=key;supplySort.dir='desc';}renderSupplyAlerts();}
+
+function renderSupplyAlerts(){
+  var rows=allRows;if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});if(selectedBrand)rows=rows.filter(function(r){return r.brand_classified===selectedBrand;});
+  var seen={},alerts=[];
+  rows.forEach(function(r){var oos=r.oos_pct||0,uf=r.unfilled_units||0;if((oos>=10||uf>50)&&r.asin){var k=currentMarket==='ALL'?r.asin:r.asin+'_'+r.market;if(!seen[k]){seen[k]=1;alerts.push({asin:r.asin,name:r.product_title,market:r.market,oos:oos,uf:uf,gv:r.glance_views||0});}else if(currentMarket==='ALL'){var ex=alerts.find(function(a){return a.asin===r.asin;});if(ex){ex.uf+=uf;ex.gv+=(r.glance_views||0);}}}});
+  alerts.sort(function(a,b){var d=supplySort.dir==='asc'?a[supplySort.key]-b[supplySort.key]:b[supplySort.key]-a[supplySort.key];if(d!==0)return d;return b.uf-a.uf;}); // secondary sort: unfilled desc
+  var g=document.getElementById('supply-items'),header=document.getElementById('supply-title'),resetBtn=document.getElementById('supply-reset-btn');
+  if(header)header.textContent='⚠️ Supply Gap Alerts'+(selectedBrand?' — '+BRAND_LABELS[selectedBrand]:'');
+  if(resetBtn)resetBtn.style.display=selectedBrand?'block':'none';
+  if(!alerts.length){g.innerHTML='<div class="empty">✅ No supply gap alerts this week</div>';return;}
+  function sTh(label,key){var active=supplySort.key===key,arrow=active?(supplySort.dir==='asc'?' ↑':' ↓'):' ↕';return'<th style="text-align:right;font-size:10px;font-weight:700;color:'+(active?'var(--blue)':'var(--text2)')+';text-transform:uppercase;letter-spacing:1px;padding:8px 12px;cursor:pointer;" onclick="setSupplySort(\''+key+'\')">'+label+'<span style="font-size:9px;opacity:0.6">'+arrow+'</span></th>';}
+  g.innerHTML='<table style="width:100%;border-collapse:collapse;"><thead><tr style="border-bottom:2px solid var(--border);"><th style="text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">ASIN</th><th style="text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">Product</th><th style="text-align:center;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">Market</th>'+sTh('OOS %','oos')+sTh('Unfilled','uf')+sTh('Demand (GVs)','gv')+'</tr></thead><tbody>'+alerts.slice(0,30).map(function(a){return'<tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 12px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--blue);">'+a.asin+'</td><td style="padding:7px 12px;font-size:11px;color:var(--text);max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+a.name+'">'+a.name+'</td><td style="padding:7px 12px;text-align:center;">'+(currentMarket==='ALL'?'<span style="font-size:9px;color:var(--text3)">EU5</span>':'<span class="mp mp-'+a.market+'">'+a.market+'</span>')+'</td><td style="padding:7px 12px;text-align:right;font-family:\'DM Mono\',monospace;font-size:11px;font-weight:700;" class="'+oosClass(a.oos)+'">'+a.oos.toFixed(1)+'%</td><td style="padding:7px 12px;text-align:right;font-family:\'DM Mono\',monospace;font-size:11px;font-weight:700;color:'+(a.uf>100?'var(--red)':'var(--amber)')+';">'+Math.round(a.uf).toLocaleString()+'</td><td style="padding:7px 12px;text-align:right;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--blue-dark);">'+(a.gv>0?a.gv.toLocaleString():'—')+'</td></tr>';}).join('')+'</tbody></table>';
+}
+
+function resetSupplyFilter(){selectedBrand=null;document.querySelectorAll('.brand-card').forEach(function(c){c.classList.remove('selected');});document.getElementById('rca-panel').style.display='none';renderSupplyAlerts();}
+function setMarket(m,btn){currentMarket=m;document.querySelectorAll('.market-tab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');buildDashboard();}
+function setSort(s,btn){currentSort=s;document.querySelectorAll('.sort-tab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');renderBrandCards();}
+function setCurrency(c){currency=c;['eur','gbp','usd'].forEach(function(x){document.getElementById('btn-'+x).classList.remove('active');});document.getElementById('btn-'+c).classList.add('active');renderBrandCards();if(selectedBrand)renderRCA(selectedBrand,currentTab);}
+
+function fmtCur(val){var v=val*FX[currency],sym=currency==='gbp'?'£':currency==='usd'?'$':'€';if(v>=1000000)return sym+(v/1000000).toFixed(1)+'M';if(v>=1000)return sym+(v/1000).toFixed(1)+'K';return sym+v.toFixed(0);}
+function fmtNum(n){if(n>=1000000)return(n/1000000).toFixed(1)+'M';if(n>=1000)return(n/1000).toFixed(0)+'K';return Math.round(n).toLocaleString();}
+function fmtYoy(val){if(val==null||isNaN(val))return'';var p=(val*100).toFixed(1),cls=val>0?'yoy-up':val<0?'yoy-down':'yoy-na',arr=val>0?'▲':val<0?'▼':'';return'<span class="yoy '+cls+'">'+arr+Math.abs(p)+'%</span>';}
+function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFixed(1),col=val>0?'var(--green)':val<0?'var(--red)':'var(--text3)',arr=val>0?'▲':val<0?'▼':'';return'<span style="color:'+col+';font-weight:700">'+arr+Math.abs(p)+'%</span>';}
+
+/* ADAM WIDGET */
+(function(){
+  var PROXY='https://adam-proxy.addham.workers.dev/';
+  var AVATAR='https://attic.sh/arz5gqoevz38gefaczkyj07h42iz';
+  var SB_HEADERS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};
+  var SYSTEM='You are Adam — a sharp English data analyst in the Hasbro EU Amazon brand health dashboard.\n\nYou have ONE tool: query_supabase. Use it for EVERY data question. Never say you cannot access data. Never apologise.\n\nIMPORTANT WORKFLOW:\n1. If you do not know the current week, FIRST query brand_health_weeks (select=week_start, order=week_start.desc) — the first row is the latest week.\n2. Then query brand_health_snapshots with that exact week_start to answer brand/ASIN questions.\n3. Sum dispatched_revenue by brand_classified mentally to rank brands.\n\nTABLES:\n- brand_health_weeks: available weeks. Columns: week_start, week_label\n- brand_health_snapshots: ASIN-level weekly data. Columns: week_start, asin, product_title, brand_classified, market, dispatched_revenue, glance_views, oos_pct, dispatched_units, unfilled_units\n- brand_health_ads: brand ad data. Columns: week_start, brand_classified, market, ad_spend, ad_revenue\n\nBRAND VALUES (exact): GAMES, PLAY_DOH, MONOPOLY, BEYBLADE, NERF, TRANSFORMERS, MARVEL, STAR_WARS, PEPPA_PIG, DISNEY_KIDS\nMARKET VALUES: GB, DE, FR, IT, ES\n\nFILTER SYNTAX:\n- Equal: brand_classified=eq.GAMES\n- Date range: week_start=gte.2026-04-01&week_start=lte.2026-05-10\n\nSpeak naturally. Dry, confident. No bullet points. Answer then one sharp observation.';
+  var TOOLS=[{name:'query_supabase',description:'Query Supabase for ASIN performance, brand performance, ad data, or search terms across any date range.',input_schema:{type:'object',properties:{table:{type:'string',enum:['brand_health_snapshots','brand_health_ads','brand_health_ads_queries','brand_health_weeks']},filters:{type:'string'},select:{type:'string'},order:{type:'string'}},required:['table','select']}}];
+  async function runTool(toolName,toolInput){
+    if(toolName!=='query_supabase')return JSON.stringify({error:'Unknown tool'});
+    try{var table=toolInput.table||'brand_health_snapshots',select=toolInput.select||'*',filters=toolInput.filters||'',order=toolInput.order?'&order='+toolInput.order:'';var url=SUPABASE_URL+'/rest/v1/'+table+'?select='+encodeURIComponent(select)+(filters?'&'+filters:'')+order+'&limit=100';var res=await fetch(url,{headers:SB_HEADERS});var data=await res.json();if(!Array.isArray(data))return JSON.stringify({error:'Query failed',detail:data});return JSON.stringify({rows:data,count:data.length});}catch(e){return JSON.stringify({error:e.message});}
+  }
+  var history=[],loading=false,open=false,suggestionsShown=true,weekSummary='';
+  (async function(){try{var wRes=await fetch(SUPABASE_URL+'/rest/v1/brand_health_weeks?select=week_start,week_label&order=week_start.desc&limit=1',{headers:SB_HEADERS});var weeks=await wRes.json();if(!weeks||!weeks.length)return;var latest=weeks[0];weekSummary='CURRENT WEEK: week_start='+latest.week_start+' ('+( latest.week_label||latest.week_start)+')\nThe latest available week is '+latest.week_start+'.';}catch(e){}})();
+  setTimeout(function(){if(!open){var p=document.getElementById('adam-pulse');if(p)p.style.display='block';}},10000);
+  function adamFormat(text){var e=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');e=e.replace(/```[\w]*\n?([\s\S]*?)```/g,'<pre style="background:#0d1117;color:#e6edf3;border-radius:6px;padding:10px;font-family:\'DM Mono\',monospace;font-size:11px;overflow-x:auto;margin:6px 0;white-space:pre;">$1</pre>');e=e.replace(/`([^`]+)`/g,'<code style="background:#f0f4f8;color:#003A54;padding:1px 4px;border-radius:3px;font-size:11px;">$1</code>');e=e.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');e=e.replace(/\n/g,'<br>');return e;}
+  window.adamToggle=function(){open=!open;document.getElementById('adam-panel').classList.toggle('open',open);if(open&&history.length===0)addMsg('assistant','Adam. I have direct access to the full database — every ASIN, every week, every market.\n\nAsk me about a specific ASIN, a campaign period, or any brand across any date range.');};
+  function addMsg(role,content,typing){var msgs=document.getElementById('adam-messages');var div=document.createElement('div');div.className='adam-msg'+(role==='user'?' user':'');var av;if(role==='assistant'){av=document.createElement('img');av.className='avatar';av.src=AVATAR;av.alt='Adam';}else{av=document.createElement('div');av.className='avatar user-av';av.textContent='U';}var bubble=document.createElement('div');bubble.className='adam-bubble';if(typing)bubble.innerHTML='<div class="adam-typing"><span></span><span></span><span></span></div>';else bubble.innerHTML=adamFormat(content);div.appendChild(av);div.appendChild(bubble);msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;if(!typing&&suggestionsShown&&history.length>1){var s=document.getElementById('adam-suggestions');if(s)s.style.display='none';suggestionsShown=false;}return div;}
+  function updateBubble(el,text){el.querySelector('.adam-bubble').innerHTML=adamFormat(text);document.getElementById('adam-messages').scrollTop=99999;}
+  window.adamSend=async function(text){var inp=document.getElementById('adam-input');var msg=text||inp.value.trim();if(!msg||loading)return;inp.value='';history.push({role:'user',content:msg});addMsg('user',msg);var typingEl=addMsg('assistant','',true);loading=true;document.getElementById('adam-send').disabled=true;try{var systemFull=SYSTEM+(weekSummary?'\n\n'+weekSummary:'');var messages=history.slice();var maxIter=5;for(var iter=0;iter<maxIter;iter++){var res=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:systemFull,messages:messages,tools:TOOLS})});var data=await res.json();if(data.error&&data.error.toString().includes('Rate limit')){updateBubble(typingEl,'⏳ Rate limit — retrying in 15s...');await new Promise(function(r){setTimeout(r,15000);});var res2=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:systemFull,messages:messages,tools:TOOLS})});data=await res2.json();}if(data.error){updateBubble(typingEl,'Error: '+data.error);break;}var stopReason=data.stop_reason||data.stopReason||'end_turn';var content=data.content||[];var textParts=content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');var toolUses=content.filter(function(b){return b.type==='tool_use';});if(stopReason==='tool_use'&&toolUses.length>0){updateBubble(typingEl,(textParts?textParts+'\n\n':'')+'⏳ Querying database...');messages.push({role:'assistant',content:content});var toolResults=[];for(var ti=0;ti<toolUses.length;ti++){var tu=toolUses[ti];var result=await runTool(tu.name,tu.input);toolResults.push({type:'tool_result',tool_use_id:tu.id,content:result});}messages.push({role:'user',content:toolResults});}else{var reply=textParts||data.reply||'No response.';history.push({role:'assistant',content:reply});updateBubble(typingEl,reply);break;}}}catch(e){console.error('Adam error:',e);updateBubble(typingEl,'Error: '+e.message);}loading=false;document.getElementById('adam-send').disabled=false;};
+  document.getElementById('adam-input').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();adamSend();}});
+})();
+
+init();
+
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden){
+    if(!allWeeks.length||!allRows.length){init();}
+    else{var main=document.getElementById('main-content');if(main){main.style.display='grid';buildDashboard();}}
+  }
+});
 </script>
 </body>
 </html>
