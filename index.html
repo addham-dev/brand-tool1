@@ -1,111 +1,3 @@
-
-Claude finished the response
-the ads data is not pulling in Games
-Mixed
-Revenue ▶€209.9K▼15.6%
-Glance Views ▶167K▲3%
-No ads data
-Conversion10.27%
-ASP€12
-OOS4.0%
-🔍 Toys Rank#6,563▼454
-Repeat Rate9.0%
-Est. LTV€13
-⚠️ Root Cause (1 issue)
-🧐
-Play-Doh
-Mixed
-Revenue ▶€175.1K▼16.3%
-Glance Views ▶195K▲7.7%
-No ads data can you fix it
-
-Show more
-
-Diagnosed missing ads data upload lag, recommended verification before code changes
-Diagnosed missing ads data upload lag, recommended verification before code changes
-Before touching any code — the history of this exact symptom says it's almost always a missing ads upload for the week you're viewing, not broken code. VC data gets uploaded promptly and the Pacvue file lags, so the newest week shows "No ads data" while older weeks are fine. Two quick checks:
-
-1. On the dashboard — flip the week selector back one or two weeks. If ads data appears for those, the code is fine and the newest week's ads simply aren't uploaded yet.
-
-2. Run the coverage check in Supabase:
-
-sql
-select
-  s.week_start,
-  case when a.week_start is not null then '✅ Ads' else '❌ No ads' end as ads_status
-from (select distinct week_start from brand_health_snapshots order by week_start desc limit 8) s
-left join (select distinct week_start from brand_health_ads) a
-  on a.week_start = s.week_start
-order by s.week_start desc;
-We're at 22 July, so the weeks starting 5 July and 12 July should exist in snapshots — my strong suspicion is one or both show ❌. If so, the fix is pulling the Pacvue Weekly Query reports for those weeks (Mon 6–Sun 12 July, and Mon 13–Sun 19 July) and dropping them through the ads uploader — which now has the snap-to-Sunday fix, so they'll land on the right weeks first time.
-
-If the SQL comes back all ✅ and the dashboard still says "No ads data" on a covered week, then it's genuinely something in the code and I'll dig into the ads join — paste the results either way.
-
-why is this happene? 08:48:03 → Processing 1 ads report(s)...08:48:03 → [1/1] Week 12/07/2026 – 18/07/2026...08:48:03 → Reading Weekly Query Report - Current Week_2026-07-12-2026-07-18.xlsx...08:48:03 → Detected Pacvue report — using campaign name parser...08:48:03 → ❌ Week 12/07/2026 – 18/07/2026: Failed to read file08:48:03 → ✅ Complete — 0/1 weeks uploaded.
-
-
-Diagnosed file parsing mismatch; recommended uploading file for inspection
-Diagnosed file parsing mismatch; recommended uploading file for inspection
-The week detection actually worked this time — 12/07–18/07 is right, the snap fix did its job. The failure is one step later: reading the file's contents. And the filename gives away why this file is different: Weekly Query Report - Current Week_... is a scheduled Pacvue export (from a saved report template called "Current Week"), not the manual Query report_... export you've uploaded every other week. Scheduled exports frequently differ inside — different sheet name, an extra title row above the headers, or slightly different column names — and the parser was built against the manual export's exact structure, so it choked.
-
-Two ways forward:
-
-Quick fix for this week: go into Pacvue and do a manual export of the same query for 6–12 July... actually for Mon 13 – Sun 19 July (matching your usual convention) — the manual Query report_... file will parse fine as always.
-
-Proper fix so the scheduled export works too (worth doing if you're setting up scheduled reports to save yourself the weekly manual pull — which is a good idea): upload that exact failing file here in this chat and I'll open it, see precisely how its structure differs from the manual export, and patch the parser to accept both formats. Ten minutes once I can see inside it.
-
-Send the file over and I'll make the tool format-proof — otherwise the manual re-export gets you moving today.
-
-
-Weekly Query Report - Current Week_2026-07-12-2026-07-18.xlsx
-xlsx
-
-
-Diagnosed file access issue and prescribed troubleshooting steps
-Diagnosed file access issue and prescribed troubleshooting steps
-So: save the attachment to your Desktop, close Excel, re-drop the saved copy — it'll go straight through, and you'll see roughly €51.2K spend across 40 rows land on week 2026-07-12 when it does.
-
-The updated upload.html above is optional but worth pasting into the repo when convenient — the only change is that this error now tells you exactly what to do instead of the useless "Failed to read file". Both reader paths (ads and VC) got the clearer message.
-
-Also worth noting for your weekly routine: the scheduled "Current Week" report format is confirmed fully compatible, so once it's landing somewhere properly local (a synced folder set to "always keep on this device" works too), your Monday upload becomes save-and-drop with no manual Pacvue export needed.
-
-
-Upload
-Code · HTML 
-ok at the top of the page with key metyrics i want to create another row of topline KPIs in the same format. Thius row should be ads only data and should include Spend, ad attributed revenue, Glance view attributed revenue, ROAS and % of portfolio advertised as a %
-
-
-Architected advertising metrics dashboard mirroring existing layout structure
-Architected advertising metrics dashboard mirroring existing layout structure
-Same card format, second row, ads-only. One interpretation call on each of your last two metrics, which I'll make explicit so you can correct me: "Glance view attributed revenue" I'm reading as ad-driven glance views (the clicks-as-GVs measure we used on the exec summary slide, shown with its % of total traffic), and "% of portfolio advertised" as the revenue-weighted share of the portfolio behind brands with active spend — so unadvertised Nerf drags it down in proportion to its revenue, which is the version that actually says something. Building it:
-
-
-Ran a command, read a file
-Ran a command, read a file
-Done — a second card row titled Key Metrics — Advertising (AMS) directly under the portfolio row, same card style, five cards:
-
-AMS Spend — with "excl. DSP" on the sub-line (or "no ads data for period" when a week's Pacvue file hasn't landed, so the gap is explicit rather than a silent zero)
-Ad Attributed Revenue — with its % of total revenue underneath
-Ad-Driven Glance Views — with % of total GVs (my reading of your "glance view attributed" — shout if you meant something else)
-ROAS — the only card with an emoji, using the deck thresholds: 🤑 ≥4x, 🧐 ≥2x, 😭 below
-Portfolio Advertised — revenue-weighted % behind actively-advertised brands, with "X of Y brands active" underneath, so unadvertised Nerf shows up as a visible hole in coverage rather than being averaged away
-Everything respects the market tabs, period selector and custom ranges — the figures come from the same pro-rated ads data as the brand cards, so the rows will always reconcile. The other cards deliberately carry no emoji: spend isn't inherently good or bad, and I'd rather the row state facts than perform judgements it can't defend.
-
-Paste into the repo over index.html and hard-refresh. If "Portfolio Advertised" wasn't the meaning you had for that last metric, tell me what you intended and it's a one-card swap.
-
-
-Index
-Code · HTML 
-
-This chat has 80 of 100 images (including PDF pages). Consider starting a new chat.
-
-
-
-
-Claude is AI and can make mistakes. Please double-check responses.
-
-
-Index · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -458,7 +350,7 @@ Index · HTML
     <div id="supply-items" style="overflow-x:auto;"></div>
   </div>
 </main>
- 
+
 <div id="adam-fab">
   <div id="adam-panel">
     <div id="adam-header">
@@ -489,7 +381,7 @@ Index · HTML
     <span id="adam-pulse"></span>
   </button>
 </div>
- 
+
 <script>
 var SUPABASE_URL='https://rycqfwzgvpzwhphgclpb.supabase.co';
 var SUPABASE_KEY='sb_publishable_CbKFhpN2dWI_UXhwGkclqw_AMPSprs4';
@@ -506,7 +398,7 @@ var allRows=[],loyaltyData={},adsData={},allWeeks=[],adsDataAllWeeks={},adsCover
 var FY25_CVR_BENCHMARK=6.69;
 var preorderData=[]; // cumulative YTD ordered-vs-dispatched per ASIN+market, from the preorder_pipeline view // FY2025 EU5 portfolio avg CVR — from Supabase, units/GVs across all 2025 weeks
 var periodMode='week',currentPeriod=null;
- 
+
 function oosClass(p){return p<=6?'oos-green':p<=9?'oos-amber':'oos-red';}
 function oosLabel(p){return p<=6?'green':p<=9?'amber':'red';}
 function cvrClass(p){return p>=10?'cvr-green':p>=5?'cvr-amber':'cvr-red';}
@@ -522,7 +414,7 @@ function periodKey(d){
   return getYearKey(d);
 }
 function periodLabel(k){if(periodMode==='week'){var p=k.split('-');return p[2]+'/'+p[1]+'/'+p[0];}return k;}
- 
+
 // For monthly view only: a week that starts in one calendar month can run into the next
 // (e.g. week_start 2026-05-31 covers 31 May through 6 June). Rather than dumping the whole
 // week into whichever month the start date falls in, work out exactly how many of its 7 days
@@ -539,7 +431,7 @@ function weekDayFractionInMonth(weekStart, monthKey){
   }
   return daysInMonth/7;
 }
- 
+
 // THE FIX: Range header forces Supabase to return up to 50000 rows
 function sbFetch(path){
   var sep=path.indexOf('?')>=0?'&':'?';
@@ -556,9 +448,9 @@ function sbFetch(path){
   .then(function(d){return Array.isArray(d)?d:[];})
   .catch(function(e){console.warn('sbFetch error:',e.message);return[];});
 }
- 
+
 var _initRunning=false;
- 
+
 async function init(){
   if(_initRunning)return;
   _initRunning=true;
@@ -597,7 +489,7 @@ async function init(){
     buildPeriodSelect();
     await loadPeriod(currentPeriod);
     setTimeout(async function(){
-      try{var cr=await sbFetch('/rest/v1/brand_health_ads_coverage?select=*');if(Array.isArray(cr)){adsCoverageData={};cr.forEach(function(r){if(!adsCoverageData[r.brand_classified])adsCoverageData[r.brand_classified]={};adsCoverageData[r.brand_classified][r.market]={total:r.total_asins,sp:r.sp_asins,sb:r.sb_asins};});}}catch(e){}
+      try{var cr=await sbFetch('/rest/v1/brand_health_ads_coverage?select=*&order=quarter.asc');if(Array.isArray(cr)){adsCoverageData={};cr.forEach(function(r){if(!adsCoverageData[r.brand_classified])adsCoverageData[r.brand_classified]={};adsCoverageData[r.brand_classified][r.market]={total:r.total_asins,sp:r.sp_asins,sb:r.sb_asins,quarter:r.quarter};});}}catch(e){}
       try{var sr=await sbFetch('/rest/v1/brand_health_search_terms?select=*&order=week_start.desc,rank.asc');if(Array.isArray(sr)){searchTermsData=sr;renderBrandCards();}}catch(e){}
     },100);
   }catch(err){
@@ -606,7 +498,7 @@ async function init(){
     _initRunning=false;
   }
 }
- 
+
 function buildPeriodSelect(){
   var seen={},options=[];
   allWeeks.forEach(function(w){
@@ -624,7 +516,7 @@ function buildPeriodSelect(){
   document.getElementById('period-label').textContent=periodMode.charAt(0).toUpperCase()+periodMode.slice(1);
   if(options.length)currentPeriod=options[0].value;
 }
- 
+
 async function loadPeriod(periodVal){
   if(!periodVal)return;
   currentPeriod=periodVal;
@@ -651,7 +543,7 @@ async function loadPeriod(periodVal){
       return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select='+SNAP_COLS);
     }));
     allRows=weekArrays.reduce(function(a,b){return a.concat(b);},[]);
- 
+
     // MONTH-BOUNDARY FIX: if we're in month view, any week whose 7 days don't sit
     // 100% inside this calendar month gets its numeric fields scaled by the fraction
     // of days that actually fall in the target month. Prevents e.g. the 31 May week
@@ -697,7 +589,7 @@ async function loadPeriod(periodVal){
   document.getElementById('main-content').style.display='grid';
   buildDashboard();
 }
- 
+
 function setPeriodMode(mode,btn){
   periodMode=mode;
   document.querySelectorAll('.period-tab').forEach(function(b){
@@ -705,10 +597,10 @@ function setPeriodMode(mode,btn){
     b.classList.remove('active');
   });
   btn.classList.add('active');
- 
+
   var dropdownEl=document.getElementById('week-select');
   var customEl=document.getElementById('custom-range-controls');
- 
+
   if(mode==='custom'){
     // Swap the normal month/quarter/year dropdown out for the two date pickers.
     // Don't auto-run a query yet — wait until the person has actually picked both dates.
@@ -730,14 +622,14 @@ function setPeriodMode(mode,btn){
     }
     return;
   }
- 
+
   // Leaving custom mode — restore the normal dropdown-driven flow
   dropdownEl.style.display='';
   customEl.style.display='none';
   buildPeriodSelect();
   if(currentPeriod)loadPeriod(currentPeriod);
 }
- 
+
 function onCustomRangeChange(){
   var startVal=document.getElementById('custom-start-date').value;
   var endVal=document.getElementById('custom-end-date').value;
@@ -748,7 +640,7 @@ function onCustomRangeChange(){
   }
   loadCustomRange(startVal,endVal);
 }
- 
+
 // How many of a week's 7 days (starting at weekStart) fall between rangeStart and rangeEnd inclusive.
 // Same idea as weekDayFractionInMonth, generalised to an arbitrary date range rather than a calendar month.
 function weekDayFractionInRange(weekStart,rangeStart,rangeEnd){
@@ -763,21 +655,21 @@ function weekDayFractionInRange(weekStart,rangeStart,rangeEnd){
   }
   return daysInRange/7;
 }
- 
+
 async function loadCustomRange(rangeStart,rangeEnd){
   currentPeriod=null; // custom ranges don't map to a single dropdown value
   document.getElementById('loading-screen').style.display='flex';
   document.getElementById('main-content').style.display='none';
- 
+
   // Pull in any week that overlaps the range at all, even partially —
   // same principle as the month-boundary fix: a week_start before rangeStart
   // can still contribute days that fall inside the range (and vice versa at the far end).
   var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){
     return weekDayFractionInRange(ws,rangeStart,rangeEnd)>0;
   });
- 
+
   var SNAP_COLS='week_start,asin,product_title,brand_classified,market,dispatched_revenue,dispatched_units,ordered_revenue,ordered_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy';
- 
+
   if(!weekStarts.length){
     document.getElementById('loading-screen').style.display='none';
     document.getElementById('main-content').style.display='grid';
@@ -785,12 +677,12 @@ async function loadCustomRange(rangeStart,rangeEnd){
     buildDashboard();
     return;
   }
- 
+
   var weekArrays=await Promise.all(weekStarts.map(function(ws){
     return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select='+SNAP_COLS);
   }));
   allRows=weekArrays.reduce(function(a,b){return a.concat(b);},[]);
- 
+
   // Pro-rate every overlapping week by the fraction of its days that actually
   // fall inside the chosen range — fully-inside weeks pass through unscaled.
   var NUMERIC_FIELDS=['dispatched_revenue','dispatched_units','ordered_revenue','ordered_units','glance_views','unfilled_units'];
@@ -804,7 +696,7 @@ async function loadCustomRange(rangeStart,rangeEnd){
     });
     return scaled;
   }).filter(function(r){return r!==null;});
- 
+
   // Same pro-rating applied to ads data for the same overlapping weeks
   adsData={};
   Object.keys(adsDataAllWeeks).forEach(function(k){
@@ -820,27 +712,27 @@ async function loadCustomRange(rangeStart,rangeEnd){
     adsData[bid][mkt].ad_clicks+=(v.ad_clicks||0)*fracAds;
     adsData[bid][mkt].ad_impressions+=(v.ad_impressions||0)*fracAds;
   });
- 
+
   // Pull comparison data for whichever WoW/4W/YoY toggle is currently selected,
   // shifted back from this custom range, so a comparison is available immediately
   // on load rather than only after manually re-clicking the comparison toggle.
   await loadCustomRangePriorData(rangeStart,rangeEnd);
- 
+
   var fmtDate=function(s){var p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
   document.getElementById('week-badge').textContent='Range: '+fmtDate(rangeStart)+' – '+fmtDate(rangeEnd);
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('main-content').style.display='grid';
   buildDashboard();
 }
- 
+
 var currentComparison='wow';
 var priorData={};
- 
+
 function setComparison(mode,btn){
   currentComparison=mode;
   document.querySelectorAll('.comp-tab').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
- 
+
   if(periodMode==='custom'){
     // currentPeriod is intentionally null in custom mode, so the normal
     // loadPriorData() (which keys off currentPeriod) can't find anything and
@@ -853,10 +745,10 @@ function setComparison(mode,btn){
     }
     return;
   }
- 
+
   loadPriorData().then(function(){buildDashboard();});
 }
- 
+
 // Equivalent of loadPriorData(), but for an arbitrary custom range rather than a
 // dropdown-selected week/month/quarter. Shifts the whole range back by the chosen
 // comparison window (7 days for WoW, 28 days for 4W, 364 days for YoY) and pulls
@@ -869,12 +761,12 @@ async function loadCustomRangePriorData(rangeStart,rangeEnd){
   rs.setDate(rs.getDate()-shiftDays);re.setDate(re.getDate()-shiftDays);
   var priorStart=rs.toISOString().split('T')[0];
   var priorEnd=re.toISOString().split('T')[0];
- 
+
   var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){
     return weekDayFractionInRange(ws,priorStart,priorEnd)>0;
   });
   if(!weekStarts.length)return;
- 
+
   try{
     var results=await Promise.all(weekStarts.map(function(ws){
       return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=brand_classified,market,dispatched_revenue,dispatched_units,glance_views');
@@ -891,7 +783,7 @@ async function loadCustomRangePriorData(rangeStart,rangeEnd){
     });
   }catch(e){console.warn('loadCustomRangePriorData error:',e);priorData={};}
 }
- 
+
 // Calendar date range of the currently selected period (month/quarter/year modes).
 function periodDateRange(){
   if(periodMode==='month'){
@@ -908,10 +800,10 @@ function periodDateRange(){
   if(periodMode==='year')return[currentPeriod+'-01-01',currentPeriod+'-12-31'];
   return null;
 }
- 
+
 var _priorToken=0;
 var priorCoverage=null; // {cur, pri} — fraction-weeks available in current vs prior range
- 
+
 // Prior-period comparison data.
 // WEEK mode: unchanged — date-targeted single week (WoW -7d, 4W -28d, YoY -364d ±14d tolerance).
 // MONTH/QUARTER/YEAR: the old logic walked back 52 ARRAY POSITIONS in the list of
@@ -949,7 +841,7 @@ async function loadPriorData(){
       });
       return;
     }
- 
+
     // month / quarter / year
     var range=periodDateRange();
     if(!range||token!==_priorToken)return;
@@ -958,17 +850,17 @@ async function loadPriorData(){
     rs.setDate(rs.getDate()-shiftDays);re.setDate(re.getDate()-shiftDays);
     var priorStart=rs.toISOString().split('T')[0];
     var priorEnd=re.toISOString().split('T')[0];
- 
+
     var allWs=allWeeks.map(function(w){return w.week_start;});
     var priorWs=allWs.filter(function(ws){return weekDayFractionInRange(ws,priorStart,priorEnd)>0;});
- 
+
     // Coverage: fraction-weeks of data available in each range. If the prior
     // range is missing weeks the current range has, the YoY is not like-for-like.
     var curFrac=0,priFrac=0;
     allWs.forEach(function(ws){curFrac+=weekDayFractionInRange(ws,range[0],range[1]);});
     priorWs.forEach(function(ws){priFrac+=weekDayFractionInRange(ws,priorStart,priorEnd);});
     priorCoverage={cur:curFrac,pri:priFrac};
- 
+
     if(!priorWs.length||token!==_priorToken)return;
     var results=await Promise.all(priorWs.map(function(ws){
       return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=brand_classified,market,dispatched_revenue,dispatched_units,glance_views');
@@ -987,7 +879,7 @@ async function loadPriorData(){
     });
   }catch(e){console.warn('loadPriorData error:',e);if(token===_priorToken){priorData={};priorCoverage=null;}}
 }
- 
+
 function aggregateBrand(brandId){
   var rows=allRows.filter(function(r){return r.brand_classified===brandId;});
   if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});
@@ -1021,7 +913,7 @@ function aggregateBrand(brandId){
   }
   return{revenue:revenue,revenueYoy:revenueYoy,units:units,asp:asp,conv:conv,gviews:gviews,gviewsYoy:gviewsYoy,unfilled:unfilled,avgOos:avgOos,repeatRate:repeatRate,ltv:ltv,ads:ads};
 }
- 
+
 function getToysRank(brandId){
   if(!searchTermsData.length)return null;
   var weeks=searchTermsData.map(function(t){return t.week_start;}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
@@ -1034,7 +926,7 @@ function getToysRank(brandId){
   if(priorWeek){var pt=searchTermsData.filter(function(t){return t.brand_classified===brandId&&t.week_start===priorWeek&&(t.top_clicked_category||'').toLowerCase().indexOf('toy')>=0&&t.rank;});if(pt.length)priorRank=Math.min.apply(null,pt.map(function(t){return t.rank;}));}
   return{rank:bestRank,priorRank:priorRank,change:priorRank?priorRank-bestRank:null};
 }
- 
+
 function getSentiment(d){
   var revDown=d.revenueYoy!==null&&d.revenueYoy<-0.02;
   var revUp=d.revenueYoy!==null&&d.revenueYoy>0.02;
@@ -1048,7 +940,7 @@ function getSentiment(d){
   return'sad';
 }
 var SC={happy:{emoji:'🤑',label:'Happy',cls:'happy'},sad:{emoji:'🧐',label:'Mixed',cls:'sad'},cry:{emoji:'😭',label:'Needs Attention',cls:'cry'}};
- 
+
 // ─── PORTFOLIO-LEVEL AGGREGATION (Key Metrics section) ────────
 // Mirrors aggregateBrand exactly but across ALL rows in the current
 // period/market selection, so the overall numbers always reconcile
@@ -1089,7 +981,7 @@ function aggregatePortfolio(){
   var repeatRate=totalCust>0?repeatCust/totalCust:null;
   return{revenue:revenue,revenueYoy:revenueYoy,units:units,gviews:gviews,gviewsYoy:gviewsYoy,conv:conv,asp:asp,aspYoy:aspYoy,avgOos:avgOos,repeatRate:repeatRate};
 }
- 
+
 function renderOverallMetrics(){
   var p=aggregatePortfolio();
   var fmtEuro=function(v){return v>=1000000?'€'+(v/1000000).toFixed(1)+'M':v>=1000?'€'+(v/1000).toFixed(0)+'K':'€'+Math.round(v);};
@@ -1148,7 +1040,7 @@ function renderOverallMetrics(){
     card('Avg OOS',p.avgOos.toFixed(1)+'%','target ≤6%',sOos)+
     card('Pre-Order Pipeline',poRev>0?fmtEuro(poRev):'€0',fmtNum(poUnits)+' units · excl. shipped rev'+(poNewRev>0?'<br>+'+fmtEuro(poNewRev)+' ordered in period':''),null);
 }
- 
+
 // ─── PRE-ORDER / PENDING SHIP PIPELINE ─────────────────────────
 // Detection is at ASIN level, not brand level: within the selected period an
 // ASIN with meaningful ordered revenue but a dispatch rate under 25% is a
@@ -1186,7 +1078,7 @@ function computePreOrders(){
   });
   return Object.values(byBrand).sort(function(x,y){return y.pending-x.pending;});
 }
- 
+
 function renderPreOrders(){
   var panel=document.getElementById('preorder-panel');
   var el=document.getElementById('preorder-items');
@@ -1222,7 +1114,7 @@ function renderPreOrders(){
   });
   el.innerHTML=html;
 }
- 
+
 function renderAdsMetrics(){
   var el=document.getElementById('ads-metrics');if(!el)return;
   var fmtEuro=function(v){return v>=1000000?'€'+(v/1000000).toFixed(1)+'M':v>=1000?'€'+(v/1000).toFixed(0)+'K':'€'+Math.round(v);};
@@ -1240,16 +1132,21 @@ function renderAdsMetrics(){
   // Revenue-weighted advertised share: portfolio revenue behind brands with
   // active spend / total portfolio revenue (brand-grain ads — best available).
   var rows=currentMarket==='ALL'?allRows:allRows.filter(function(r){return r.market===currentMarket;});
-  var totRev=0,advRev=0,totGv=0;
-  rows.forEach(function(r){
-    totRev+=r.dispatched_revenue||0;totGv+=r.glance_views||0;
-    allBrands[r.brand_classified]=1;
-    if(activeBrands[r.brand_classified])advRev+=r.dispatched_revenue||0;
-  });
+  var totRev=0,totGv=0;
+  rows.forEach(function(r){totRev+=r.dispatched_revenue||0;totGv+=r.glance_views||0;});
   var roas=spend>0?adRev/spend:0;
-  var advPct=totRev>0?advRev/totRev*100:0;
   var gvPct=totGv>0?adGv/totGv*100:0;
-  var nActive=Object.keys(activeBrands).length,nAll=Object.keys(allBrands).length;
+  // ASIN-level advertising coverage from the quarterly brand_health_ads_coverage
+  // upload (advertised = ASINs with Sponsored Products). Latest quarter wins.
+  var covAdv=0,covTot=0,covQ=null;
+  Object.keys(adsCoverageData).forEach(function(bid){
+    Object.keys(adsCoverageData[bid]).forEach(function(mkt){
+      if(currentMarket!=='ALL'&&mkt!==currentMarket)return;
+      var v=adsCoverageData[bid][mkt];
+      covAdv+=v.sp||0;covTot+=v.total||0;if(v.quarter)covQ=v.quarter;
+    });
+  });
+  var advPct=covTot>0?covAdv/covTot*100:null;
   var sRoas=spend<=0?null:roas>=4?'happy':roas>=2?'sad':'cry';
   var card=function(label,value,sub,sent){
     var emoji=sent?('<div class="metric-emoji">'+SC[sent].emoji+'</div>'):'';
@@ -1261,11 +1158,11 @@ function renderAdsMetrics(){
     card('Ad Attributed Revenue',fmtEuro(adRev),totRev>0?(adRev/totRev*100).toFixed(1)+'% of total revenue':'—',null)+
     card('Ad-Driven Glance Views',fmtNum(adGv),gvPct.toFixed(1)+'% of total GVs',null)+
     card('ROAS',spend>0?roas.toFixed(1)+'x':'—','AMS attributed',sRoas)+
-    card('Portfolio Advertised',advPct.toFixed(0)+'%',nActive+' of '+nAll+' brands active · revenue-weighted',null);
+    card('Portfolio Advertised',advPct!==null?advPct.toFixed(0)+'%':'—',advPct!==null?fmtNum(covAdv)+' of '+fmtNum(covTot)+' ASINs with SP'+(covQ?' · '+covQ:''):'no coverage data — upload quarterly file',null);
 }
- 
+
 function buildDashboard(){renderOverallMetrics();renderAdsMetrics();renderSentimentBar();renderBrandCards();renderSupplyAlerts();renderPreOrders();if(selectedBrand)renderRCA(selectedBrand,currentTab);}
- 
+
 function renderSentimentBar(){
   var counts={happy:0,sad:0,cry:0};
   BRAND_ORDER.forEach(function(id){var d=aggregateBrand(id);if(d.revenue===0&&d.gviews===0)return;counts[getSentiment(d)]++;});
@@ -1274,7 +1171,7 @@ function renderSentimentBar(){
     '<div class="sentiment-pill sad"><span style="font-size:20px">🧐</span><span style="font-size:22px;font-weight:800">'+counts.sad+'</span><span style="font-size:12px;font-weight:600;opacity:0.8">Brands Mixed</span></div>'+
     '<div class="sentiment-pill cry"><span style="font-size:20px">😭</span><span style="font-size:22px;font-weight:800">'+counts.cry+'</span><span style="font-size:12px;font-weight:600;opacity:0.8">Need Attention</span></div>';
 }
- 
+
 function getSortedBrands(){
   var brands=BRAND_ORDER.map(function(id){return{id:id,data:aggregateBrand(id)};}).filter(function(b){return b.data.revenue>0||b.data.gviews>0;});
   if(currentSort==='revenue')brands.sort(function(a,b){return b.data.revenue-a.data.revenue;});
@@ -1282,7 +1179,7 @@ function getSortedBrands(){
   else if(currentSort==='ltv')brands.sort(function(a,b){return(b.data.ltv||0)-(a.data.ltv||0);});
   return brands;
 }
- 
+
 function renderBrandCards(){
   var grid=document.getElementById('brand-grid');grid.innerHTML='';
   getSortedBrands().forEach(function(item){
@@ -1332,9 +1229,9 @@ function renderBrandCards(){
     grid.appendChild(card);
   });
 }
- 
+
 function toggleExpand(evt,id){evt.stopPropagation();var el=document.getElementById(id);var tog=document.getElementById('tog-'+id);if(!el)return;var open=el.classList.toggle('open');if(tog)tog.classList.toggle('open',open);}
- 
+
 function selectBrand(brandId,cardEl){
   selectedBrand=brandId;
   document.querySelectorAll('.brand-card').forEach(function(c){c.classList.remove('selected');});
@@ -1347,7 +1244,7 @@ function selectBrand(brandId,cardEl){
   setTimeout(function(){document.getElementById('rca-panel').scrollIntoView({behavior:'smooth',block:'start'});},100);
 }
 function setTab(tab,btn){currentTab=tab;document.querySelectorAll('.rca-tab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');if(selectedBrand)renderRCA(selectedBrand,tab);}
- 
+
 function renderRCA(brandId,tab){
   var rows=allRows.filter(function(r){return r.brand_classified===brandId;});
   if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});
@@ -1371,7 +1268,7 @@ function renderRCA(brandId,tab){
   else if(tab==='search')renderSearchTab(brandId,wrap);
   else if(tab==='trends')renderTrendsTab(brandId,wrap);
 }
- 
+
 function buildAsinMap(rows,extractor){
   var useMarket=currentMarket!=='ALL',m={},noSumKeys=['revYoy','gvYoy','oos'];
   rows.forEach(function(r){
@@ -1385,7 +1282,7 @@ function buildAsinMap(rows,extractor){
   Object.keys(m).forEach(function(k){m[k].marketsStr=currentMarket!=='ALL'?m[k].market:Object.keys(m[k].markets).sort().join(' ');delete m[k].markets;});
   return m;
 }
- 
+
 var sortState={};
 function buildSortableTable(cols,data,defaultKey,defaultDir,rowRenderer,tabId){
   var st=sortState[tabId]||{key:defaultKey,dir:defaultDir};sortState[tabId]=st;
@@ -1400,7 +1297,7 @@ function buildSortableTable(cols,data,defaultKey,defaultDir,rowRenderer,tabId){
   return'<table class="data-table"><thead><tr>'+headers+'</tr></thead><tbody>'+trs+'</tbody></table>';
 }
 function rcaSort(tabId,key,dir){sortState[tabId]={key:key,dir:dir};if(selectedBrand)renderRCA(selectedBrand,tabId);}
- 
+
 function renderRevenueTab(rows,wrap){
   var m=buildAsinMap(rows,function(r){return{rev:r.dispatched_revenue||0,revYoy:r.revenue_yoy,units:r.dispatched_units||0};});
   var data=Object.values(m).sort(function(a,b){return b.rev-a.rev;}).slice(0,30);var maxR=data[0]?data[0].rev:1;
@@ -1421,7 +1318,7 @@ function renderSupplyTab(rows,wrap){
   var data=Object.values(m).filter(function(r){return r.oos>0||r.unfilled>0;}).map(function(r){return Object.assign({},r,{risk:r.oos>=10?r.rev*(r.oos/100):0});}).sort(function(a,b){return b.risk-a.risk||b.unfilled-a.unfilled;}).slice(0,30);
   wrap.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text2);"><b style="color:var(--red)">OOS Thresholds:</b> ≤6% green ✅ · 7–9% amber ⚠️ · ≥10% red 🔴</div>'+buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'oos',label:'OOS %',r:true},{k:'unfilled',label:'Unfilled',r:true},{k:'rev',label:'Revenue',r:true},{k:'risk',label:'Rev at Risk',r:true,dir:'desc'}],data,'risk','desc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name">'+r.name+'</span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val"><span class="'+oosClass(r.oos)+'">'+r.oos.toFixed(1)+'%</span></td><td class="td-val" style="color:'+(r.unfilled>100?'var(--red)':r.unfilled>50?'var(--amber)':'var(--text)')+'">'+Math.round(r.unfilled).toLocaleString()+'</td><td class="td-val">'+fmtCur(r.rev)+'</td><td class="td-val" style="color:var(--red);font-weight:700">'+(r.risk>0?fmtCur(r.risk):'—')+'</td>';},'supply');
 }
- 
+
 async function renderAdsTab(brandId,d,ads,wrap){
   if(!ads||(!ads.ad_revenue&&!ads.ad_spend)){wrap.innerHTML='<div class="empty">📊 No ads data uploaded for this brand/period.</div>';return;}
   var roas=ads.ad_spend>0?(ads.ad_revenue/ads.ad_spend).toFixed(2):null;
@@ -1437,13 +1334,13 @@ async function renderAdsTab(brandId,d,ads,wrap){
     }).join('')+'</div>'+
     '<div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:20px;overflow:hidden;"><div style="width:'+adRevPct2+'%;height:100%;background:var(--ad-color);border-radius:2px;"></div></div>';
 }
- 
+
 function renderAdOppTab(rows,wrap){
   var m=buildAsinMap(rows,function(r){return{rev:r.dispatched_revenue||0,units:r.dispatched_units||0,gv:r.glance_views||0,oos:r.oos_pct||0};});
   var data=Object.values(m).filter(function(r){return r.gv>50;}).map(function(r){return Object.assign({},r,{asp:r.units>0?r.rev/r.units:0,conv:r.gv>0?(r.units/r.gv)*100:0});}).filter(function(r){return r.asp>5&&r.oos<10;}).map(function(r){return Object.assign({},r,{score:Math.round((r.asp*r.gv/1000)*(1-(r.conv/8)))});}).sort(function(a,b){return b.score-a.score;}).slice(0,30);
   wrap.innerHTML='<div style="background:var(--ad-bg);border:1px solid var(--ad-color);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text2);"><b style="color:var(--ad-color)">💡 Ad Opportunity:</b> High ASP + low CVR + traffic + in stock.</div>'+(data.length===0?'<div class="empty">No strong ad opportunities identified.</div>':buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'asp',label:'ASP',r:true},{k:'conv',label:'CVR',r:true},{k:'gv',label:'Views',r:true},{k:'oos',label:'OOS',r:true},{k:'score',label:'Score',r:true,dir:'desc'}],data,'score','desc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name">'+r.name+'<span class="flag flag-ad">AD OPP</span></span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val" style="color:var(--amber);font-weight:700">'+fmtCur(r.asp)+'</td><td class="td-val"><span class="'+cvrClass(r.conv)+'">'+r.conv.toFixed(2)+'%</span></td><td class="td-val">'+r.gv.toLocaleString()+'</td><td class="td-val"><span class="'+oosClass(r.oos)+'">'+r.oos.toFixed(1)+'%</span></td><td class="td-val" style="color:var(--ad-color);font-weight:700">'+r.score+'</td>';},'adopp'));
 }
- 
+
 function renderSearchTab(brandId,wrap){
   if(!searchTermsData.length){wrap.innerHTML='<div class="empty">🔍 No search terms data uploaded yet.</div>';return;}
   var activeView=window._searchView||'brand';
@@ -1458,7 +1355,7 @@ function renderSearchTab(brandId,wrap){
   wrap.innerHTML='<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">'+viewBtns+'</div><table class="data-table"><thead><tr><th style="width:50px">Rank</th><th>Search Term</th><th>Category</th><th class="r">Est. Searches/wk</th><th>Top Clicked</th><th class="r">Click Share</th><th class="r">CVR %</th></tr></thead><tbody>'+rows+'</tbody></table>'+(sorted.length>100?'<div style="text-align:center;padding:12px;font-size:11px;color:var(--text3)">Showing 100 of '+sorted.length+' terms</div>':'');
 }
 function setSearchView(brandId,view){window._searchView=view;renderRCA(brandId,'search');}
- 
+
 async function renderTrendsTab(brandId,wrap){
   wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--text2);font-size:13px;">Loading trend data...</div>';
   var trendRows=await sbFetch('/rest/v1/brand_health_snapshots?select=week_start,brand_classified,market,dispatched_revenue,dispatched_units,glance_views,oos_pct&brand_classified=eq.'+brandId+'&order=week_start.asc');
@@ -1478,7 +1375,7 @@ async function renderTrendsTab(brandId,wrap){
   wrap.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;"><div style="background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:14px;"><div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Revenue Trend</div><canvas id="c-rev" height="120"></canvas></div><div style="background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:14px;"><div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Glance Views Trend</div><canvas id="c-gv" height="120"></canvas></div><div style="background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:14px;"><div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Conversion Rate %</div><canvas id="c-cvr" height="120"></canvas></div><div style="background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:14px;"><div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">OOS % (avg)</div><canvas id="c-oos" height="120"></canvas></div></div><div class="pivot-table-wrap"><table class="pivot-table"><thead><tr><th>'+periodMode.charAt(0).toUpperCase()+periodMode.slice(1)+'</th><th class="r">Revenue</th><th class="r">Glance Views</th><th class="r">CVR %</th><th class="r">Avg OOS %</th></tr></thead><tbody>'+tableRows+'<tr><td>TOTAL / AVG</td><td class="td-val">'+fmtCur(revenues.reduce(function(a,b){return a+b;},0))+'</td><td class="td-val">'+fmtNum(gviews.reduce(function(a,b){return a+b;},0))+'</td><td class="td-val">'+(convs.reduce(function(a,b){return a+b;},0)/convs.length).toFixed(2)+'%</td><td class="td-val">'+(ooss.reduce(function(a,b){return a+b;},0)/ooss.length).toFixed(1)+'%</td></tr></tbody></table></div>';
   requestAnimationFrame(function(){drawLineChart('c-rev',labels,revenues,'#009CDE',function(v){return fmtCur(v);});drawLineChart('c-gv',labels,gviews,'#00B388',function(v){return fmtNum(v);});drawLineChart('c-cvr',labels,convs,'#F5A623',function(v){return v.toFixed(1)+'%';},[5,10]);drawLineChart('c-oos',labels,ooss,'#E8423F',function(v){return v.toFixed(1)+'%';},[6,10]);});
 }
- 
+
 function drawLineChart(canvasId,labels,data,color,fmt,thresholds){
   var canvas=document.getElementById(canvasId);if(!canvas)return;
   var dpr=window.devicePixelRatio||1,w=canvas.clientWidth||300,h=parseInt(canvas.getAttribute('height'))||120;
@@ -1497,10 +1394,10 @@ function drawLineChart(canvasId,labels,data,color,fmt,thresholds){
   data.forEach(function(v,i){ctx.beginPath();ctx.arc(toX(i),toY(v),3,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();});
   var step=Math.ceil(labels.length/6);ctx.fillStyle='#5A8DA0';ctx.font='9px Inter,sans-serif';ctx.textAlign='center';labels.forEach(function(l,i){if(i%step===0)ctx.fillText(l.substring(0,8),toX(i),h-pad.b+12);});
 }
- 
+
 var supplySort={key:'gv',dir:'desc'}; // default: highest-demand SKUs first (biggest opportunity), unfilled as secondary
 function setSupplySort(key){if(supplySort.key===key)supplySort.dir=supplySort.dir==='asc'?'desc':'asc';else{supplySort.key=key;supplySort.dir='desc';}renderSupplyAlerts();}
- 
+
 function renderSupplyAlerts(){
   var rows=allRows;if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});if(selectedBrand)rows=rows.filter(function(r){return r.brand_classified===selectedBrand;});
   var seen={},alerts=[];
@@ -1513,17 +1410,17 @@ function renderSupplyAlerts(){
   function sTh(label,key){var active=supplySort.key===key,arrow=active?(supplySort.dir==='asc'?' ↑':' ↓'):' ↕';return'<th style="text-align:right;font-size:10px;font-weight:700;color:'+(active?'var(--blue)':'var(--text2)')+';text-transform:uppercase;letter-spacing:1px;padding:8px 12px;cursor:pointer;" onclick="setSupplySort(\''+key+'\')">'+label+'<span style="font-size:9px;opacity:0.6">'+arrow+'</span></th>';}
   g.innerHTML='<table style="width:100%;border-collapse:collapse;"><thead><tr style="border-bottom:2px solid var(--border);"><th style="text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">ASIN</th><th style="text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">Product</th><th style="text-align:center;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">Market</th>'+sTh('OOS %','oos')+sTh('Unfilled','uf')+sTh('Demand (GVs)','gv')+'</tr></thead><tbody>'+alerts.slice(0,30).map(function(a){return'<tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 12px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--blue);">'+a.asin+'</td><td style="padding:7px 12px;font-size:11px;color:var(--text);max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+a.name+'">'+a.name+'</td><td style="padding:7px 12px;text-align:center;">'+(currentMarket==='ALL'?'<span style="font-size:9px;color:var(--text3)">EU5</span>':'<span class="mp mp-'+a.market+'">'+a.market+'</span>')+'</td><td style="padding:7px 12px;text-align:right;font-family:\'DM Mono\',monospace;font-size:11px;font-weight:700;" class="'+oosClass(a.oos)+'">'+a.oos.toFixed(1)+'%</td><td style="padding:7px 12px;text-align:right;font-family:\'DM Mono\',monospace;font-size:11px;font-weight:700;color:'+(a.uf>100?'var(--red)':'var(--amber)')+';">'+Math.round(a.uf).toLocaleString()+'</td><td style="padding:7px 12px;text-align:right;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--blue-dark);">'+(a.gv>0?a.gv.toLocaleString():'—')+'</td></tr>';}).join('')+'</tbody></table>';
 }
- 
+
 function resetSupplyFilter(){selectedBrand=null;document.querySelectorAll('.brand-card').forEach(function(c){c.classList.remove('selected');});document.getElementById('rca-panel').style.display='none';renderSupplyAlerts();}
 function setMarket(m,btn){currentMarket=m;document.querySelectorAll('.market-tab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');buildDashboard();}
 function setSort(s,btn){currentSort=s;document.querySelectorAll('.sort-tab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');renderBrandCards();}
 function setCurrency(c){currency=c;['eur','gbp','usd'].forEach(function(x){document.getElementById('btn-'+x).classList.remove('active');});document.getElementById('btn-'+c).classList.add('active');renderBrandCards();if(selectedBrand)renderRCA(selectedBrand,currentTab);}
- 
+
 function fmtCur(val){var v=val*FX[currency],sym=currency==='gbp'?'£':currency==='usd'?'$':'€';if(v>=1000000)return sym+(v/1000000).toFixed(1)+'M';if(v>=1000)return sym+(v/1000).toFixed(1)+'K';return sym+v.toFixed(0);}
 function fmtNum(n){if(n>=1000000)return(n/1000000).toFixed(1)+'M';if(n>=1000)return(n/1000).toFixed(0)+'K';return Math.round(n).toLocaleString();}
 function fmtYoy(val){if(val==null||isNaN(val))return'';var p=(val*100).toFixed(1),cls=val>0?'yoy-up':val<0?'yoy-down':'yoy-na',arr=val>0?'▲':val<0?'▼':'';return'<span class="yoy '+cls+'">'+arr+Math.abs(p)+'%</span>';}
 function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFixed(1),col=val>0?'var(--green)':val<0?'var(--red)':'var(--text3)',arr=val>0?'▲':val<0?'▼':'';return'<span style="color:'+col+';font-weight:700">'+arr+Math.abs(p)+'%</span>';}
- 
+
 /* ADAM WIDGET */
 (function(){
   var PROXY='https://adam-proxy.addham.workers.dev/';
@@ -1545,9 +1442,9 @@ function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFix
   window.adamSend=async function(text){var inp=document.getElementById('adam-input');var msg=text||inp.value.trim();if(!msg||loading)return;inp.value='';history.push({role:'user',content:msg});addMsg('user',msg);var typingEl=addMsg('assistant','',true);loading=true;document.getElementById('adam-send').disabled=true;try{var systemFull=SYSTEM+(weekSummary?'\n\n'+weekSummary:'');var messages=history.slice();var maxIter=5;for(var iter=0;iter<maxIter;iter++){var res=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:systemFull,messages:messages,tools:TOOLS})});var data=await res.json();if(data.error&&data.error.toString().includes('Rate limit')){updateBubble(typingEl,'⏳ Rate limit — retrying in 15s...');await new Promise(function(r){setTimeout(r,15000);});var res2=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:systemFull,messages:messages,tools:TOOLS})});data=await res2.json();}if(data.error){updateBubble(typingEl,'Error: '+data.error);break;}var stopReason=data.stop_reason||data.stopReason||'end_turn';var content=data.content||[];var textParts=content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');var toolUses=content.filter(function(b){return b.type==='tool_use';});if(stopReason==='tool_use'&&toolUses.length>0){updateBubble(typingEl,(textParts?textParts+'\n\n':'')+'⏳ Querying database...');messages.push({role:'assistant',content:content});var toolResults=[];for(var ti=0;ti<toolUses.length;ti++){var tu=toolUses[ti];var result=await runTool(tu.name,tu.input);toolResults.push({type:'tool_result',tool_use_id:tu.id,content:result});}messages.push({role:'user',content:toolResults});}else{var reply=textParts||data.reply||'No response.';history.push({role:'assistant',content:reply});updateBubble(typingEl,reply);break;}}}catch(e){console.error('Adam error:',e);updateBubble(typingEl,'Error: '+e.message);}loading=false;document.getElementById('adam-send').disabled=false;};
   document.getElementById('adam-input').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();adamSend();}});
 })();
- 
+
 init();
- 
+
 document.addEventListener('visibilitychange',function(){
   if(!document.hidden){
     if(!allWeeks.length||!allRows.length){init();}
@@ -1557,58 +1454,3 @@ document.addEventListener('visibilitychange',function(){
 </script>
 </body>
 </html>
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
