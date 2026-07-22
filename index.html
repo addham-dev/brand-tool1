@@ -174,43 +174,6 @@
     .cvr-green{color:var(--green);font-weight:700;}
     .cvr-amber{color:var(--amber);font-weight:700;}
     .cvr-red{color:var(--red);font-weight:700;}
-    #adam-fab{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;align-items:flex-end;font-family:'Inter',sans-serif;}
-    #adam-trigger{display:flex;align-items:center;gap:8px;background:#1F1646;color:#fff;border:none;border-radius:999px;padding:8px 16px 8px 8px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.22);font-size:13px;font-weight:600;transition:transform 0.15s,box-shadow 0.15s;position:relative;font-family:'Inter',sans-serif;}
-    #adam-trigger:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(0,0,0,0.28);}
-    #adam-trigger img{width:34px;height:34px;border-radius:50%;object-fit:cover;}
-    #adam-uat-badge{position:absolute;top:-6px;right:-4px;background:#F5A623;color:#1F1646;font-size:9px;font-weight:700;padding:2px 6px;border-radius:999px;border:2px solid #F0F8FC;}
-    #adam-pulse{position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;background:#F5A623;display:none;}
-    #adam-pulse::after{content:'';position:absolute;inset:0;border-radius:50%;background:#F5A623;animation:adamPulse 1.4s ease-out infinite;}
-    @keyframes adamPulse{0%{transform:scale(1);opacity:0.9}100%{transform:scale(2.6);opacity:0}}
-    #adam-panel{display:none;flex-direction:column;width:380px;height:520px;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.16);overflow:hidden;margin-bottom:10px;border:1px solid #D0EAF5;}
-    #adam-panel.open{display:flex;}
-    #adam-header{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#1F1646;color:#fff;flex-shrink:0;}
-    #adam-header img{width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(255,255,255,0.25);}
-    #adam-header-info{flex:1;}
-    #adam-header-info .name{font-size:14px;font-weight:600;}
-    #adam-header-info .sub{font-size:11px;color:rgba(255,255,255,0.55);}
-    #adam-uat-label{background:#F5A623;color:#1F1646;font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;}
-    #adam-close{background:none;border:none;color:rgba(255,255,255,0.6);font-size:18px;cursor:pointer;line-height:1;padding:0 2px;}
-    #adam-close:hover{color:#fff;}
-    #adam-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;background:#F0F8FC;}
-    .adam-msg{display:flex;gap:8px;align-items:flex-start;}
-    .adam-msg.user{flex-direction:row-reverse;}
-    .adam-msg .avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;object-fit:cover;border:1px solid #D0EAF5;}
-    .adam-msg .avatar.user-av{background:#E5F6FF;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#0077A8;border:none;}
-    .adam-bubble{max-width:82%;font-size:13px;line-height:1.55;padding:9px 12px;border-radius:4px 12px 12px 12px;background:#fff;border:1px solid #D0EAF5;color:#003A54;white-space:pre-wrap;}
-    .adam-msg.user .adam-bubble{background:#1F1646;color:#fff;border-color:#1F1646;border-radius:12px 4px 12px 12px;}
-    #adam-suggestions{padding:0 10px 8px;display:flex;flex-wrap:wrap;gap:5px;background:#F0F8FC;flex-shrink:0;}
-    .adam-chip{font-size:11px;padding:4px 10px;border:1px solid #D0EAF5;border-radius:999px;cursor:pointer;background:#fff;color:#5A8DA0;font-family:'Inter',sans-serif;}
-    .adam-chip:hover{background:#E5F6FF;}
-    #adam-input-row{display:flex;gap:6px;padding:10px;border-top:1px solid #D0EAF5;background:#fff;flex-shrink:0;}
-    #adam-input{flex:1;font-size:13px;padding:8px 10px;border:1px solid #D0EAF5;border-radius:8px;outline:none;resize:none;font-family:'Inter',sans-serif;background:#F0F8FC;color:#003A54;line-height:1.4;}
-    #adam-input:focus{border-color:#009CDE;background:#fff;}
-    #adam-send{padding:8px 14px;border-radius:8px;border:none;background:#1F1646;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;}
-    #adam-send:disabled{opacity:0.35;cursor:default;}
-    .adam-typing span{display:inline-block;width:6px;height:6px;border-radius:50%;background:#A0C8D8;animation:adamBounce 1.2s ease-in-out infinite;margin-right:3px;}
-    .adam-typing span:nth-child(2){animation-delay:0.2s;}
-    .adam-typing span:nth-child(3){animation-delay:0.4s;margin-right:0;}
-    @keyframes adamBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
   </style>
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-RF2D8HGXG0"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-RF2D8HGXG0');</script>
@@ -230,6 +193,7 @@
   <div class="header-right">
     <div class="nav-links">
       <a class="nav-link active" href="index.html">Dashboard</a>
+      <a class="nav-link" href="kam.html">KAM Hub</a>
       <a class="nav-link" href="insights.html">Insights</a>
       <a class="nav-link" href="upload.html">Upload</a>
       <a class="nav-link" href="https://addham-dev.github.io/hasbro-sales-ticker/" target="_blank">Live Sales ↗</a>
@@ -351,36 +315,7 @@
   </div>
 </main>
 
-<div id="adam-fab">
-  <div id="adam-panel">
-    <div id="adam-header">
-      <img src="https://attic.sh/arz5gqoevz38gefaczkyj07h42iz" alt="Adam">
-      <div id="adam-header-info">
-        <div class="name">Adam</div>
-        <div class="sub">Hasbro EU Campaign Analyst</div>
-      </div>
-      <span id="adam-uat-label">UAT</span>
-      <button id="adam-close" onclick="adamToggle()">✕</button>
-    </div>
-    <div id="adam-messages"></div>
-    <div id="adam-suggestions">
-      <button class="adam-chip" onclick="adamSend('Which brand had the best week?')">Best brand this week?</button>
-      <button class="adam-chip" onclick="adamSend('Which brand has the worst OOS right now?')">Worst OOS?</button>
-      <button class="adam-chip" onclick="adamSend('Is our ad spend driving incremental revenue or just claiming organic?')">Ad spend incremental?</button>
-      <button class="adam-chip" onclick="adamSend('What should I check after a campaign goes live?')">Post-campaign checklist?</button>
-    </div>
-    <div id="adam-input-row">
-      <textarea id="adam-input" rows="1" placeholder="Ask about brands, ASINs, campaigns…"></textarea>
-      <button id="adam-send" onclick="adamSend()">Send</button>
-    </div>
-  </div>
-  <button id="adam-trigger" onclick="adamToggle()">
-    <img src="https://attic.sh/arz5gqoevz38gefaczkyj07h42iz" alt="Adam">
-    Ask Adam
-    <span id="adam-uat-badge">UAT</span>
-    <span id="adam-pulse"></span>
-  </button>
-</div>
+
 
 <script>
 var SUPABASE_URL='https://rycqfwzgvpzwhphgclpb.supabase.co';
@@ -1444,27 +1379,7 @@ function fmtNum(n){if(n>=1000000)return(n/1000000).toFixed(1)+'M';if(n>=1000)ret
 function fmtYoy(val){if(val==null||isNaN(val))return'';var p=(val*100).toFixed(1),cls=val>0?'yoy-up':val<0?'yoy-down':'yoy-na',arr=val>0?'▲':val<0?'▼':'';return'<span class="yoy '+cls+'">'+arr+Math.abs(p)+'%</span>';}
 function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFixed(1),col=val>0?'var(--green)':val<0?'var(--red)':'var(--text3)',arr=val>0?'▲':val<0?'▼':'';return'<span style="color:'+col+';font-weight:700">'+arr+Math.abs(p)+'%</span>';}
 
-/* ADAM WIDGET */
-(function(){
-  var PROXY='https://adam-proxy.addham.workers.dev/';
-  var AVATAR='https://attic.sh/arz5gqoevz38gefaczkyj07h42iz';
-  var SB_HEADERS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};
-  var SYSTEM='You are Adam — a sharp English data analyst in the Hasbro EU Amazon brand health dashboard.\n\nYou have ONE tool: query_supabase. Use it for EVERY data question. Never say you cannot access data. Never apologise.\n\nIMPORTANT WORKFLOW:\n1. If you do not know the current week, FIRST query brand_health_weeks (select=week_start, order=week_start.desc) — the first row is the latest week.\n2. Then query brand_health_snapshots with that exact week_start to answer brand/ASIN questions.\n3. Sum dispatched_revenue by brand_classified mentally to rank brands.\n\nTABLES:\n- brand_health_weeks: available weeks. Columns: week_start, week_label\n- brand_health_snapshots: ASIN-level weekly data. Columns: week_start, asin, product_title, brand_classified, market, dispatched_revenue, glance_views, oos_pct, dispatched_units, unfilled_units\n- brand_health_ads: brand ad data. Columns: week_start, brand_classified, market, ad_spend, ad_revenue\n\nBRAND VALUES (exact): GAMES, PLAY_DOH, MONOPOLY, BEYBLADE, NERF, TRANSFORMERS, MARVEL, STAR_WARS, PEPPA_PIG, DISNEY_KIDS\nMARKET VALUES: GB, DE, FR, IT, ES\n\nFILTER SYNTAX:\n- Equal: brand_classified=eq.GAMES\n- Date range: week_start=gte.2026-04-01&week_start=lte.2026-05-10\n\nSpeak naturally. Dry, confident. No bullet points. Answer then one sharp observation.';
-  var TOOLS=[{name:'query_supabase',description:'Query Supabase for ASIN performance, brand performance, ad data, or search terms across any date range.',input_schema:{type:'object',properties:{table:{type:'string',enum:['brand_health_snapshots','brand_health_ads','brand_health_ads_queries','brand_health_weeks']},filters:{type:'string'},select:{type:'string'},order:{type:'string'}},required:['table','select']}}];
-  async function runTool(toolName,toolInput){
-    if(toolName!=='query_supabase')return JSON.stringify({error:'Unknown tool'});
-    try{var table=toolInput.table||'brand_health_snapshots',select=toolInput.select||'*',filters=toolInput.filters||'',order=toolInput.order?'&order='+toolInput.order:'';var url=SUPABASE_URL+'/rest/v1/'+table+'?select='+encodeURIComponent(select)+(filters?'&'+filters:'')+order+'&limit=100';var res=await fetch(url,{headers:SB_HEADERS});var data=await res.json();if(!Array.isArray(data))return JSON.stringify({error:'Query failed',detail:data});return JSON.stringify({rows:data,count:data.length});}catch(e){return JSON.stringify({error:e.message});}
-  }
-  var history=[],loading=false,open=false,suggestionsShown=true,weekSummary='';
-  (async function(){try{var wRes=await fetch(SUPABASE_URL+'/rest/v1/brand_health_weeks?select=week_start,week_label&order=week_start.desc&limit=1',{headers:SB_HEADERS});var weeks=await wRes.json();if(!weeks||!weeks.length)return;var latest=weeks[0];weekSummary='CURRENT WEEK: week_start='+latest.week_start+' ('+( latest.week_label||latest.week_start)+')\nThe latest available week is '+latest.week_start+'.';}catch(e){}})();
-  setTimeout(function(){if(!open){var p=document.getElementById('adam-pulse');if(p)p.style.display='block';}},10000);
-  function adamFormat(text){var e=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');e=e.replace(/```[\w]*\n?([\s\S]*?)```/g,'<pre style="background:#0d1117;color:#e6edf3;border-radius:6px;padding:10px;font-family:\'DM Mono\',monospace;font-size:11px;overflow-x:auto;margin:6px 0;white-space:pre;">$1</pre>');e=e.replace(/`([^`]+)`/g,'<code style="background:#f0f4f8;color:#003A54;padding:1px 4px;border-radius:3px;font-size:11px;">$1</code>');e=e.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');e=e.replace(/\n/g,'<br>');return e;}
-  window.adamToggle=function(){open=!open;document.getElementById('adam-panel').classList.toggle('open',open);if(open&&history.length===0)addMsg('assistant','Adam. I have direct access to the full database — every ASIN, every week, every market.\n\nAsk me about a specific ASIN, a campaign period, or any brand across any date range.');};
-  function addMsg(role,content,typing){var msgs=document.getElementById('adam-messages');var div=document.createElement('div');div.className='adam-msg'+(role==='user'?' user':'');var av;if(role==='assistant'){av=document.createElement('img');av.className='avatar';av.src=AVATAR;av.alt='Adam';}else{av=document.createElement('div');av.className='avatar user-av';av.textContent='U';}var bubble=document.createElement('div');bubble.className='adam-bubble';if(typing)bubble.innerHTML='<div class="adam-typing"><span></span><span></span><span></span></div>';else bubble.innerHTML=adamFormat(content);div.appendChild(av);div.appendChild(bubble);msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;if(!typing&&suggestionsShown&&history.length>1){var s=document.getElementById('adam-suggestions');if(s)s.style.display='none';suggestionsShown=false;}return div;}
-  function updateBubble(el,text){el.querySelector('.adam-bubble').innerHTML=adamFormat(text);document.getElementById('adam-messages').scrollTop=99999;}
-  window.adamSend=async function(text){var inp=document.getElementById('adam-input');var msg=text||inp.value.trim();if(!msg||loading)return;inp.value='';history.push({role:'user',content:msg});addMsg('user',msg);var typingEl=addMsg('assistant','',true);loading=true;document.getElementById('adam-send').disabled=true;try{var systemFull=SYSTEM+(weekSummary?'\n\n'+weekSummary:'');var messages=history.slice();var maxIter=5;for(var iter=0;iter<maxIter;iter++){var res=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:systemFull,messages:messages,tools:TOOLS})});var data=await res.json();if(data.error&&data.error.toString().includes('Rate limit')){updateBubble(typingEl,'⏳ Rate limit — retrying in 15s...');await new Promise(function(r){setTimeout(r,15000);});var res2=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:systemFull,messages:messages,tools:TOOLS})});data=await res2.json();}if(data.error){updateBubble(typingEl,'Error: '+data.error);break;}var stopReason=data.stop_reason||data.stopReason||'end_turn';var content=data.content||[];var textParts=content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');var toolUses=content.filter(function(b){return b.type==='tool_use';});if(stopReason==='tool_use'&&toolUses.length>0){updateBubble(typingEl,(textParts?textParts+'\n\n':'')+'⏳ Querying database...');messages.push({role:'assistant',content:content});var toolResults=[];for(var ti=0;ti<toolUses.length;ti++){var tu=toolUses[ti];var result=await runTool(tu.name,tu.input);toolResults.push({type:'tool_result',tool_use_id:tu.id,content:result});}messages.push({role:'user',content:toolResults});}else{var reply=textParts||data.reply||'No response.';history.push({role:'assistant',content:reply});updateBubble(typingEl,reply);break;}}}catch(e){console.error('Adam error:',e);updateBubble(typingEl,'Error: '+e.message);}loading=false;document.getElementById('adam-send').disabled=false;};
-  document.getElementById('adam-input').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();adamSend();}});
-})();
+
 
 init();
 
