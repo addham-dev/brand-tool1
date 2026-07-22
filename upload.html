@@ -675,7 +675,7 @@ async function parsePacvueReport(file) {
         resolve(Object.values(agg));
       } catch(err) { reject(err); }
     };
-    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.onerror = () => reject(new Error('Browser could not read the file from disk — usually the file was dragged straight from Outlook, is an online-only OneDrive file, or is open in Excel. Save it to Desktop first, close Excel, and re-drop the saved copy.'));
     reader.readAsArrayBuffer(file);
   });
 }
@@ -764,7 +764,7 @@ async function parseExecSummary(file) {
         resolve(results);
       } catch(err){ reject(err); }
     };
-    reader.onerror = ()=>reject(new Error('Failed to read file'));
+    reader.onerror = ()=>reject(new Error('Browser could not read the file from disk — usually the file was dragged straight from Outlook, is an online-only OneDrive file, or is open in Excel. Save it to Desktop first, close Excel, and re-drop the saved copy.'));
     reader.readAsArrayBuffer(file);
   });
 }
@@ -1055,7 +1055,7 @@ async function uploadCoverage() {
         brandAgg[bid].total++;if(sp)brandAgg[bid].sp++;if(sb)brandAgg[bid].sb++;
       });
       Object.entries(brandAgg).forEach(([brand_classified,counts])=>{
-        rows.push({quarter,brand_classified,market,...counts});
+        rows.push({quarter,brand_classified,market,total_asins:counts.total,sp_asins:counts.sp,sb_asins:counts.sb});
         logC(`  ${market} ${brand_classified}: ${counts.sp}/${counts.total} SP (${Math.round(counts.sp/counts.total*100)}%)`,'ok');
       });
     }

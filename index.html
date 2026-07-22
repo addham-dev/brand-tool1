@@ -489,7 +489,7 @@ async function init(){
     buildPeriodSelect();
     await loadPeriod(currentPeriod);
     setTimeout(async function(){
-      try{var cr=await sbFetch('/rest/v1/brand_health_ads_coverage?select=*&order=quarter.asc');if(Array.isArray(cr)){adsCoverageData={};cr.forEach(function(r){if(!adsCoverageData[r.brand_classified])adsCoverageData[r.brand_classified]={};adsCoverageData[r.brand_classified][r.market]={total:r.total_asins,sp:r.sp_asins,sb:r.sb_asins,quarter:r.quarter};});}}catch(e){}
+      try{var cr=await sbFetch('/rest/v1/brand_health_ads_coverage?select=*&order=quarter.asc');if(Array.isArray(cr)){adsCoverageData={};cr.forEach(function(r){if(!adsCoverageData[r.brand_classified])adsCoverageData[r.brand_classified]={};adsCoverageData[r.brand_classified][r.market]={total:(r.total!=null?r.total:r.total_asins)||0,sp:(r.sp!=null?r.sp:r.sp_asins)||0,sb:(r.sb!=null?r.sb:r.sb_asins)||0,quarter:r.quarter};});}}catch(e){}
       try{var sr=await sbFetch('/rest/v1/brand_health_search_terms?select=*&order=week_start.desc,rank.asc');if(Array.isArray(sr)){searchTermsData=sr;renderBrandCards();}}catch(e){}
     },100);
   }catch(err){
