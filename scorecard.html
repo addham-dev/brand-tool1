@@ -627,14 +627,23 @@ function extractWidgetDate(raw){
   return range ? range.end : null;
 }
 function extractWidgetDateRange(raw){
-  for(const row of raw.slice(0,5)){
-    const label = String(row[0]||'');
-    if(/widget date range/i.test(label)){
-      const cell = String(row[1]||'');
-      const dates = cell.match(/(\d{2})-(\d{2})-(\d{4})/g);
-      if(dates && dates.length >= 2){
-        const toIso = (d) => { const [dd,mm,yyyy] = d.split('-'); return `${yyyy}-${mm}-${dd}`; };
-        return { start: toIso(dates[0]), end: toIso(dates[dates.length-1]) };
+  for(const row of raw.slice(0,10)){
+    for(let c = 0; c < Math.min(row.length, 3); c++){
+      const label = String(row[c]||'');
+      if(/widget\s*date\s*range/i.test(label)){
+        // date string could be in the next cell, or appended to the same cell
+        const candidates = [String(row[c+1]||''), label];
+        for(const cell of candidates){
+          const dates = cell.match(/(\d{2})-(\d{2})-(\d{4})/g);
+          if(dates && dates.length >= 2){
+            const toIso = (d) => { const [dd,mm,yyyy] = d.split('-'); return `${yyyy}-${mm}-${dd}`; };
+            return { start: toIso(dates[0]), end: toIso(dates[dates.length-1]) };
+          }
+          if(dates && dates.length === 1){
+            const toIso = (d) => { const [dd,mm,yyyy] = d.split('-'); return `${yyyy}-${mm}-${dd}`; };
+            return { start: toIso(dates[0]), end: toIso(dates[0]) };
+          }
+        }
       }
     }
   }
@@ -699,8 +708,16 @@ function processKeplerExport(sheet, summary, fileName){
 
   const reportType = document.getElementById('reportType').value;
   const detectedRange = extractWidgetDateRange(raw);
-  const weekEnding = (detectedRange && detectedRange.end) || document.getElementById('weekEndingInput').value;
-  const rangeStart = (detectedRange && detectedRange.start) || weekEnding;
+
+  if(reportType !== 'monthly' && !detectedRange){
+    const debugRows = raw.slice(0,4).map(r => JSON.stringify(r.slice(0,3))).join(' | ');
+    summary.filesFailed.push(`${fileName}: could not detect Widget Date Range \u2014 refusing to guess "today". First rows seen: ${debugRows}`);
+    return;
+  }
+  const weekEnding = reportType === 'monthly'
+    ? document.getElementById('weekEndingInput').value
+    : detectedRange.end;
+  const rangeStart = reportType === 'monthly' ? weekEnding : detectedRange.start;
   const period = reportType === 'monthly' ? {month: document.getElementById('monthSelect').value} : {weekEnding, rangeStart};
 
   // Overlap check against already-stored weekly data for the markets this file touches
