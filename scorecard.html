@@ -113,6 +113,7 @@
       <input type="file" id="csvFile" accept=".csv,.xlsx,.xls" multiple style="display:none;">
       <button id="addActualsBtn" class="primary"><i class="ti ti-upload"></i>Upload files</button>
       <button id="dedupeBtn"><i class="ti ti-copy-off"></i>Deduplicate</button>
+      <button id="resetAllBtn" class="ghost-danger" style="border:1px solid var(--red);"><i class="ti ti-alert-triangle"></i>Reset all data</button>
     </div>
   </div>
   <div class="foot-note" style="padding:0 0 12px;">Select multiple weekly Kepler exports at once for backfill \u2014 each file's week-ending date is auto-detected from its "Widget Date Range". For non-Kepler CSV/xlsx: accepts <code>market,brand,spend,revenue,purchases,glanceViews</code> (AMS) or <code>market,tactic,...</code> (DSP), using the date/month set above for every row in that file.</div>
@@ -207,6 +208,7 @@
         <option value="dsp-weekly">DSP \u2014 weekly</option>
         <option value="dsp-monthly">DSP \u2014 monthly backfill</option>
       </select>
+      <button id="clearBucketBtn" class="ghost-danger"><i class="ti ti-trash"></i>Clear this bucket</button>
     </div>
     <table>
       <colgroup><col style="width:14%"><col style="width:26%"><col style="width:14%">
@@ -596,6 +598,18 @@ document.getElementById('dedupeBtn').onclick = () => {
   alert(`Removed ${before-after} duplicate records. Kept one record per market/brand (or tactic) per week or month \u2014 the most recently uploaded.`);
 };
 
+document.getElementById('resetAllBtn').onclick = () => {
+  const totalRecords = state.actuals.length + state.dspActuals.length + state.monthly.length + state.dspMonthly.length;
+  if(!confirm(`This deletes ALL ${totalRecords} spend/performance records (AMS + DSP, weekly + monthly) and cannot be undone. Your comments/actions log is kept. Continue?`)) return;
+  state.actuals = [];
+  state.dspActuals = [];
+  state.monthly = [];
+  state.dspMonthly = [];
+  saveState();
+  render();
+  alert('All spend/performance data cleared. Comments and actions log kept intact. Upload fresh, verified files to start again.');
+};
+
 document.getElementById('addActualsBtn').onclick = () => {
   document.getElementById('csvFile').click();
 };
@@ -609,27 +623,32 @@ function readFileAsync(file, isExcel){
 }
 
 function extractWidgetDate(raw){
-  // raw = array-of-arrays from sheet_to_json({header:1}); look for 'Widget Date Range:' row
+  const range = extractWidgetDateRange(raw);
+  return range ? range.end : null;
+}
+function extractWidgetDateRange(raw){
   for(const row of raw.slice(0,5)){
     const label = String(row[0]||'');
     if(/widget date range/i.test(label)){
       const cell = String(row[1]||'');
       const dates = cell.match(/(\d{2})-(\d{2})-(\d{4})/g);
-      if(dates && dates.length){
-        const last = dates[dates.length-1];
-        const [dd,mm,yyyy] = last.split('-');
-        return `${yyyy}-${mm}-${dd}`;
+      if(dates && dates.length >= 2){
+        const toIso = (d) => { const [dd,mm,yyyy] = d.split('-'); return `${yyyy}-${mm}-${dd}`; };
+        return { start: toIso(dates[0]), end: toIso(dates[dates.length-1]) };
       }
     }
   }
   return null;
+}
+function rangesOverlap(startA, endA, startB, endB){
+  return new Date(startA) <= new Date(endB) && new Date(startB) <= new Date(endA);
 }
 
 document.getElementById('csvFile').onchange = async (e) => {
   const files = Array.from(e.target.files);
   if(!files.length) return;
   const summary = { amsRows:0, dspRows:0, filesProcessed:0, filesFailed:[], glanceViewsNote:false, tripleLift:0,
-                     unmappedMarkets:new Set(), unmappedBrands:new Set() };
+                     unmappedMarkets:new Set(), unmappedBrands:new Set(), overlapWarnings:new Set() };
 
   for(const file of files){
     const isExcel = /\.(xlsx|xls)$/i.test(file.name);
@@ -663,6 +682,7 @@ document.getElementById('csvFile').onchange = async (e) => {
   if(summary.tripleLift) msg += `\n\n${summary.tripleLift} TripleLift rows skipped across all files.`;
   if(summary.unmappedMarkets.size) msg += '\n\nUnmapped markets: ' + [...summary.unmappedMarkets].join(', ');
   if(summary.unmappedBrands.size) msg += '\n\nUnmapped brands: ' + [...summary.unmappedBrands].join(', ');
+  if(summary.overlapWarnings.size) msg += '\n\n\u26a0\ufe0f OVERLAP WARNING \u2014 this data likely double-counts:\n' + [...summary.overlapWarnings].join('\n');
   if(summary.filesFailed.length) msg += '\n\nFailed files:\n' + summary.filesFailed.join('\n');
   alert(msg);
   e.target.value = '';
@@ -678,9 +698,28 @@ function processKeplerExport(sheet, summary, fileName){
         iSpend = col('Spend'), iRevenue = col('Nominal POS'), iOrders = col('Total Orders'), iClicks = col('Clicks');
 
   const reportType = document.getElementById('reportType').value;
-  const detectedDate = extractWidgetDate(raw);
-  const weekEnding = detectedDate || document.getElementById('weekEndingInput').value;
-  const period = reportType === 'monthly' ? {month: document.getElementById('monthSelect').value} : {weekEnding};
+  const detectedRange = extractWidgetDateRange(raw);
+  const weekEnding = (detectedRange && detectedRange.end) || document.getElementById('weekEndingInput').value;
+  const rangeStart = (detectedRange && detectedRange.start) || weekEnding;
+  const period = reportType === 'monthly' ? {month: document.getElementById('monthSelect').value} : {weekEnding, rangeStart};
+
+  // Overlap check against already-stored weekly data for the markets this file touches
+  if(reportType !== 'monthly'){
+    const touchedMarkets = new Set();
+    for(let r = headerRowIdx+1; r < raw.length; r++){
+      const mk = KEPLER_MARKET_MAP[String(raw[r][iMarket]||'').trim().toLowerCase()];
+      if(mk) touchedMarkets.add(mk);
+    }
+    touchedMarkets.forEach(mk => {
+      const existingAms = state.actuals.filter(e => e.market===mk && e.rangeStart);
+      const existingDsp = state.dspActuals.filter(e => e.market===mk && e.rangeStart);
+      [...existingAms, ...existingDsp].forEach(e => {
+        if(rangesOverlap(rangeStart, weekEnding, e.rangeStart, e.weekEnding)){
+          summary.overlapWarnings.add(`${mk}: new file [${rangeStart}\u2192${weekEnding}] overlaps existing [${e.rangeStart}\u2192${e.weekEnding}]`);
+        }
+      });
+    });
+  }
 
   const amsAgg = {}, dspAgg = {};
 
@@ -791,8 +830,9 @@ function renderAudit(){
   }
   withIdx.forEach(({e,i}) => {
     const tr = document.createElement('tr');
+    const dateLabel = e.rangeStart && e.rangeStart !== e.weekEnding ? `${e.rangeStart} \u2192 ${e.weekEnding}` : (e.weekEnding || e.month || '\u2014');
     tr.innerHTML = `
-      <td>${e.weekEnding || e.month || '\u2014'}</td>
+      <td>${dateLabel}</td>
       <td>${labelFn(e)}</td>
       <td class="num">${fmtEUR(e.spend)}</td>
       <td class="num">${fmtEUR(e.revenue)}</td>
@@ -804,6 +844,18 @@ function renderAudit(){
   });
 }
 document.getElementById('auditSource').onchange = renderAudit;
+document.getElementById('clearBucketBtn').onclick = () => {
+  const source = document.getElementById('auditSource').value;
+  const [pivot, kind] = source.split('-');
+  const label = document.getElementById('auditSource').selectedOptions[0].textContent;
+  if(!confirm(`Delete ALL ${label} records? This cannot be undone.`)) return;
+  if(pivot==='ams' && kind==='weekly') state.actuals = [];
+  else if(pivot==='ams' && kind==='monthly') state.monthly = [];
+  else if(pivot==='dsp' && kind==='weekly') state.dspActuals = [];
+  else state.dspMonthly = [];
+  saveState();
+  render();
+};
 document.getElementById('auditTableBody').addEventListener('click', e=>{
   const btn = e.target.closest('[data-audit-del]');
   if(!btn) return;
