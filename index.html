@@ -3,182 +3,153 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-  <title>Hasbro EU Brand Health</title>
+  <title>Hasbro Brand Health — Data Upload</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-RF2D8HGXG0"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-RF2D8HGXG0");</script>
   <style>
     :root {
-      --blue:#009CDE;--blue-dark:#0077A8;--blue-light:#E5F6FF;
-      --bg:#F0F8FC;--white:#fff;--text:#003A54;--text2:#5A8DA0;
-      --text3:#A0C8D8;--border:#D0EAF5;
-      --green:#00B388;--green-bg:#E5FFF6;
-      --red:#E8423F;--red-bg:#FFF0F0;
-      --amber:#F5A623;--amber-bg:#FFF8EC;
-      --purple:#9B59B6;--purple-bg:#F5EEF8;
-      --ad-color:#4F46E5;--ad-bg:#EEF2FF;
-      --org-color:#009CDE;--org-bg:#E5F6FF;
+      --blue:#009CDE; --blue-dark:#0077A8; --blue-light:#E5F6FF;
+      --bg:#F0F8FC; --white:#fff; --text:#003A54; --text2:#5A8DA0;
+      --text3:#A0C8D8; --border:#D0EAF5;
+      --green:#00B388; --green-bg:#E5FFF6;
+      --red:#E8423F; --red-bg:#FFF0F0;
+      --amber:#F5A623; --amber-bg:#FFF8EC;
+      --purple:#9B59B6; --purple-bg:#F5EEF8;
+      --ad-color:#4F46E5; --ad-bg:#EEF2FF;
       --shadow:0 2px 16px rgba(0,156,222,0.08);
-      --shadow-lg:0 8px 32px rgba(0,156,222,0.15);
     }
     *{margin:0;padding:0;box-sizing:border-box;}
     body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;}
+
     header{background:#1F1646;padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:68px;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
     .logo{display:flex;align-items:center;gap:16px;}
     .logo-img{height:36px;width:auto;display:block;}
     .logo-divider{width:1px;height:32px;background:rgba(255,255,255,0.2);}
-    .logo-text{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:white;letter-spacing:0.5px;}
+    .logo-text{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:white;}
     .logo-sub{font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;}
-    .header-right{display:flex;align-items:center;gap:14px;}
+    .admin-badge{background:rgba(255,255,255,0.12);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.8);letter-spacing:1px;}
     .nav-links{display:flex;gap:4px;}
-    .nav-link{padding:6px 16px;border-radius:6px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:rgba(255,255,255,0.65);text-decoration:none;transition:all 0.2s;cursor:pointer;}
+    .nav-link{padding:6px 16px;border-radius:6px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:rgba(255,255,255,0.65);text-decoration:none;transition:all 0.2s;}
     .nav-link:hover{background:rgba(255,255,255,0.1);color:white;}
-    .nav-link.active{background:var(--blue);color:white;}
-    .week-badge{background:rgba(255,255,255,0.1);border-radius:6px;padding:6px 12px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,0.8);}
-    .currency-toggle{display:flex;background:rgba(255,255,255,0.1);border-radius:6px;overflow:hidden;}
-    .currency-btn{padding:6px 12px;border:none;background:transparent;color:rgba(255,255,255,0.6);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;}
-    .currency-btn.active{background:var(--blue);color:white;}
-    .filter-bar{background:white;padding:10px 40px;display:flex;align-items:center;gap:14px;border-bottom:2px solid var(--border);box-shadow:var(--shadow);flex-wrap:wrap;}
-    .filter-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;}
-    .market-tabs,.sort-tabs,.period-tabs{display:flex;gap:4px;}
-    .market-tab,.sort-tab,.period-tab{padding:6px 14px;border-radius:6px;border:2px solid var(--border);background:var(--blue-light);color:var(--blue-dark);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;}
-    .market-tab.active,.sort-tab.active,.period-tab.active{background:var(--blue);color:white;border-color:var(--blue);}
-    .divider{width:1px;height:24px;background:var(--border);flex-shrink:0;}
-    .week-select{padding:6px 12px;border-radius:6px;border:2px solid var(--border);background:var(--blue-light);color:var(--blue-dark);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;outline:none;}
-    main{padding:24px 40px;max-width:1600px;margin:0 auto;display:grid;gap:28px;}
-    .section-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
-    .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
-    .sentiment-bar{display:flex;gap:16px;flex-wrap:wrap;}
-    .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;}
-    .metric-card{background:white;border-radius:14px;border:2px solid var(--border);padding:16px;position:relative;box-shadow:var(--shadow);}
-    .metric-card.m-happy{border-color:var(--green);}
-    .metric-card.m-sad{border-color:var(--amber);}
-    .metric-card.m-cry{border-color:var(--red);}
-    .metric-emoji{position:absolute;top:12px;right:12px;font-size:22px;line-height:1;}
-    .metric-label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
-    .metric-value{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--text);line-height:1.1;}
-    .metric-sub{font-size:11px;color:var(--text2);margin-top:6px;font-family:'DM Mono',monospace;}
-    .metric-sub .yoy-up{color:var(--green);font-weight:700;}
-    .metric-sub .yoy-down{color:var(--red);font-weight:700;}
-    .sentiment-pill{display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:50px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;border:2px solid;}
-    .sentiment-pill.happy{background:var(--green-bg);border-color:var(--green);color:var(--green);}
-    .sentiment-pill.sad{background:var(--amber-bg);border-color:var(--amber);color:var(--amber);}
-    .sentiment-pill.cry{background:var(--red-bg);border-color:var(--red);color:var(--red);}
-    .brand-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;}
-    .brand-card{background:white;border-radius:14px;padding:18px;box-shadow:var(--shadow);border:2px solid var(--border);cursor:pointer;transition:all 0.25s;position:relative;overflow:hidden;}
-    .brand-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-3px);}
-    .brand-card.selected{box-shadow:var(--shadow-lg);border-width:3px;}
-    .brand-card.happy{border-color:var(--green);}
-    .brand-card.sad{border-color:var(--amber);}
-    .brand-card.cry{border-color:var(--red);}
-    .brand-card-accent{position:absolute;top:0;left:0;right:0;height:4px;}
-    .brand-sentiment-emoji{position:absolute;top:14px;right:14px;font-size:26px;line-height:1;}
-    .brand-card-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--text);margin-bottom:3px;padding-right:40px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .brand-sentiment-label{font-size:10px;font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;}
-    .brand-sentiment-label.happy{color:var(--green);}
-    .brand-sentiment-label.sad{color:var(--amber);}
-    .brand-sentiment-label.cry{color:var(--red);}
-    .brand-metrics{display:grid;gap:6px;}
-    .bm-row{display:flex;justify-content:space-between;align-items:center;}
-    .bm-label{font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;}
-    .bm-right{display:flex;align-items:center;gap:4px;}
-    .bm-value{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:var(--text);}
-    .yoy{font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;}
-    .yoy-up{color:var(--green);background:var(--green-bg);}
-    .yoy-down{color:var(--red);background:var(--red-bg);}
-    .yoy-na{color:var(--text3);}
-    .brand-divider{height:1px;background:var(--border);margin:8px 0;}
-    .ltv-badge{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--purple);background:var(--purple-bg);padding:2px 6px;border-radius:4px;}
-    .supply-alert{margin-top:8px;padding:5px 8px;border-radius:5px;font-size:10px;font-weight:700;text-align:center;}
-    .supply-alert.show-red{background:var(--red-bg);color:var(--red);}
-    .supply-alert.show-amber{background:var(--amber-bg);color:var(--amber);}
-    .bm-expand-row{display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
-    .bm-expand-row:hover .bm-label{color:var(--blue);}
-    .expand-toggle{font-size:9px;color:var(--text3);transition:transform 0.2s;display:inline-block;}
-    .expand-toggle.open{transform:rotate(90deg);}
-    .bm-sub-rows{display:none;margin-left:8px;margin-top:4px;border-left:2px solid var(--border);padding-left:8px;}
-    .bm-sub-rows.open{display:grid;gap:3px;}
-    .bm-sub-row{display:flex;justify-content:space-between;align-items:center;}
-    .bm-sub-label{font-size:9px;color:var(--text2);font-weight:600;}
-    .bm-sub-value{font-family:'DM Mono',monospace;font-size:10px;color:var(--text);}
-    .dot-org{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--org-color);margin-right:3px;}
-    .dot-ad{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ad-color);margin-right:3px;}
-    .rca-panel{background:white;border-radius:16px;box-shadow:var(--shadow);border:2px solid var(--border);overflow:hidden;}
-    .rca-header{background:var(--blue-light);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--border);}
-    .rca-brand{display:flex;align-items:center;gap:12px;}
-    .rca-emoji{font-size:32px;}
-    .rca-name{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--blue-dark);}
-    .rca-subtitle{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:1px;}
-    .rca-tabs{display:flex;gap:4px;flex-wrap:wrap;}
-    .rca-tab{padding:7px 14px;border-radius:6px;border:2px solid var(--border);background:white;color:var(--text2);font-family:'Inter',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.2s;text-transform:uppercase;letter-spacing:0.5px;}
-    .rca-tab.active{background:var(--blue);color:white;border-color:var(--blue);}
-    .rca-content{padding:20px 24px;}
-    .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
-    .kpi-card{background:var(--bg);border-radius:10px;padding:14px;border:1px solid var(--border);}
-    .kpi-label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
-    .kpi-value{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;line-height:1;}
-    .kpi-value.c-blue{color:var(--blue);}
-    .kpi-value.c-green{color:var(--green);}
-    .kpi-value.c-amber{color:var(--amber);}
-    .kpi-value.c-red{color:var(--red);}
-    .kpi-value.c-purple{color:var(--purple);}
-    .kpi-value.c-text{color:var(--text);}
-    .kpi-yoy{font-size:11px;font-weight:600;margin-top:4px;color:var(--text2);}
-    .kpi-ads-split{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
-    .kpi-split-pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;}
-    .kpi-split-pill.org{background:var(--org-bg);color:var(--org-color);}
-    .kpi-split-pill.ad{background:var(--ad-bg);color:var(--ad-color);}
-    .data-table{width:100%;border-collapse:collapse;}
-    .data-table th{text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;border-bottom:2px solid var(--border);white-space:nowrap;}
-    .data-table th.r{text-align:right;}
-    .data-table td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:12px;}
-    .data-table tr:last-child td{border-bottom:none;}
-    .data-table tr:hover td{background:var(--blue-light);}
-    .td-asin{font-family:'DM Mono',monospace;font-size:10px;color:var(--blue);}
-    .td-name{color:var(--text2);font-weight:500;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
-    .td-val{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);text-align:right;}
-    .td-yoy{font-size:10px;font-weight:700;text-align:right;}
-    .mp{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;}
-    .mp-GB{background:#E8F4FF;color:#0077A8;}
-    .mp-DE{background:#FFF3E0;color:#E65100;}
-    .mp-FR{background:#F3E5F5;color:#6A1B9A;}
-    .mp-IT{background:#E8F5E9;color:#2E7D32;}
-    .mp-ES{background:#FFF8E1;color:#F57F17;}
-    .bar-bg{height:4px;background:var(--border);border-radius:2px;margin-top:3px;}
-    .bar-fg{height:100%;background:var(--blue);border-radius:2px;}
-    .flag{font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px;}
-    .flag-ad{background:var(--ad-bg);color:var(--ad-color);}
-    .pivot-table-wrap{overflow-x:auto;}
-    .pivot-table{width:100%;border-collapse:collapse;min-width:600px;}
-    .pivot-table th{text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;border-bottom:2px solid var(--border);white-space:nowrap;background:var(--bg);}
-    .pivot-table th.r{text-align:right;}
-    .pivot-table td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:12px;}
-    .pivot-table tr:hover td{background:var(--blue-light);}
-    .pivot-table tr:last-child td{border-bottom:none;font-weight:700;background:var(--blue-light);}
-    .supply-panel{background:white;border-radius:16px;box-shadow:var(--shadow);border:2px solid #FFD0D0;overflow:hidden;}
-    .supply-header{background:linear-gradient(135deg,#FFF0F0,#FFF8EC);padding:16px 24px;border-bottom:2px solid #FFD0D0;display:flex;align-items:center;justify-content:space-between;}
-    .supply-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:1px;}
-    .loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;height:400px;gap:16px;}
-    .loading-text{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text2);}
-    .loading-bar{width:200px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
-    .loading-bar::after{content:'';display:block;height:100%;width:40%;background:var(--blue);border-radius:2px;animation:lb 1.2s ease infinite;}
+    .nav-link.active{background:white;color:var(--blue-dark);}
+
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,58,84,0.88);z-index:1000;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+    .overlay.on{display:flex;}
+    .overlay-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:white;}
+    .overlay-sub{font-size:12px;color:rgba(255,255,255,0.6);font-family:'DM Mono',monospace;}
+    .overlay-bar{width:300px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;overflow:hidden;}
+    .overlay-bar::after{content:'';display:block;height:100%;width:40%;background:var(--blue);border-radius:2px;animation:lb 1.2s ease infinite;}
     @keyframes lb{0%{transform:translateX(-150%)}100%{transform:translateX(400%)}}
-    .no-data{text-align:center;padding:80px 40px;}
-    .no-data-emoji{font-size:64px;margin-bottom:16px;}
-    .no-data-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--text2);margin-bottom:8px;}
-    .empty{text-align:center;padding:40px;color:var(--text3);font-size:13px;}
-    .oos-green{color:var(--green);font-weight:700;}
-    .oos-amber{color:var(--amber);font-weight:700;}
-    .oos-red{color:var(--red);font-weight:700;}
-    .cvr-green{color:var(--green);font-weight:700;}
-    .cvr-amber{color:var(--amber);font-weight:700;}
-    .cvr-red{color:var(--red);font-weight:700;}
+    .overlay-progress{font-family:'DM Mono',monospace;font-size:13px;color:rgba(255,255,255,0.8);}
+
+    #login-section{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 68px);}
+    .login-box{background:white;border-radius:16px;padding:40px;width:360px;box-shadow:var(--shadow);border:2px solid var(--border);text-align:center;}
+    .login-icon{font-size:48px;margin-bottom:16px;}
+    .login-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;margin-bottom:6px;}
+    .login-sub{font-size:13px;color:var(--text2);margin-bottom:24px;}
+    .login-input{width:100%;padding:12px 16px;border:2px solid var(--border);border-radius:8px;font-family:'Inter',sans-serif;font-size:14px;outline:none;margin-bottom:12px;transition:border-color 0.2s;}
+    .login-input:focus{border-color:var(--blue);}
+    .login-btn{width:100%;background:var(--blue);color:white;border:none;border-radius:8px;padding:12px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
+    .login-btn:hover{background:var(--blue-dark);}
+    .login-error{color:var(--red);font-size:12px;margin-top:8px;display:none;}
+
+    #main-section{display:none;}
+    main{padding:32px 40px;max-width:1000px;margin:0 auto;display:grid;gap:24px;}
+    .page-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;}
+    .page-sub{font-size:14px;color:var(--text2);margin-top:4px;}
+
+    .section-card{background:white;border-radius:14px;padding:24px;box-shadow:var(--shadow);border:2px solid var(--border);}
+    .section-card.amber-border{border-color:var(--amber);}
+    .section-card.ad-border{border-color:var(--ad-color);}
+    .section-card.purple-border{border-color:var(--purple);}
+    .card-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:16px;}
+    .card-title.amber{color:var(--amber);}
+    .card-title.ad{color:var(--ad-color);}
+    .card-title.purple{color:var(--purple);}
+
+    .note-box{background:var(--blue-light);border:1px solid var(--blue);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--text2);margin-bottom:16px;}
+    .note-box.ad-note{background:var(--ad-bg);border-color:var(--ad-color);}
+
+    .input-group{display:flex;flex-direction:column;gap:6px;}
+    .input-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;}
+    .date-input{padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color 0.2s;background:white;color:var(--text);}
+    .date-input:focus{border-color:var(--blue);}
+
+    /* Smart drop zone */
+    .smart-drop{border:2px dashed var(--border);border-radius:14px;padding:40px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--blue-light);margin-bottom:16px;}
+    .smart-drop:hover,.smart-drop.drag-over{border-color:var(--blue);background:#D0EEFF;}
+    .smart-drop-icon{font-size:36px;margin-bottom:10px;}
+    .smart-drop-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue-dark);margin-bottom:4px;}
+    .smart-drop-sub{font-size:12px;color:var(--text2);}
+
+    /* Detected file cards */
+    .detected-file{display:flex;align-items:center;gap:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;padding:10px 14px;}
+    .detected-file.warn{background:var(--amber-bg);border-color:var(--amber);}
+    .df-icon{font-size:16px;flex-shrink:0;}
+    .df-info{flex:1;min-width:0;}
+    .df-type{font-size:12px;font-weight:700;color:var(--text);}
+    .df-name{font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .df-week{font-size:11px;font-weight:700;}
+    .df-week.ok{color:var(--green);}
+    .df-week.warn{color:var(--amber);}
+    .df-remove{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:2px 6px;flex-shrink:0;}
+
+    /* Upload cards (legacy style for quarterly) */
+    .upload-card{background:white;border:2px dashed var(--border);border-radius:14px;padding:20px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;}
+    .upload-card:hover{border-color:var(--blue);background:var(--blue-light);}
+    .upload-card.loaded{border-color:var(--green);border-style:solid;background:var(--green-bg);}
+    .uc-icon{font-size:28px;margin-bottom:8px;}
+    .uc-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text);margin-bottom:3px;}
+    .uc-sub{font-size:10px;color:var(--text2);line-height:1.5;}
+    .upload-card.loaded .uc-sub{color:var(--green);font-weight:600;}
+    .uc-check{position:absolute;top:8px;right:8px;font-size:14px;display:none;}
+    .upload-card.loaded .uc-check{display:block;}
+    input[type="file"]{display:none;}
+
+    /* Ads queue drop zone */
+    .ads-drop{border:2px dashed rgba(79,70,229,0.3);border-radius:12px;padding:30px;text-align:center;cursor:pointer;background:var(--ad-bg);transition:all 0.2s;}
+    .ads-drop:hover,.ads-drop.drag-over{border-color:var(--ad-color);}
+    .ads-queue-item{display:flex;align-items:center;gap:10px;border-radius:8px;padding:8px 12px;margin-top:8px;}
+    .ads-queue-item.ok{background:var(--green-bg);border:1px solid var(--green);}
+    .ads-queue-item.warn{background:var(--amber-bg);border:1px solid var(--amber);}
+    .aqi-name{font-size:11px;font-weight:700;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .aqi-week{font-size:11px;}
+    .aqi-week.ok{color:var(--green);}
+    .aqi-week.warn{color:var(--amber);}
+
+    .process-btn{background:var(--blue);color:white;border:none;border-radius:10px;padding:14px 32px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 12px rgba(0,156,222,0.3);}
+    .process-btn:hover:not(:disabled){background:var(--blue-dark);transform:translateY(-1px);}
+    .process-btn:disabled{background:var(--text3);cursor:not-allowed;transform:none;box-shadow:none;}
+    .ad-btn{background:var(--ad-color) !important;box-shadow:0 4px 12px rgba(79,70,229,0.3) !important;}
+    .ad-btn:hover:not(:disabled){background:#4338CA !important;}
+    .amber-btn{background:var(--amber) !important;box-shadow:0 4px 12px rgba(245,166,35,0.3) !important;color:#5a3a00 !important;}
+    .purple-btn{background:var(--purple) !important;box-shadow:0 4px 12px rgba(155,89,182,0.3) !important;}
+
+    .log-area{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);height:160px;overflow-y:auto;margin-top:16px;line-height:1.8;}
+    .log-line{display:block;}
+    .log-line.ok{color:var(--green);}
+    .log-line.err{color:var(--red);}
+    .log-line.info{color:var(--blue);}
+
+    .history-table{width:100%;border-collapse:collapse;margin-top:12px;}
+    .history-table th{text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;border-bottom:2px solid var(--border);}
+    .history-table td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;font-family:'DM Mono',monospace;}
+    .history-table tr:last-child td{border-bottom:none;}
+    .del-btn{background:var(--red-bg);color:var(--red);border:1px solid var(--red);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:700;}
   </style>
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-RF2D8HGXG0"></script>
-  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-RF2D8HGXG0');</script>
 </head>
 <body>
+
+<div class="overlay" id="overlay">
+  <div class="overlay-title" id="overlay-title">Uploading to Supabase...</div>
+  <div class="overlay-sub" id="overlay-sub">Processing files</div>
+  <div class="overlay-bar"></div>
+  <div class="overlay-progress" id="overlay-progress">0 / 0 rows</div>
+</div>
+
 <header>
   <div class="logo">
     <img src="https://corporate.hasbro.com/_next/image?url=%2Fimages%2Fhasbro_logo.png&w=256&q=75" alt="Hasbro" class="logo-img">
@@ -186,1237 +157,1369 @@
     <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon" class="logo-img" style="height:22px;filter:brightness(0) invert(1);opacity:0.85;">
     <div class="logo-divider"></div>
     <div>
-      <div class="logo-text">Brand Health Dashboard</div>
-      <div class="logo-sub">EU5 Weekly Performance</div>
+      <div class="logo-text">Brand Health — Data Upload</div>
+      <div class="logo-sub">Admin Only</div>
     </div>
   </div>
-  <div class="header-right">
+  <div style="display:flex;align-items:center;gap:12px;">
     <div class="nav-links">
-      <a class="nav-link active" href="index.html">Dashboard</a>
-      <a class="nav-link" href="kam.html">KAM Hub</a>
+      <a class="nav-link" href="index.html">Dashboard</a>
       <a class="nav-link" href="insights.html">Insights</a>
-      <a class="nav-link" href="upload.html">Upload</a>
-      <a class="nav-link" href="https://addham-dev.github.io/hasbro-sales-ticker/" target="_blank">Live Sales ↗</a>
+      <a class="nav-link active" href="upload.html">Upload</a>
     </div>
-    <div class="week-badge" id="week-badge">Loading...</div>
-    <div class="currency-toggle">
-      <button class="currency-btn active" id="btn-eur" onclick="setCurrency('eur')">€ EUR</button>
-      <button class="currency-btn" id="btn-gbp" onclick="setCurrency('gbp')">£ GBP</button>
-      <button class="currency-btn" id="btn-usd" onclick="setCurrency('usd')">$ USD</button>
-    </div>
+    <div class="admin-badge">🔒 ADMIN</div>
   </div>
 </header>
-<div class="filter-bar">
-  <span class="filter-label">View</span>
-  <div class="period-tabs">
-    <button class="period-tab active" onclick="setPeriodMode('week',this)">Weekly</button>
-    <button class="period-tab" onclick="setPeriodMode('month',this)">Monthly</button>
-    <button class="period-tab" onclick="setPeriodMode('quarter',this)">Quarterly</button>
-    <button class="period-tab" onclick="setPeriodMode('year',this)">Annual</button>
-    <button class="period-tab" onclick="setPeriodMode('custom',this)">Custom</button>
-  </div>
-  <div class="divider"></div>
-  <span class="filter-label">vs</span>
-  <div class="period-tabs">
-    <button class="period-tab comp-tab active" onclick="setComparison('wow',this)">WoW</button>
-    <button class="period-tab comp-tab" onclick="setComparison('4w',this)">4W</button>
-    <button class="period-tab comp-tab" onclick="setComparison('yoy',this)">YoY</button>
-  </div>
-  <div class="divider"></div>
-  <span class="filter-label">Market</span>
-  <div class="market-tabs">
-    <button class="market-tab active" onclick="setMarket('ALL',this)">All EU5</button>
-    <button class="market-tab" onclick="setMarket('GB',this)">🇬🇧 GB</button>
-    <button class="market-tab" onclick="setMarket('DE',this)">🇩🇪 DE</button>
-    <button class="market-tab" onclick="setMarket('FR',this)">🇫🇷 FR</button>
-    <button class="market-tab" onclick="setMarket('IT',this)">🇮🇹 IT</button>
-    <button class="market-tab" onclick="setMarket('ES',this)">🇪🇸 ES</button>
-  </div>
-  <div class="divider"></div>
-  <span class="filter-label" id="period-label">Week</span>
-  <select class="week-select" id="week-select" onchange="loadPeriod(this.value)"><option>Loading...</option></select>
-  <span id="custom-range-controls" style="display:none;align-items:center;gap:8px;">
-    <input type="date" id="custom-start-date" class="week-select" style="font-family:inherit;" onchange="onCustomRangeChange()">
-    <span style="color:var(--text2);font-size:12px;">to</span>
-    <input type="date" id="custom-end-date" class="week-select" style="font-family:inherit;" onchange="onCustomRangeChange()">
-  </span>
-  <div class="divider"></div>
-  <span class="filter-label">Sort</span>
-  <div class="sort-tabs">
-    <button class="sort-tab active" onclick="setSort('revenue',this)">Revenue</button>
-    <button class="sort-tab" onclick="setSort('sentiment',this)">Sentiment</button>
-    <button class="sort-tab" onclick="setSort('ltv',this)">LTV</button>
+
+<div id="login-section">
+  <div class="login-box">
+    <div class="login-icon">🔐</div>
+    <div class="login-title">Admin Access</div>
+    <div class="login-sub">Enter your password to access the data upload panel</div>
+    <input type="password" class="login-input" id="password-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkPassword()">
+    <button class="login-btn" onclick="checkPassword()">Sign In →</button>
+    <div class="login-error" id="login-error">Incorrect password. Try again.</div>
   </div>
 </div>
-<div id="loading-screen" class="loading-screen">
-  <div class="loading-text">Loading brand data...</div>
-  <div class="loading-bar"></div>
-</div>
-<div id="no-data-screen" class="no-data" style="display:none">
-  <div class="no-data-emoji">📭</div>
-  <div class="no-data-title">No data uploaded yet</div>
-</div>
-<main id="main-content" style="display:none">
+
+<div id="main-section">
+<main>
   <div>
-    <div class="section-title">Key Metrics — Portfolio Overview</div>
-    <div class="metrics-grid" id="overall-metrics"></div>
-    <div class="section-title" style="margin-top:16px;">Key Metrics — Advertising</div>
-    <div class="metrics-grid" id="ads-metrics"></div>
+    <div class="page-title">Weekly Data Upload</div>
+    <div class="page-sub">Upload Vendor Central reports to update the Brand Health Dashboard. All historical weeks are preserved for trend analysis.</div>
   </div>
-  <div>
-    <div class="section-title">Portfolio Health Summary</div>
-    <div class="sentiment-bar" id="sentiment-bar"></div>
+
+  <!-- VC SMART UPLOAD -->
+  <div class="section-card">
+    <input type="hidden" id="week-start">
+    <input type="hidden" id="week-end">
+    <div class="card-title">Weekly Vendor Central Reports</div>
+    <div class="note-box">Drop Sales, Traffic and Inventory files — week dates are auto-detected from the filename. Multiple files can be dropped at once.</div>
+    <div class="smart-drop" id="vc-dropzone" ondragover="vcDragOver(event)" ondragleave="vcDragLeave()" ondrop="vcDrop(event)" onclick="document.getElementById('vc-file-input').click()">
+      <div class="smart-drop-icon">📂</div>
+      <div class="smart-drop-title">Drop VC files or click to browse</div>
+      <div class="smart-drop-sub">Sales · Traffic · Inventory — week auto-detected from filename</div>
+      <input type="file" id="vc-file-input" accept=".csv,.xlsx" multiple onchange="vcFileSelect(event)">
+    </div>
+    <div id="vc-detected-list" style="display:grid;gap:8px;margin-bottom:16px;"></div>
+    <button class="process-btn" id="vc-process-btn" onclick="processVC()" disabled>🚀 Process & Push to Dashboard</button>
+    <div class="log-area" id="vc-log"><span class="log-line">Drop your weekly VC reports above to get started.</span></div>
   </div>
-  <div>
-    <div class="section-title">Brand Scorecards — click for Root Cause Analysis</div>
-    <div class="brand-grid" id="brand-grid"></div>
+
+  <!-- ADS BULK UPLOAD -->
+  <div class="section-card ad-border">
+    <div class="card-title ad">🎯 Weekly Ads Report — Pacvue Query Report</div>
+    <div class="note-box ad-note">Drop your weekly Pacvue <b>Query report</b> .xlsx file. Week is auto-detected from the filename. Drop multiple files to bulk upload multiple weeks at once.</div>
+    <div class="ads-drop" id="ads-dropzone" ondragover="adsDragOver(event)" ondragleave="adsDragLeave()" ondrop="adsDrop(event)" onclick="document.getElementById('ads-file-input').click()">
+      <div style="font-size:32px;margin-bottom:8px;">📊</div>
+      <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--ad-color);margin-bottom:4px;">Drop Pacvue Query report files here</div>
+      <div style="font-size:12px;color:var(--text2);">Multiple files supported — week auto-detected from each file</div>
+      <input type="file" id="ads-file-input" accept=".xlsx" multiple onchange="adsFileSelect(event)">
+    </div>
+    <div id="ads-queue-list" style="margin-top:8px;"></div>
+    <button class="process-btn ad-btn" id="ads-process-btn" onclick="processAdsQueue()" disabled style="margin-top:16px;">🎯 Process & Upload All Ads Reports</button>
+    <div class="log-area" id="ads-log" style="height:200px;"><span class="log-line">Drop your weekly Pacvue Query report above.</span></div>
   </div>
-  <div class="rca-panel" id="rca-panel" style="display:none">
-    <div class="rca-header">
-      <div class="rca-brand">
-        <div class="rca-emoji" id="rca-emoji">—</div>
-        <div>
-          <div class="rca-name" id="rca-name">—</div>
-          <div class="rca-subtitle">Root Cause Analysis</div>
-        </div>
+
+  <!-- QUARTERLY LOYALTY -->
+  <div class="section-card amber-border">
+    <div class="card-title amber">Quarterly Loyalty Data — Upload Once Per Quarter</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">Upload the GB Repeat Purchase Behaviour report (Brand view). This data persists until you replace it — upload in Jan, Apr, Jul, Oct.</div>
+    <div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;margin-bottom:16px;">
+      <div class="input-group">
+        <label class="input-label">Quarter</label>
+        <select class="date-input" id="loyalty-quarter" style="cursor:pointer;">
+          <option value="Q1-2026">Q1 2026 (Jan-Mar)</option>
+          <option value="Q2-2026" selected>Q2 2026 (Apr-Jun)</option>
+          <option value="Q3-2026">Q3 2026 (Jul-Sep)</option>
+          <option value="Q4-2026">Q4 2026 (Oct-Dec)</option>
+          <option value="Q1-2027">Q1 2027 (Jan-Mar)</option>
+        </select>
       </div>
-      <div class="rca-tabs">
-        <button class="rca-tab active" onclick="setTab('revenue',this)">Revenue</button>
-        <button class="rca-tab" onclick="setTab('traffic',this)">Traffic</button>
-        <button class="rca-tab" onclick="setTab('conversion',this)">Conversion</button>
-        <button class="rca-tab" onclick="setTab('supply',this)">Supply &amp; OOS</button>
-        <button class="rca-tab" onclick="setTab('ads',this)">Ads</button>
-        <button class="rca-tab" onclick="setTab('adopp',this)">Ad Opportunities</button>
-        <button class="rca-tab" onclick="setTab('search',this)">🔍 Search Terms</button>
-        <button class="rca-tab" onclick="setTab('trends',this)">Trends</button>
+      <div class="upload-card" id="card-loyalty" onclick="document.getElementById('file-loyalty').click()" ondragover="dOver(event,'card-loyalty')" ondragleave="dLeave('card-loyalty')" ondrop="dDrop(event,'loyalty')" style="border-color:var(--amber);background:var(--amber-bg);">
+        <div class="uc-icon">🔄</div>
+        <div class="uc-title">Repeat Purchase Report</div>
+        <div class="uc-sub" id="lbl-loyalty">GB Brand View CSV · Quarterly cadence</div>
+        <div class="uc-check">✅</div>
+        <input type="file" id="file-loyalty" accept=".csv,.xlsx" onchange="onFile(event,'loyalty')">
       </div>
+      <button class="process-btn amber-btn" id="loyalty-btn" onclick="uploadLoyalty()" disabled style="padding:12px 20px;font-size:13px;align-self:end;">Upload Loyalty</button>
     </div>
-    <div class="rca-content">
-      <div class="kpi-row" id="kpi-row"></div>
-      <div id="table-wrap"></div>
-    </div>
+    <div class="log-area" id="loyalty-log" style="height:90px;"><span class="log-line">Upload the repeat purchase CSV to add loyalty metrics.</span></div>
   </div>
-  <div class="supply-panel" id="preorder-panel" style="display:none;">
-    <div class="supply-header">
-      <div class="supply-title">📦 Pre-Order &amp; Pending Ship Revenue</div>
-      <span style="font-size:11px;color:var(--text2);font-weight:600;">Cumulative order book · all history · drains as units ship · independent of period selector</span>
-    </div>
-    <div id="preorder-items"></div>
-  </div>
-  <div class="supply-panel">
-    <div class="supply-header">
-      <div class="supply-title" id="supply-title">⚠️ Supply Gap Alerts</div>
-      <div style="display:flex;align-items:center;gap:12px;">
-        <button id="supply-reset-btn" onclick="resetSupplyFilter()" style="display:none;padding:4px 10px;border-radius:5px;border:1px solid var(--red);background:var(--red-bg);color:var(--red);font-size:10px;font-weight:700;cursor:pointer;">Show All Brands</button>
-        <span style="font-size:11px;color:var(--text2);font-weight:600;">OOS &gt; 10% or Unfilled &gt; 50</span>
+
+  <!-- QUARTERLY ADS COVERAGE -->
+  <div class="section-card ad-border">
+    <div class="card-title ad">📋 Quarterly Ads Coverage — ASIN Coverage</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">Upload the EMEA AMZ Ads quarterly Excel file (one sheet per market: UK/DE/FR/IT/ES). Reads Sponsored Product ☑ and Sponsored Brand ☑ columns to calculate catalogue coverage per brand per market.</div>
+    <div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;margin-bottom:16px;">
+      <div class="input-group">
+        <label class="input-label">Quarter</label>
+        <select class="date-input" id="coverage-quarter" style="cursor:pointer;">
+          <option value="Q1-2026">Q1 2026 (Jan-Mar)</option>
+          <option value="Q2-2026" selected>Q2 2026 (Apr-Jun)</option>
+          <option value="Q3-2026">Q3 2026 (Jul-Sep)</option>
+          <option value="Q4-2026">Q4 2026 (Oct-Dec)</option>
+          <option value="Q1-2027">Q1 2027 (Jan-Mar)</option>
+        </select>
       </div>
+      <div class="upload-card" id="card-coverage" onclick="document.getElementById('file-coverage').click()" ondragover="dOver(event,'card-coverage')" ondragleave="dLeave('card-coverage')" ondrop="dDrop(event,'coverage')" style="border-color:var(--ad-color);background:var(--ad-bg);">
+        <div class="uc-icon">📋</div>
+        <div class="uc-title">EMEA AMZ Ads Plan</div>
+        <div class="uc-sub" id="lbl-coverage">EMEA_AMZ_ads_Q?.xlsx · UK/DE/FR/IT/ES sheets</div>
+        <div class="uc-check">✅</div>
+        <input type="file" id="file-coverage" accept=".xlsx" onchange="onFile(event,'coverage')">
+      </div>
+      <button class="process-btn ad-btn" id="coverage-btn" onclick="uploadCoverage()" disabled style="padding:12px 20px;font-size:13px;align-self:end;">Upload Coverage</button>
     </div>
-    <div id="supply-items" style="overflow-x:auto;"></div>
+    <div class="log-area" id="coverage-log" style="height:120px;"><span class="log-line">Upload the EMEA AMZ Ads quarterly Excel file.</span></div>
+  </div>
+
+  <!-- SEARCH TERMS -->
+  <div class="section-card purple-border">
+    <div class="card-title purple">🔍 Weekly Search Terms — Amazon Brand Analytics</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">Upload the Top Search Terms report from Amazon Brand Analytics (weekly, GB market).</div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;margin-bottom:16px;">
+      <div class="upload-card" id="card-search" onclick="document.getElementById('file-search').click()" ondragover="dOver(event,'card-search')" ondragleave="dLeave('card-search')" ondrop="dDrop(event,'search')" style="border-color:var(--purple);background:var(--purple-bg);">
+        <div class="uc-icon">🔍</div>
+        <div class="uc-title">Top Search Terms CSV</div>
+        <div class="uc-sub" id="lbl-search">Weekly Brand Analytics export · GB market</div>
+        <div class="uc-check">✅</div>
+        <input type="file" id="file-search" accept=".csv,.xlsx" onchange="onFile(event,'search')">
+      </div>
+      <button class="process-btn purple-btn" id="search-btn" onclick="uploadSearchTerms()" disabled style="padding:12px 20px;font-size:13px;align-self:end;">Upload Search Terms</button>
+    </div>
+    <div class="log-area" id="search-log" style="height:100px;"><span class="log-line">Upload the Top Search Terms CSV.</span></div>
+  </div>
+
+  <!-- ADS BACKFILL (Adverity/Kepler export) -->
+  <div class="section-card" style="border-color:var(--green);">
+    <div class="card-title" style="color:var(--green);">📅 Ads Backfill — Kepler/Adverity Export (AMS + Amazon DSP)</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">
+      Upload the "Performance Detail by Platform &amp; Brand" export for a custom date range (monthly works well). The date range is read automatically from the file's "Widget Date Range" row and the totals are day-weighted across the Sunday-weeks it covers — same method as the June DSP one-off load.<br>
+      Rules applied automatically: rows with €0 Spend are skipped, United Arab Emirates is excluded, "Totals" rows are excluded, and any week that already has real (Pacvue) ad_spend data is skipped rather than overwritten — this is a gap-filler, not a replacement for weekly Pacvue uploads. Triple Lift rows and any unmapped brand (e.g. "Preschool Brand Week") are logged and excluded rather than guessed at.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;margin-bottom:16px;">
+      <div class="upload-card" id="card-backfill" onclick="document.getElementById('file-backfill').click()" ondragover="dOver(event,'card-backfill')" ondragleave="dLeave('card-backfill')" ondrop="dDrop(event,'backfill')" style="border-color:var(--green);background:var(--green-bg);">
+        <div class="uc-icon">📅</div>
+        <div class="uc-title">Performance Detail by Platform &amp; Brand</div>
+        <div class="uc-sub" id="lbl-backfill">Kepler/Adverity export · any custom date range</div>
+        <div class="uc-check">✅</div>
+        <input type="file" id="file-backfill" accept=".xlsx" onchange="onFile(event,'backfill')">
+      </div>
+      <button class="process-btn" id="backfill-btn" onclick="uploadAdsBackfill()" disabled style="padding:12px 20px;font-size:13px;align-self:end;background:var(--green);color:#fff;">Upload Backfill</button>
+    </div>
+    <div class="log-area" id="backfill-log" style="height:180px;"><span class="log-line">Upload the Performance Detail by Platform &amp; Brand export.</span></div>
+  </div>
+
+  <!-- UPLOAD HISTORY -->
+  <div class="section-card">
+    <div class="card-title">Upload History</div>
+    <table class="history-table">
+      <thead><tr><th>Week</th><th>Uploaded At</th><th>Rows</th><th>Ads</th><th></th></tr></thead>
+      <tbody id="history-tbody"><tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Loading...</td></tr></tbody>
+    </table>
   </div>
 </main>
-
-
+</div>
 
 <script>
-var SUPABASE_URL='https://rycqfwzgvpzwhphgclpb.supabase.co';
-var SUPABASE_KEY='sb_publishable_CbKFhpN2dWI_UXhwGkclqw_AMPSprs4';
-var FX={eur:1,gbp:0.862,usd:1.09};
-var BRAND_COLORS={DISNEY_KIDS:'#9B59B6',MARVEL:'#E8423F',STAR_WARS:'#1a1a2e',MONOPOLY:'#B22222',GAMES:'#009CDE',PLAY_DOH:'#E91E8C',PEPPA_PIG:'#FF6B9D',TRANSFORMERS:'#F5A623',BEYBLADE:'#00B388',NERF:'#FF6B00',OTHER:'#A0C8D8'};
-var BRAND_LABELS={DISNEY_KIDS:'Disney Kids',MARVEL:'Marvel / Spider-Man',STAR_WARS:'Star Wars',MONOPOLY:'Monopoly',GAMES:'Games',PLAY_DOH:'Play-Doh',PEPPA_PIG:'Peppa Pig',TRANSFORMERS:'Transformers',BEYBLADE:'Beyblade',NERF:'Nerf',OTHER:'Other'};
-var BRAND_ORDER=['DISNEY_KIDS','MARVEL','STAR_WARS','MONOPOLY','GAMES','PLAY_DOH','PEPPA_PIG','TRANSFORMERS','BEYBLADE','NERF','OTHER'];
-var currency='eur',currentMarket='ALL',currentSort='revenue',selectedBrand=null,currentTab='revenue';
-var allRows=[],loyaltyData={},loyaltyHistory={},adsData={},allWeeks=[],adsDataAllWeeks={},adsCoverageData={},searchTermsData=[];
-// FY2025 portfolio average conversion rate (%, units/glance views across all
-// 2025 weeks, EU5). Used as the benchmark on the Key Metrics CVR card.
-// Populate by running the FY25 benchmark SQL in Supabase and pasting the
-// result here. While null, the card falls back to the fixed 10%/5% thresholds.
-var FY25_CVR_BENCHMARK=6.69;
-var preorderData=[]; // cumulative YTD ordered-vs-dispatched per ASIN+market, from the preorder_pipeline view
-var dspRows=[]; // DSP brand/market/week rows from brand_health_dsp (one-off June load; empty = AMS-only display) // FY2025 EU5 portfolio avg CVR — from Supabase, units/GVs across all 2025 weeks
-var periodMode='week',currentPeriod=null;
+const SB_URL = 'https://rycqfwzgvpzwhphgclpb.supabase.co';
+const SB_KEY = 'sb_publishable_CbKFhpN2dWI_UXhwGkclqw_AMPSprs4';
+const ADMIN_PW = 'hasbro2026';
+const EU5 = ['GB','DE','FR','IT','ES'];
+const YOY_CAP = 2.0;
 
-function oosClass(p){return p<=6?'oos-green':p<=9?'oos-amber':'oos-red';}
-function oosLabel(p){return p<=6?'green':p<=9?'amber':'red';}
-function cvrClass(p){return p>=10?'cvr-green':p>=5?'cvr-amber':'cvr-red';}
-function cvrLevel(p){return p>=10?'good':p>=5?'ok':'bad';}
-function getMonthKey(d){var x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0');}
-function getQuarterKey(d){var x=new Date(d);return x.getFullYear()+'-Q'+Math.ceil((x.getMonth()+1)/3);}
-function getYearKey(d){return String(new Date(d).getFullYear());}
-function periodKey(d){
-  // Use week START date for all period attribution (Amazon weeks Sun-Sat)
-  if(periodMode==='week')return d;
-  if(periodMode==='month')return getMonthKey(d);
-  if(periodMode==='quarter')return getQuarterKey(d);
-  return getYearKey(d);
-}
-function periodLabel(k){if(periodMode==='week'){var p=k.split('-');return p[2]+'/'+p[1]+'/'+p[0];}return k;}
+let files = { loyalty:null, coverage:null, search:null, backfill:null };
 
-// For monthly view only: a week that starts in one calendar month can run into the next
-// (e.g. week_start 2026-05-31 covers 31 May through 6 June). Rather than dumping the whole
-// week into whichever month the start date falls in, work out exactly how many of its 7 days
-// sit inside the target month and return that as a fraction (1.0 = fully inside, 0.0 = fully outside).
-// Used to pro-rate numeric fields so monthly totals don't over/under count boundary weeks.
-function weekDayFractionInMonth(weekStart, monthKey){
-  var start=new Date(weekStart+'T00:00:00');
-  var daysInMonth=0;
-  for(var i=0;i<7;i++){
-    var d=new Date(start);
-    d.setDate(d.getDate()+i);
-    var mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-    if(mk===monthKey)daysInMonth++;
-  }
-  return daysInMonth/7;
-}
-
-// THE FIX: Range header forces Supabase to return up to 50000 rows
-function sbFetch(path){
-  var sep=path.indexOf('?')>=0?'&':'?';
-  return fetch(SUPABASE_URL+path+sep+'limit=15000',{headers:{
-    'apikey':SUPABASE_KEY,
-    'Authorization':'Bearer '+SUPABASE_KEY,
-    'Range':'0-49999',
-    'Prefer':'count=none'
-  }})
-  .then(function(r){
-    if(!r.ok) throw new Error('Supabase '+r.status+': '+path.split('?')[0]);
-    return r.json();
-  })
-  .then(function(d){return Array.isArray(d)?d:[];})
-  .catch(function(e){console.warn('sbFetch error:',e.message);return[];});
-}
-
-var _initRunning=false;
-
-async function init(){
-  if(_initRunning)return;
-  _initRunning=true;
-  try{
-    var results=await Promise.all([
-      sbFetch('/rest/v1/brand_health_weeks?select=*&order=week_start.desc'),
-      sbFetch('/rest/v1/brand_health_loyalty?select=*&order=uploaded_at.desc'),
-      sbFetch('/rest/v1/brand_health_ads?select=week_start,brand_classified,market,ad_revenue,ad_spend,ad_impressions,ad_clicks,ad_glance_views&order=week_start.desc'),
-      sbFetch('/rest/v1/preorder_pipeline?select=*').catch(function(e){console.warn('preorder_pipeline view missing — run the CREATE VIEW SQL. Pre-order panel disabled.',e);return[];}),
-      sbFetch('/rest/v1/brand_health_dsp?select=*').catch(function(){return[];})
-    ]);
-    var weeksRes=results[0],loyaltyRes=results[1],adsRes=results[2];
-    preorderData=results[3]||[];
-    dspRows=results[4]||[];
-    allWeeks=weeksRes;
-    // Deduplicate allWeeks by week_start
-    var seenWks={};
-    allWeeks=allWeeks.filter(function(w){if(seenWks[w.week_start])return false;seenWks[w.week_start]=1;return true;});
-    loyaltyData={};
-    loyaltyRes.forEach(function(r){if(!loyaltyData[r.brand_classified])loyaltyData[r.brand_classified]=r;});
-    // Keep every quarter uploaded (not just the latest) so we can show a
-    // quarter-over-quarter trend. The repeat-purchase file has always been
-    // uploaded per-quarter without wiping prior quarters — the data was
-    // already there, the dashboard just wasn't keeping more than the latest.
-    loyaltyHistory={};
-    loyaltyRes.forEach(function(r){
-      if(!loyaltyHistory[r.brand_classified])loyaltyHistory[r.brand_classified]=[];
-      loyaltyHistory[r.brand_classified].push(r);
-    });
-    function quarterSortKey(q){var m=/^Q(\d)-(\d{4})$/.exec(q||'');return m?parseInt(m[2])*4+parseInt(m[1]):-1;}
-    Object.keys(loyaltyHistory).forEach(function(bid){
-      loyaltyHistory[bid].sort(function(a,b){return quarterSortKey(b.quarter)-quarterSortKey(a.quarter);});
-    });
-    adsDataAllWeeks={};
-    adsRes.forEach(function(r){
-      var d=new Date(r.week_start);
-      if(d.getDay()===6){d.setDate(d.getDate()+1);}
-      var normWs=d.toISOString().split('T')[0];
-      var k=normWs+'||'+r.brand_classified+'||'+(r.market||'ALL');
-      if(!adsDataAllWeeks[k]){
-        adsDataAllWeeks[k]=Object.assign({},r,{week_start:normWs});
-      }else{
-        adsDataAllWeeks[k].ad_revenue=(adsDataAllWeeks[k].ad_revenue||0)+(r.ad_revenue||0);
-        adsDataAllWeeks[k].ad_spend=(adsDataAllWeeks[k].ad_spend||0)+(r.ad_spend||0);
-        adsDataAllWeeks[k].ad_clicks=(adsDataAllWeeks[k].ad_clicks||0)+(r.ad_clicks||0);
-        adsDataAllWeeks[k].ad_impressions=(adsDataAllWeeks[k].ad_impressions||0)+(r.ad_impressions||0);
-        adsDataAllWeeks[k].ad_glance_views=(adsDataAllWeeks[k].ad_glance_views||0)+(r.ad_glance_views||0);
-      }
-    });
-    if(!allWeeks.length){document.getElementById('loading-screen').style.display='none';document.getElementById('no-data-screen').style.display='block';return;}
-    buildPeriodSelect();
-    await loadPeriod(currentPeriod);
-    setTimeout(async function(){
-      try{var cr=await sbFetch('/rest/v1/brand_health_ads_coverage?select=*&order=quarter.asc');if(Array.isArray(cr)){adsCoverageData={};cr.forEach(function(r){if(!adsCoverageData[r.brand_classified])adsCoverageData[r.brand_classified]={};adsCoverageData[r.brand_classified][r.market]={total:(r.total!=null?r.total:r.total_asins)||0,sp:(r.sp!=null?r.sp:r.sp_asins)||0,sb:(r.sb!=null?r.sb:r.sb_asins)||0,quarter:r.quarter};});renderAdsMetrics();}}catch(e){}
-      try{var sr=await sbFetch('/rest/v1/brand_health_search_terms?select=*&order=week_start.desc,rank.asc');if(Array.isArray(sr)){searchTermsData=sr;renderBrandCards();}}catch(e){}
-    },100);
-  }catch(err){
-    document.getElementById('loading-screen').innerHTML='<div style="color:var(--red);font-size:12px;text-align:center;padding:40px">Error: '+err.message+'</div>';
-  }finally{
-    _initRunning=false;
+// ─── LOGIN ────────────────────────────────────────────────────
+function checkPassword() {
+  if (document.getElementById('password-input').value === ADMIN_PW) {
+    document.getElementById('login-section').style.display = 'none';
+    document.getElementById('main-section').style.display = 'block';
+    loadHistory();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+    document.getElementById('password-input').value = '';
   }
 }
 
-function buildPeriodSelect(){
-  var seen={},options=[];
-  allWeeks.forEach(function(w){
-    var k=periodKey(w.week_start);
-    if(!seen[k]){
-      seen[k]=1;
-      var label=periodMode==='week'?(w.week_label||w.week_start):k;
-      options.push({value:k,label:label});
+// ─── LEGACY FILE HANDLING (quarterly cards) ───────────────────
+function dOver(e,id){e.preventDefault();document.getElementById(id).style.borderColor='var(--blue)';}
+function dLeave(id){document.getElementById(id).style.borderColor='';}
+function dDrop(e,type){e.preventDefault();const f=e.dataTransfer.files[0];if(f)loadFile(f,type);}
+function onFile(e,type){if(e.target.files[0])loadFile(e.target.files[0],type);}
+function loadFile(f,type){
+  files[type]=f;
+  const card=document.getElementById('card-'+type);
+  if(card) card.classList.add('loaded');
+  const lbl=document.getElementById('lbl-'+type);
+  if(lbl) lbl.textContent='✓ '+f.name;
+  if(type==='loyalty') document.getElementById('loyalty-btn').disabled=false;
+  if(type==='coverage') document.getElementById('coverage-btn').disabled=false;
+  if(type==='search') document.getElementById('search-btn').disabled=false;
+  if(type==='backfill') document.getElementById('backfill-btn').disabled=false;
+}
+
+// ─── DATE DETECTION ───────────────────────────────────────────
+// Snap any detected start date to the NEAREST Sunday (Amazon week start), then
+// derive the week end as Sunday+6 (Saturday). Handles every export convention
+// without caring which day the range starts on:
+//   Sunday-start  (VC exports, Amazon-style ranges)  → unchanged
+//   Monday-start  (Pacvue default)                   → back 1 day
+//   Saturday-start (odd/renamed exports)             → forward 1 day
+// Replaces the old blind "-1 day" Pacvue logic that caused off-by-one weeks
+// whenever a file wasn't Monday-start.
+function snapWeek(y, mo, da) {
+  const d = new Date(y, mo - 1, da, 12);
+  const g = d.getDay(); // Sun=0 ... Sat=6
+  d.setDate(d.getDate() + (g <= 3 ? -g : 7 - g));
+  const e = new Date(d); e.setDate(e.getDate() + 6);
+  const fmt  = x => `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
+  const fmtL = x => `${String(x.getDate()).padStart(2,'0')}/${String(x.getMonth()+1).padStart(2,'0')}/${x.getFullYear()}`;
+  return { start:fmt(d), end:fmt(e), label:`${fmtL(d)} – ${fmtL(e)}` };
+}
+
+
+// Refresh the preorder_pipeline materialized view so the dashboard's
+// pre-order book reflects this upload immediately. Fire-and-forget:
+// an error here must never fail the upload itself.
+//
+// Retries built in: REFRESH ... CONCURRENTLY needs a brief exclusive lock on
+// the view's unique index, which can collide with the tail end of a large
+// batch insert (seen once in practice — manual re-run succeeded straight
+// away). Rather than surface a false alarm on a transient clash, retry with
+// a short backoff before giving up and telling the user.
+async function refreshPreorderPipeline(logFn, attempt) {
+  attempt = attempt || 1;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/refresh_preorder_pipeline`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    if (r.ok) { if (logFn) logFn('↻ Pre-order book refreshed', 'ok'); return; }
+    throw new Error(`HTTP ${r.status}`);
+  } catch (e) {
+    if (attempt < 3) {
+      if (logFn) logFn(`Pre-order refresh busy, retrying (${attempt}/3)...`, 'info');
+      await new Promise(res => setTimeout(res, attempt * 2000)); // 2s, 4s
+      return refreshPreorderPipeline(logFn, attempt + 1);
     }
-  });
-  // Sort descending
-  options.sort(function(a,b){return b.value>a.value?1:-1;});
-  var sel=document.getElementById('week-select');
-  sel.innerHTML=options.map(function(o){return'<option value="'+o.value+'">'+o.label+'</option>';}).join('');
-  document.getElementById('period-label').textContent=periodMode.charAt(0).toUpperCase()+periodMode.slice(1);
-  if(options.length)currentPeriod=options[0].value;
+    if (logFn) logFn('⚠ Pre-order refresh failed after 3 attempts — run select refresh_preorder_pipeline(); in Supabase, or it will catch up on the next upload', 'warn');
+  }
 }
 
-async function loadPeriod(periodVal){
-  if(!periodVal)return;
-  currentPeriod=periodVal;
-  document.getElementById('loading-screen').style.display='flex';
-  document.getElementById('main-content').style.display='none';
-  var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){
-    if(periodMode!=='month')return periodKey(ws)===periodVal;
-    // In month mode, include this week if ANY of its days fall in the target month —
-    // not just if its start date does. Catches weeks like 31 May (week_start in May,
-    // but 6 of 7 days actually in June) when viewing June.
-    return weekDayFractionInMonth(ws,periodVal)>0;
-  });
-  var SNAP_COLS='week_start,asin,product_title,brand_classified,market,dispatched_revenue,dispatched_units,ordered_revenue,ordered_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy';
-  if(!weekStarts.length){
-    document.getElementById('loading-screen').style.display='none';
-    document.getElementById('main-content').style.display='grid';
-    buildDashboard();return;
-  }
-  if(periodMode==='week'&&weekStarts.length===1){
-    allRows=await sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+weekStarts[0]+'&select='+SNAP_COLS);
-  }else{
-    // Fetch each week in parallel then combine
-    var weekArrays=await Promise.all(weekStarts.map(function(ws){
-      return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select='+SNAP_COLS);
-    }));
-    allRows=weekArrays.reduce(function(a,b){return a.concat(b);},[]);
-
-    // MONTH-BOUNDARY FIX: if we're in month view, any week whose 7 days don't sit
-    // 100% inside this calendar month gets its numeric fields scaled by the fraction
-    // of days that actually fall in the target month. Prevents e.g. the 31 May week
-    // (which runs into June) from either fully double-counting or fully dropping out.
-    if(periodMode==='month'){
-      var NUMERIC_FIELDS=['dispatched_revenue','dispatched_units','ordered_revenue','ordered_units','glance_views','unfilled_units'];
-      allRows=allRows.map(function(r){
-        var frac=weekDayFractionInMonth(r.week_start,periodVal);
-        if(frac>=0.999)return r; // fully inside target month, no change needed
-        if(frac<=0.001)return null; // fully outside, shouldn't normally happen given weekStarts filter, but guard anyway
-        var scaled=Object.assign({},r);
-        NUMERIC_FIELDS.forEach(function(f){
-          if(scaled[f]!=null)scaled[f]=scaled[f]*frac;
-        });
-        // revenue_yoy / glance_views_yoy are ratios, not absolutes — leave untouched, they don't need scaling
-        return scaled;
-      }).filter(function(r){return r!==null;});
-    }
-  }
-  // Build ads for this period
-  adsData={};
-  Object.keys(adsDataAllWeeks).forEach(function(k){
-    var parts=k.split('||'),ws=parts[0],bid=parts[1],mkt=parts[2]||'ALL';
-    if(weekStarts.indexOf(ws)===-1)return;
-    var v=adsDataAllWeeks[k];
-    // Same boundary-week pro-rating as snapshots: if this ad week straddles two
-    // months and we're in month view, scale its contribution to this fraction only.
-    var fracAds=periodMode==='month'?weekDayFractionInMonth(ws,periodVal):1;
-    if(!adsData[bid])adsData[bid]={};
-    if(!adsData[bid][mkt])adsData[bid][mkt]={ad_revenue:0,ad_spend:0,ad_glance_views:0,ad_clicks:0,ad_impressions:0};
-    adsData[bid][mkt].ad_revenue+=(v.ad_revenue||0)*fracAds;
-    adsData[bid][mkt].ad_spend+=(v.ad_spend||0)*fracAds;
-    adsData[bid][mkt].ad_glance_views+=(v.ad_glance_views||0)*fracAds;
-    adsData[bid][mkt].ad_clicks+=(v.ad_clicks||0)*fracAds;
-    adsData[bid][mkt].ad_impressions+=(v.ad_impressions||0)*fracAds;
-  });
-  await loadPriorData();
-  var sel=document.getElementById('week-select');
-  var selOpt=sel.options[sel.selectedIndex];
-  var badgeLabel=periodMode==='week'?(selOpt?selOpt.text:periodVal):periodMode==='month'?'Month: '+periodVal:periodMode==='quarter'?'Quarter: '+periodVal:'Year: '+periodVal;
-  document.getElementById('week-badge').textContent=badgeLabel;
-  document.getElementById('loading-screen').style.display='none';
-  document.getElementById('main-content').style.display='grid';
-  buildDashboard();
-}
-
-function setPeriodMode(mode,btn){
-  periodMode=mode;
-  document.querySelectorAll('.period-tab').forEach(function(b){
-    if(b.classList.contains('comp-tab'))return; // don't touch the WoW/4W/YoY tabs, they're a separate group
-    b.classList.remove('active');
-  });
-  btn.classList.add('active');
-
-  var dropdownEl=document.getElementById('week-select');
-  var customEl=document.getElementById('custom-range-controls');
-
-  if(mode==='custom'){
-    // Swap the normal month/quarter/year dropdown out for the two date pickers.
-    // Don't auto-run a query yet — wait until the person has actually picked both dates.
-    dropdownEl.style.display='none';
-    customEl.style.display='inline-flex';
-    document.getElementById('period-label').textContent='Range';
-    // Pre-fill with the most recent 4 weeks of available data, not the earliest —
-    // sorted[0] on YYYY-MM-DD strings is the OLDEST date, not newest, which previously
-    // caused the default to span the entire dataset (a year+) instead of a sensible window.
-    if(allWeeks.length&&!document.getElementById('custom-start-date').value){
-      var sorted=allWeeks.map(function(w){return w.week_start;}).sort();
-      var latestWeekStart=sorted[sorted.length-1]; // last element after ascending sort = most recent
-      var idx=sorted.length-4; // go back 4 weeks for a sensible default window
-      var defaultStart=sorted[idx>=0?idx:0];
-      var endDate=new Date(latestWeekStart+'T00:00:00');
-      endDate.setDate(endDate.getDate()+6); // end of that final week (Saturday)
-      document.getElementById('custom-start-date').value=defaultStart;
-      document.getElementById('custom-end-date').value=endDate.toISOString().split('T')[0];
-    }
-    return;
-  }
-
-  // Leaving custom mode — restore the normal dropdown-driven flow
-  dropdownEl.style.display='';
-  customEl.style.display='none';
-  buildPeriodSelect();
-  if(currentPeriod)loadPeriod(currentPeriod);
-}
-
-function onCustomRangeChange(){
-  var startVal=document.getElementById('custom-start-date').value;
-  var endVal=document.getElementById('custom-end-date').value;
-  if(!startVal||!endVal)return; // wait for both
-  if(startVal>endVal){
-    alert('Start date must be before end date.');
-    return;
-  }
-  loadCustomRange(startVal,endVal);
-}
-
-// How many of a week's 7 days (starting at weekStart) fall between rangeStart and rangeEnd inclusive.
-// Same idea as weekDayFractionInMonth, generalised to an arbitrary date range rather than a calendar month.
-function weekDayFractionInRange(weekStart,rangeStart,rangeEnd){
-  var start=new Date(weekStart+'T00:00:00');
-  var rs=new Date(rangeStart+'T00:00:00');
-  var re=new Date(rangeEnd+'T00:00:00');
-  var daysInRange=0;
-  for(var i=0;i<7;i++){
-    var d=new Date(start);
-    d.setDate(d.getDate()+i);
-    if(d>=rs&&d<=re)daysInRange++;
-  }
-  return daysInRange/7;
-}
-
-async function loadCustomRange(rangeStart,rangeEnd){
-  currentPeriod=null; // custom ranges don't map to a single dropdown value
-  document.getElementById('loading-screen').style.display='flex';
-  document.getElementById('main-content').style.display='none';
-
-  // Pull in any week that overlaps the range at all, even partially —
-  // same principle as the month-boundary fix: a week_start before rangeStart
-  // can still contribute days that fall inside the range (and vice versa at the far end).
-  var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){
-    return weekDayFractionInRange(ws,rangeStart,rangeEnd)>0;
-  });
-
-  var SNAP_COLS='week_start,asin,product_title,brand_classified,market,dispatched_revenue,dispatched_units,ordered_revenue,ordered_units,glance_views,oos_pct,unfilled_units,revenue_yoy,glance_views_yoy';
-
-  if(!weekStarts.length){
-    document.getElementById('loading-screen').style.display='none';
-    document.getElementById('main-content').style.display='grid';
-    document.getElementById('week-badge').textContent='Range: '+rangeStart+' to '+rangeEnd+' (no data)';
-    buildDashboard();
-    return;
-  }
-
-  var weekArrays=await Promise.all(weekStarts.map(function(ws){
-    return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select='+SNAP_COLS);
-  }));
-  allRows=weekArrays.reduce(function(a,b){return a.concat(b);},[]);
-
-  // Pro-rate every overlapping week by the fraction of its days that actually
-  // fall inside the chosen range — fully-inside weeks pass through unscaled.
-  var NUMERIC_FIELDS=['dispatched_revenue','dispatched_units','ordered_revenue','ordered_units','glance_views','unfilled_units'];
-  allRows=allRows.map(function(r){
-    var frac=weekDayFractionInRange(r.week_start,rangeStart,rangeEnd);
-    if(frac>=0.999)return r;
-    if(frac<=0.001)return null;
-    var scaled=Object.assign({},r);
-    NUMERIC_FIELDS.forEach(function(f){
-      if(scaled[f]!=null)scaled[f]=scaled[f]*frac;
-    });
-    return scaled;
-  }).filter(function(r){return r!==null;});
-
-  // Same pro-rating applied to ads data for the same overlapping weeks
-  adsData={};
-  Object.keys(adsDataAllWeeks).forEach(function(k){
-    var parts=k.split('||'),ws=parts[0],bid=parts[1],mkt=parts[2]||'ALL';
-    if(weekStarts.indexOf(ws)===-1)return;
-    var v=adsDataAllWeeks[k];
-    var fracAds=weekDayFractionInRange(ws,rangeStart,rangeEnd);
-    if(!adsData[bid])adsData[bid]={};
-    if(!adsData[bid][mkt])adsData[bid][mkt]={ad_revenue:0,ad_spend:0,ad_glance_views:0,ad_clicks:0,ad_impressions:0};
-    adsData[bid][mkt].ad_revenue+=(v.ad_revenue||0)*fracAds;
-    adsData[bid][mkt].ad_spend+=(v.ad_spend||0)*fracAds;
-    adsData[bid][mkt].ad_glance_views+=(v.ad_glance_views||0)*fracAds;
-    adsData[bid][mkt].ad_clicks+=(v.ad_clicks||0)*fracAds;
-    adsData[bid][mkt].ad_impressions+=(v.ad_impressions||0)*fracAds;
-  });
-
-  // Pull comparison data for whichever WoW/4W/YoY toggle is currently selected,
-  // shifted back from this custom range, so a comparison is available immediately
-  // on load rather than only after manually re-clicking the comparison toggle.
-  await loadCustomRangePriorData(rangeStart,rangeEnd);
-
-  var fmtDate=function(s){var p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
-  document.getElementById('week-badge').textContent='Range: '+fmtDate(rangeStart)+' – '+fmtDate(rangeEnd);
-  document.getElementById('loading-screen').style.display='none';
-  document.getElementById('main-content').style.display='grid';
-  buildDashboard();
-}
-
-var currentComparison='wow';
-var priorData={};
-
-function setComparison(mode,btn){
-  currentComparison=mode;
-  document.querySelectorAll('.comp-tab').forEach(function(b){b.classList.remove('active');});
-  btn.classList.add('active');
-
-  if(periodMode==='custom'){
-    // currentPeriod is intentionally null in custom mode, so the normal
-    // loadPriorData() (which keys off currentPeriod) can't find anything and
-    // silently no-ops — that's what caused WoW/YoY to look frozen here.
-    // Re-derive the prior comparison window directly from the chosen custom dates instead.
-    var startVal=document.getElementById('custom-start-date').value;
-    var endVal=document.getElementById('custom-end-date').value;
-    if(startVal&&endVal){
-      loadCustomRangePriorData(startVal,endVal).then(function(){buildDashboard();});
-    }
-    return;
-  }
-
-  loadPriorData().then(function(){buildDashboard();});
-}
-
-// Equivalent of loadPriorData(), but for an arbitrary custom range rather than a
-// dropdown-selected week/month/quarter. Shifts the whole range back by the chosen
-// comparison window (7 days for WoW, 28 days for 4W, 364 days for YoY) and pulls
-// whatever weeks overlap that shifted range, using the same day-fraction pro-rating
-// as the main custom-range load so the comparison is genuinely apples-to-apples.
-async function loadCustomRangePriorData(rangeStart,rangeEnd){
-  priorData={};
-  var shiftDays=currentComparison==='yoy'?364:currentComparison==='4w'?28:7;
-  var rs=new Date(rangeStart+'T00:00:00');var re=new Date(rangeEnd+'T00:00:00');
-  rs.setDate(rs.getDate()-shiftDays);re.setDate(re.getDate()-shiftDays);
-  var priorStart=rs.toISOString().split('T')[0];
-  var priorEnd=re.toISOString().split('T')[0];
-
-  var weekStarts=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){
-    return weekDayFractionInRange(ws,priorStart,priorEnd)>0;
-  });
-  if(!weekStarts.length)return;
-
-  try{
-    var results=await Promise.all(weekStarts.map(function(ws){
-      return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=brand_classified,market,dispatched_revenue,dispatched_units,glance_views');
-    }));
-    results.forEach(function(rows,i){
-      var frac=weekDayFractionInRange(weekStarts[i],priorStart,priorEnd);
-      (rows||[]).forEach(function(r){
-        var k=r.brand_classified+'||'+(r.market||'');
-        if(!priorData[k])priorData[k]={revenue:0,gviews:0,units:0};
-        priorData[k].revenue+=(r.dispatched_revenue||0)*frac;
-        priorData[k].gviews+=(r.glance_views||0)*frac;
-        priorData[k].units+=(r.dispatched_units||0)*frac;
-      });
-    });
-  }catch(e){console.warn('loadCustomRangePriorData error:',e);priorData={};}
-}
-
-// Calendar date range of the currently selected period (month/quarter/year modes).
-function periodDateRange(){
-  if(periodMode==='month'){
-    var y=parseInt(currentPeriod.slice(0,4)),m=parseInt(currentPeriod.slice(5,7));
-    var last=new Date(y,m,0).getDate();
-    return[currentPeriod+'-01',currentPeriod+'-'+String(last).padStart(2,'0')];
-  }
-  if(periodMode==='quarter'){
-    var y=parseInt(currentPeriod.slice(0,4)),q=parseInt(currentPeriod.slice(6));
-    var sm=(q-1)*3+1,em=sm+2;
-    var last=new Date(y,em,0).getDate();
-    return[y+'-'+String(sm).padStart(2,'0')+'-01',y+'-'+String(em).padStart(2,'0')+'-'+String(last).padStart(2,'0')];
-  }
-  if(periodMode==='year')return[currentPeriod+'-01-01',currentPeriod+'-12-31'];
+function detectWeekFromFilename(name) {
+  // DD-MM-YYYY_DD-MM-YYYY
+  let m = name.match(/(\d{2})-(\d{2})-(\d{4})_(\d{2}-\d{2}-\d{4})/);
+  if (m) return snapWeek(parseInt(m[3]), parseInt(m[2]), parseInt(m[1]));
+  // YYYY-MM-DD_YYYY-MM-DD
+  m = name.match(/(\d{4})-(\d{2})-(\d{2})_(\d{4}-\d{2}-\d{2})/);
+  if (m) return snapWeek(parseInt(m[1]), parseInt(m[2]), parseInt(m[3]));
+  // Pacvue: _YYYY-MM-DD-YYYY-MM-DD
+  m = name.match(/_(\d{4})-(\d{2})-(\d{2})-(\d{4}-\d{2}-\d{2})/);
+  if (m) return snapWeek(parseInt(m[1]), parseInt(m[2]), parseInt(m[3]));
   return null;
 }
 
-var _priorToken=0;
-var priorCoverage=null; // {cur, pri} — fraction-weeks available in current vs prior range
-
-// Prior-period comparison data.
-// WEEK mode: unchanged — date-targeted single week (WoW -7d, 4W -28d, YoY -364d ±14d tolerance).
-// MONTH/QUARTER/YEAR: the old logic walked back 52 ARRAY POSITIONS in the list of
-// weeks that happen to exist in the DB — not 52 calendar weeks — so any gap in the
-// history silently shifted the whole comparison onto the wrong weeks and inflated
-// YoY. Now: take the period's real calendar range, shift it back 364d (YoY) or 28d
-// (WoW/4W), and pull whatever weeks overlap that shifted range with the same
-// day-fraction pro-rating the current period uses. Also records coverage so a
-// partially-missing prior year is flagged rather than silently inflating the number.
-async function loadPriorData(){
-  var token=++_priorToken;
-  priorData={};priorCoverage=null;
-  try{
-    if(periodMode==='week'){
-      var wsArr=allWeeks.map(function(w){return w.week_start;}).filter(function(ws){return periodKey(ws)===currentPeriod;});
-      if(!wsArr.length||token!==_priorToken)return;
-      var sorted=allWeeks.map(function(w){return w.week_start;}).sort();
-      var ws=wsArr[0],idx=sorted.indexOf(ws),prior=null;
-      if(currentComparison==='wow'&&idx>=1)prior=sorted[idx-1];
-      else if(currentComparison==='4w'&&idx>=4)prior=sorted[idx-4];
-      else if(currentComparison==='yoy'){
-        var target=new Date(ws);target.setDate(target.getDate()-364);
-        var bestDiff=Infinity;
-        sorted.forEach(function(w){var d=Math.abs(new Date(w)-target);if(d<bestDiff&&d<=14*24*60*60*1000){bestDiff=d;prior=w;}});
+async function detectWeekFromXlsx(file) {
+  try {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, {type:'array', cellText:true});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    for (const row of raw.slice(0,10)) {
+      for (let i = 0; i < row.length; i++) {
+        if (/widget date range|date range/i.test(String(row[i]))) {
+          const ds = String(row[i+1]||'').trim();
+          const m = ds.match(/(\d{2})-(\d{2})-(\d{4})\s+(\d{2}-\d{2}-\d{4})/);
+          if (m) return snapWeek(parseInt(m[3]), parseInt(m[2]), parseInt(m[1]));
+        }
       }
-      if(!prior)return;
-      var rows=await sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+prior+'&select=brand_classified,market,dispatched_revenue,dispatched_units,glance_views');
-      if(token!==_priorToken)return;
-      (rows||[]).forEach(function(r){
-        var k=r.brand_classified+'||'+(r.market||'');
-        if(!priorData[k])priorData[k]={revenue:0,gviews:0,units:0};
-        priorData[k].revenue+=r.dispatched_revenue||0;
-        priorData[k].gviews+=r.glance_views||0;
-        priorData[k].units+=r.dispatched_units||0;
+    }
+  } catch(e) {}
+  return null;
+}
+
+// ─── VC SMART DROP ZONE ───────────────────────────────────────
+const vcFiles = {};
+const VC_TYPE_MAP = { sales:'📊 Sales', traffic:'👁 Traffic', inventory:'📦 Inventory' };
+
+function detectVCType(name) {
+  const n = name.toLowerCase();
+  if (n.includes('sales_asin') || n.includes('sales_manufacturing')) return 'sales';
+  if (n.includes('traffic_asin') || n.includes('traffic_')) return 'traffic';
+  if (n.includes('inventory_health') || n.includes('inventory_')) return 'inventory';
+  return null;
+}
+
+function vcDragOver(e){e.preventDefault();document.getElementById('vc-dropzone').classList.add('drag-over');}
+function vcDragLeave(){document.getElementById('vc-dropzone').classList.remove('drag-over');}
+function vcDrop(e){e.preventDefault();vcDragLeave();handleVCFiles([...e.dataTransfer.files]);}
+function vcFileSelect(e){handleVCFiles([...e.target.files]);e.target.value='';}
+
+function handleVCFiles(list) {
+  list.forEach(f => {
+    const type = detectVCType(f.name);
+    if (!type) return;
+    const week = detectWeekFromFilename(f.name);
+    vcFiles[type] = {file:f, week};
+  });
+  renderVCDetected();
+  checkVCReady();
+}
+
+function renderVCDetected() {
+  const el = document.getElementById('vc-detected-list');
+  const entries = Object.entries(vcFiles);
+  if (!entries.length) { el.innerHTML=''; return; }
+  el.innerHTML = entries.map(([type,{file,week}]) => `
+    <div class="detected-file${week?'':' warn'}">
+      <span class="df-icon">${VC_TYPE_MAP[type]?.split(' ')[0]||'📄'}</span>
+      <div class="df-info">
+        <div class="df-type">${VC_TYPE_MAP[type]||type}</div>
+        <div class="df-name">${file.name}</div>
+      </div>
+      <div class="df-week ${week?'ok':'warn'}">${week?'✓ '+week.label:'⚠️ No date in filename'}</div>
+      <button class="df-remove" onclick="removeVCFile('${type}')">✕</button>
+    </div>`).join('');
+}
+
+function removeVCFile(type) {
+  delete vcFiles[type];
+  renderVCDetected();
+  checkVCReady();
+}
+
+function checkVCReady() {
+  const has3 = vcFiles.sales && vcFiles.traffic && vcFiles.inventory;
+  const hasWeeks = has3 && vcFiles.sales.week && vcFiles.traffic.week && vcFiles.inventory.week;
+  document.getElementById('vc-process-btn').disabled = !(has3 && hasWeeks);
+}
+
+// ─── ADS BULK QUEUE ───────────────────────────────────────────
+let adsQueue = [];
+let _processingQueue = false;
+
+function adsDragOver(e){e.preventDefault();document.getElementById('ads-dropzone').classList.add('drag-over');}
+function adsDragLeave(){document.getElementById('ads-dropzone').classList.remove('drag-over');}
+function adsDrop(e){e.preventDefault();adsDragLeave();handleAdsFiles([...e.dataTransfer.files]);}
+function adsFileSelect(e){handleAdsFiles([...e.target.files]);e.target.value='';}
+
+async function handleAdsFiles(list) {
+  const xlsxFiles = list.filter(f=>f.name.endsWith('.xlsx'));
+  if (!xlsxFiles.length) { logA('No .xlsx files found.','err'); return; }
+  for (const file of xlsxFiles) {
+    // Try filename first, then file content
+    let week = detectWeekFromFilename(file.name);
+    if (!week) week = await detectWeekFromXlsx(file);
+    const existing = adsQueue.findIndex(q=>q.weekStart===week?.start);
+    const item = {file, weekStart:week?.start||null, weekLabel:week?.label||'Unknown week'};
+    if (existing>=0) adsQueue[existing]=item;
+    else adsQueue.push(item);
+  }
+  renderAdsQueue();
+  document.getElementById('ads-process-btn').disabled = adsQueue.length===0;
+}
+
+function renderAdsQueue() {
+  const el = document.getElementById('ads-queue-list');
+  if (!adsQueue.length){el.innerHTML='';return;}
+  el.innerHTML = adsQueue.map((q,i) => `
+    <div class="ads-queue-item ${q.weekStart?'ok':'warn'}">
+      <span>📊</span>
+      <span class="aqi-name">${q.file.name}</span>
+      <span class="aqi-week ${q.weekStart?'ok':'warn'}">${q.weekStart?'✓ '+q.weekLabel:'⚠️ No week detected'}</span>
+      <button class="df-remove" onclick="removeAdsQueue(${i})">✕</button>
+    </div>`).join('');
+}
+
+function removeAdsQueue(i) {
+  adsQueue.splice(i,1);
+  renderAdsQueue();
+  document.getElementById('ads-process-btn').disabled = adsQueue.length===0;
+}
+
+async function processAdsQueue() {
+  const valid = adsQueue.filter(q=>q.weekStart);
+  if (!valid.length){logA('No files with detectable week dates.','err');return;}
+  document.getElementById('ads-process-btn').disabled = true;
+  document.getElementById('ads-log').innerHTML = '';
+  logA(`Processing ${valid.length} ads report(s)...`,'info');
+  _processingQueue = true;
+  let ok = 0;
+  for (let i=0; i<valid.length; i++) {
+    const q = valid[i];
+    logA(`[${i+1}/${valid.length}] Week ${q.weekLabel}...`,'info');
+    try {
+      await processAndUploadAds(q.file, q.weekStart);
+      ok++;
+    } catch(e) {
+      logA(`❌ Week ${q.weekLabel}: ${e.message}`,'err');
+    }
+  }
+  _processingQueue = false;
+  logA(`✅ Complete — ${ok}/${valid.length} weeks uploaded.`,'ok');
+  adsQueue = [];
+  renderAdsQueue();
+  document.getElementById('ads-process-btn').disabled = false;
+  loadHistory();
+}
+
+// ─── BRAND CLASSIFICATION ─────────────────────────────────────
+const BRANDS = [
+  { id:'DISNEY_KIDS', titleKeys:['spidey and his amazing friends','spidey and amazing friends','iron man and his awesome friends','iron man and friends','spidey and his'], brandKeys:['hasbro spidey','iron man and his awesome','hasbro iron man and his','spidey and his amazing'] },
+  { id:'MARVEL', titleKeys:['marvel','spider-man','spiderman','avengers','black widow','captain america','iron man','thor ','hulk','x-men','eternals','shang chi','daredevil','dr. strange','dr strange','ghost rider'], brandKeys:['marvel','hasbro marvel','avengers','hasbro avengers','spider-man','spiderman','hasbro marvel avengers','marvel avengers','marvel legends','marvel spider-man','marvel classic','black widow','shang chi','the eternals','overwatch'] },
+  { id:'STAR_WARS', titleKeys:['star wars','mandalorian','grogu','jedi','sith','darth','clone wars','boba fett','lightsaber','stormtrooper','scout trooper','bb-8','han solo'], brandKeys:['star wars','hasbro star wars','hasbro star wars the black series','star wars han solo movie'] },
+  { id:'MONOPOLY', titleKeys:['monopoly'], brandKeys:['monopoly','hasbro monopoly'] },
+  { id:'GAMES', titleKeys:['guess who','game of life','operation ','trivial pursuit','yahtzee','buckaroo','mousetrap','mouse trap','battleship','cluedo','clue ','boggle','connect 4','connect4','jenga','twister','looping louie','hungry hungry','cranium','taboo','pictionary','heroquest','dungeons & dragons','dungeons and dragons','avalon hill'], brandKeys:['hasbro gaming','hasbro games','hasbro spiele','games (excl. monopoly)','clue','twister','dungeons & dragons','hasbro dungeons & dragons','avalon hill','ghostbusters','hasbro ghostbusters','hasbro indiana jones'] },
+  { id:'PLAY_DOH', titleKeys:['play-doh','play doh','playdoh','pate a modeler','pâte à modeler','knete','plastilina'], brandKeys:['play-doh','play doh','playdoh','hasbro play-doh','hasbro pt','play doh'] },
+  { id:'PEPPA_PIG', titleKeys:['peppa pig','peppa'], brandKeys:['peppa pig'] },
+  { id:'TRANSFORMERS', titleKeys:['transformers','optimus prime','megatron','autobot','decepticon'], brandKeys:['transformers','hasbro transformers','transfromers'] },
+  { id:'BEYBLADE', titleKeys:['beyblade','bey blade'], brandKeys:['beyblade','hasbro beyblade'] },
+  { id:'NERF', titleKeys:['nerf','super soaker','supersoaker'], brandKeys:['nerf','hasbro nerf','super soaker','supersoaker'] },
+  { id:'OTHER', titleKeys:[], brandKeys:[] }
+];
+
+function classifyBrand(title,brand) {
+  const t=(title||'').toLowerCase(), b=(brand||'').toLowerCase().trim();
+  const dk=BRANDS[0];
+  if(dk.titleKeys.some(k=>t.includes(k))||dk.brandKeys.some(k=>b===k||b.includes(k))) return dk.id;
+  for(let i=1;i<BRANDS.length-1;i++){
+    const br=BRANDS[i];
+    if(br.titleKeys.some(k=>t.includes(k))||br.brandKeys.some(k=>b===k||b.includes(k))) return br.id;
+  }
+  return 'OTHER';
+}
+
+// ─── ADS BRAND MAP (Executive Summary) ───────────────────────
+const ADS_BRAND_RULES = [
+  { id:'DISNEY_KIDS', fn: b=>/spidey|iron man and his awesome|iron man and friends|disney kids/i.test(b) },
+  { id:'MONOPOLY',    fn: b=>/^monopoly$/i.test(b.trim()) },
+  { id:'GAMES',       fn: b=>/hasbro gaming|^gaming$|hasbro gaming brand week/i.test(b) },
+  { id:'PLAY_DOH',    fn: b=>/playdoh|play-doh|play doh/i.test(b) },
+  { id:'PEPPA_PIG',   fn: b=>/peppa/i.test(b) },
+  { id:'TRANSFORMERS',fn: b=>/transformers/i.test(b) },
+  { id:'BEYBLADE',    fn: b=>/beyblade|bey blade/i.test(b) },
+  { id:'NERF',        fn: b=>/nerf|super soaker/i.test(b) },
+  { id:'MARVEL',      fn: b=>/^marvel$/i.test(b.trim()) },
+  { id:'STAR_WARS',   fn: b=>/star wars|star_wars|_star_|star brand/i.test(b) },
+];
+
+const COUNTRY_MAP = {
+  'united kingdom':'GB','uk':'GB','great britain':'GB',
+  'germany':'DE','deutschland':'DE',
+  'france':'FR',
+  'italy':'IT','italia':'IT',
+  'spain':'ES','españa':'ES','espana':'ES'
+};
+
+function classifyAdsBrand(brandName, freeForm) {
+  const b = (brandName||'').trim();
+  const ff = (freeForm||'').toLowerCase();
+  // Collector's Corner → split by Free Form
+  if (/collector'?s corner/i.test(b)) {
+    if (/star wars/i.test(ff)) return 'STAR_WARS';
+    if (/marvel|spider|avengers/i.test(ff)) return 'MARVEL';
+    return 'MARVEL'; // default
+  }
+  for (const rule of ADS_BRAND_RULES) {
+    if (rule.fn(b)) return rule.id;
+  }
+  return null;
+}
+
+function countryToMarket(c) {
+  return COUNTRY_MAP[(c||'').toLowerCase().trim()] || null;
+}
+
+// ─── PACVUE CAMPAIGN NAME → BRAND ────────────────────────────
+const PACVUE_BRAND_MAP = {
+  'STAR':'STAR_WARS', 'GAME':'GAMES', 'PLAY':'PLAY_DOH',
+  'NERF':'NERF', 'TRNF':'TRANSFORMERS', 'BEYB':'BEYBLADE',
+  'MLPY':'MONOPOLY', 'MONO':'MONOPOLY', 'MNPL':'MONOPOLY',
+  'MARV':'MARVEL', 'PEPP':'PEPPA_PIG',
+  'SPDY':'DISNEY_KIDS', 'DISK':'DISNEY_KIDS', 'SPID':'DISNEY_KIDS', 'DISNKIDS':'DISNEY_KIDS',
+  'BLDG':'BEYBLADE'
+};
+const PACVUE_PROFILE_MARKET = {
+  'hasbro uk':'GB','hasbro de':'DE','hasbro fr':'FR','hasbro it':'IT','hasbro es':'ES',
+  'hbro uk':'GB','hbro de':'DE','hbro fr':'FR','hbro it':'IT','hbro es':'ES'
+};
+
+function classifyPacvueCampaign(campaignName) {
+  const parts = campaignName.toUpperCase().split('_');
+  if (parts.length < 3) return null;
+  const code = parts[2];
+  if (code === 'COLL') {
+    // Collector's Corner — check full name for STAR vs MARV
+    if (/STAR/.test(campaignName.toUpperCase())) return 'STAR_WARS';
+    return 'MARVEL';
+  }
+  return PACVUE_BRAND_MAP[code] || null;
+}
+
+function pacvueProfileToMarket(profile) {
+  return PACVUE_PROFILE_MARKET[(profile||'').toLowerCase().trim()] || null;
+}
+
+function isPacvueReport(filename) {
+  return /weekly.*report|placement.*report|campaign.*report|query.*report/i.test(filename);
+}
+
+async function parsePacvueReport(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, {type:'array', cellText:false});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
+
+        // Find header row (has 'Campaign Name' or 'Campaign')
+        let hi = raw.findIndex(r => r.some(c => /^campaign name$/i.test(String(c).trim()) || /^profile name$/i.test(String(c).trim())));
+        if (hi === -1) throw new Error('Could not find header row in Pacvue report');
+
+        const headers = raw[hi].map(h => String(h).trim());
+        const gc = name => headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()));
+        const campCol    = gc('Campaign Name') >= 0 ? gc('Campaign Name') : gc('Campaign');
+        const profileCol = gc('Profile Name') >= 0 ? gc('Profile Name') : gc('Profile');
+        const spendCol   = gc('Spend');
+        const salesCol   = gc('Sales 14d') >= 0 ? gc('Sales 14d') : gc('Sales');
+        const clickCol   = gc('Click');
+        const impCol     = gc('Impression');
+
+        const agg = {};
+        for (const row of raw.slice(hi + 1)) {
+          if (!row.some(v => v !== '')) continue;
+          const campaign = String(row[campCol] || '').trim();
+          const profile  = String(row[profileCol] || '').trim();
+          const market   = pacvueProfileToMarket(profile);
+          if (!market) continue;
+          const brand = classifyPacvueCampaign(campaign);
+          if (!brand) continue;
+          const k = brand+'||'+market;
+          if (!agg[k]) agg[k] = {brand_classified:brand, market, ad_revenue:0, ad_spend:0, ad_impressions:0, ad_clicks:0};
+          agg[k].ad_revenue    += parseFloat(row[salesCol] || 0) || 0;
+          agg[k].ad_spend      += parseFloat(row[spendCol] || 0) || 0;
+          agg[k].ad_impressions+= parseFloat(row[impCol] || 0) || 0;
+          agg[k].ad_clicks     += parseFloat(row[clickCol] || 0) || 0;
+        }
+        resolve(Object.values(agg));
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = () => reject(new Error('Browser could not read the file from disk — usually the file was dragged straight from Outlook, is an online-only OneDrive file, or is open in Excel. Save it to Desktop first, close Excel, and re-drop the saved copy.'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+
+function normaliseKey(s){return String(s).trim().replace(/\u2013|\u2014|\u2212/g,'–').replace(/\s+/g,' ');}
+
+function parseVCFile(file) {
+  return new Promise(resolve => {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext==='xlsx') {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const wb = XLSX.read(e.target.result,{type:'array',cellText:false,cellDates:true});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+        let hi = raw.findIndex(r=>r.some(c=>String(c).trim()==='ASIN'));
+        if(hi===-1) hi=1;
+        const headers = raw[hi].map(h=>normaliseKey(h));
+        const rows = raw.slice(hi+1).filter(r=>r.some(c=>c!=='')).map(r=>{
+          const o={};headers.forEach((h,i)=>{o[h]=(r[i]!==undefined&&r[i]!==null)?r[i]:'';});return o;
+        }).filter(r=>r['ASIN']&&String(r['ASIN']).trim().length>5);
+        resolve(rows);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = e => {
+        let text = e.target.result.replace(/^\uFEFF/,'');
+        const lines = text.split('\n');
+        let hi=-1;
+        for(let i=0;i<Math.min(lines.length,10);i++){const t=lines[i].trim().replace(/^\uFEFF/,'');if(t.startsWith('ASIN,')||t==='ASIN'){hi=i;break;}}
+        if(hi===-1) hi=1;
+        const result=Papa.parse(lines.slice(hi).join('\n'),{header:true,skipEmptyLines:true,dynamicTyping:false});
+        const fields=result.meta.fields||[];
+        const asinKey=fields.find(f=>f.trim().replace(/^\uFEFF/,'')==='ASIN')||'ASIN';
+        const rows=result.data.filter(r=>r[asinKey]&&String(r[asinKey]).trim().length>5).map(r=>{
+          const o={};Object.keys(r).forEach(k=>{o[normaliseKey(k.replace(/^\uFEFF/,''))]=r[k];});return o;
+        });
+        resolve(rows);
+      };
+      reader.readAsText(file,'UTF-8');
+    }
+  });
+}
+
+async function parseExecSummary(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result,{type:'array',cellText:false});
+        const sheetName = wb.SheetNames.find(n=>/performance detail/i.test(n));
+        if (!sheetName) throw new Error('No "Performance Detail" sheet. Sheets: '+wb.SheetNames.join(', '));
+        const ws = wb.Sheets[sheetName];
+        const raw = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+        // Find header row — look for Platform or k_Buying Platform
+        let hi = raw.findIndex(r=>r.some(c=>/^(k_buying )?platform$/i.test(String(c).trim())));
+        if (hi===-1) hi = raw.findIndex(r=>r.some(c=>/brand/i.test(String(c)))&&r.some(c=>/spend/i.test(String(c))));
+        if (hi===-1) throw new Error('Could not find header row in Performance Detail sheet');
+        const headers = raw[hi].map(h=>String(h).trim());
+        const gc = (...names) => headers.findIndex(h=>names.some(n=>h.toLowerCase().includes(n.toLowerCase())));
+        const brandCol = gc('Portfolio name','Brand');
+        const portfolioCol = gc('Portfolio name');
+        const geoCol   = gc('Marketing Geography','Geography');
+        const posCol   = gc('Nominal POS','Sales');
+        const spendCol = gc('Spend');
+        const impCol   = gc('Impressions');
+        const clkCol   = gc('Clicks');
+        const ffCol    = gc('Free Form');
+        const results = [];
+        for (const row of raw.slice(hi+1)) {
+          if (!row.some(v=>v!=='')) continue;
+          const get = idx => idx>=0&&idx<row.length?String(row[idx]||'').trim():'';
+          const num = idx => { const v=get(idx).replace(/[^0-9.\-]/g,''); const n=parseFloat(v); return isNaN(n)?0:n; };
+          const geo = get(geoCol);
+          const market = countryToMarket(geo);
+          if (!market) continue;
+          const brand = get(brandCol);
+          const freeForm = get(ffCol);
+          // Use portfolio name as primary classifier if it contains brand info
+          const bid = classifyAdsBrand(brand, freeForm);
+          if (!bid) continue;
+          results.push({brand_classified:bid, market, ad_revenue:num(posCol), ad_spend:num(spendCol), ad_impressions:num(impCol), ad_clicks:num(clkCol)});
+        }
+        resolve(results);
+      } catch(err){ reject(err); }
+    };
+    reader.onerror = ()=>reject(new Error('Browser could not read the file from disk — usually the file was dragged straight from Outlook, is an online-only OneDrive file, or is open in Excel. Save it to Desktop first, close Excel, and re-drop the saved copy.'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function cleanNum(v){if(v===null||v===undefined||v==='')return null;if(typeof v==='number')return isNaN(v)?null:v;const s=String(v).replace(/[^0-9.\-]/g,'').trim();if(s===''||s==='-')return null;const n=parseFloat(s);return isNaN(n)?null:n;}
+function parseYoy(v,pct){if(v===null||v===undefined||v===''||v==='-')return null;let n;if(pct){const s=String(v).replace(/,/g,'').replace(/%/g,'').trim();if(s===''||s==='nan')return null;n=parseFloat(s)/100;}else{n=typeof v==='number'?v:parseFloat(String(v).replace(/,/g,'').trim());}if(isNaN(n))return null;if(n<=-0.99)return null;if(Math.abs(n)>YOY_CAP)return null;return n;}
+function col(row,name){if(row[name]!==undefined)return row[name];const norm=name.replace(/[-\u2013\u2014\u2212]/g,'–').toLowerCase();for(const k of Object.keys(row)){if(k.replace(/[-\u2013\u2014\u2212]/g,'–').toLowerCase()===norm)return row[k];}return undefined;}
+
+// ─── LOGGING ─────────────────────────────────────────────────
+function log(msg,type='',areaId='vc-log'){
+  const area=document.getElementById(areaId);
+  const line=document.createElement('span');
+  line.className='log-line '+type;
+  line.textContent=new Date().toLocaleTimeString('en-GB')+' → '+msg;
+  area.appendChild(line);
+  area.scrollTop=area.scrollHeight;
+}
+function logA(msg,type=''){log(msg,type,'ads-log');}
+function logL(msg,type=''){log(msg,type,'loyalty-log');}
+function logC(msg,type=''){log(msg,type,'coverage-log');}
+function logS(msg,type=''){log(msg,type,'search-log');}
+
+// ─── PROCESS VC ───────────────────────────────────────────────
+async function processVC() {
+  const weekData = vcFiles.sales?.week || vcFiles.traffic?.week || vcFiles.inventory?.week;
+  if (!weekData){alert('Could not detect week from filenames.');return;}
+  const weekStart = weekData.start;
+  const weekEnd = weekData.end;
+  document.getElementById('week-start').value = weekStart;
+  document.getElementById('week-end').value = weekEnd;
+
+  document.getElementById('overlay').classList.add('on');
+  document.getElementById('vc-log').innerHTML='';
+  log('Starting process...','info');
+
+  try {
+    log('Reading Sales report...');
+    const salesRaw=await parseVCFile(vcFiles.sales.file);
+    log(`✓ Sales: ${salesRaw.length} total rows`,'ok');
+    log('Reading Traffic report...');
+    const trafficRaw=await parseVCFile(vcFiles.traffic.file);
+    log(`✓ Traffic: ${trafficRaw.length} total rows`,'ok');
+    log('Reading Inventory report...');
+    const invRaw=await parseVCFile(vcFiles.inventory.file);
+    log(`✓ Inventory: ${invRaw.length} total rows`,'ok');
+
+    const sales=salesRaw.filter(r=>EU5.includes(String(col(r,'Store code')||'').trim().toUpperCase()));
+    const traffic=trafficRaw.filter(r=>EU5.includes(String(col(r,'Store code')||'').trim().toUpperCase()));
+    const inv=invRaw.filter(r=>EU5.includes(String(col(r,'Store code')||'').trim().toUpperCase()));
+    log(`EU5 filter: ${sales.length} sales, ${traffic.length} traffic, ${inv.length} inventory`,'info');
+
+    const trafficMap={};
+    traffic.forEach(r=>{
+      const k=String(r['ASIN']).trim()+'_'+String(col(r,'Store code')||'').trim().toUpperCase();
+      if(!trafficMap[k]) trafficMap[k]={gviews:0,gviewsYoy:null};
+      trafficMap[k].gviews+=cleanNum(col(r,'Featured offer page views'))||0;
+      const yoy=parseYoy(col(r,'Featured offer page views – Same Period Last Year (%)'),true);
+      if(yoy!==null) trafficMap[k].gviewsYoy=yoy;
+    });
+
+    const invMap={};
+    inv.forEach(r=>{
+      const k=String(r['ASIN']).trim()+'_'+String(col(r,'Store code')||'').trim().toUpperCase();
+      if(!invMap[k]) invMap[k]={oos:0,unfilled:0};
+      invMap[k].oos=cleanNum(col(r,'Sourceable product OOS %'))||0;
+      invMap[k].unfilled+=cleanNum(col(r,'Unfilled Customer Ordered Units'))||0;
+    });
+
+    log('Classifying brands & building rows...');
+    const rows=[];
+    sales.forEach(r=>{
+      const asin=String(r['ASIN']).trim();
+      const market=String(col(r,'Store code')||'').trim().toUpperCase();
+      const k=asin+'_'+market;
+      const t=trafficMap[k]||{gviews:0,gviewsYoy:null};
+      const iv=invMap[k]||{oos:0,unfilled:0};
+      rows.push({
+        week_start:weekStart,asin,
+        product_title:String(col(r,'Product title')||'').trim().substring(0,500),
+        brand_raw:String(col(r,'Brand')||'').trim(),
+        brand_classified:classifyBrand(col(r,'Product title'),col(r,'Brand')),
+        market,
+        dispatched_revenue:cleanNum(col(r,'Dispatched revenue')),
+        ordered_revenue:cleanNum(col(r,'Ordered revenue')),
+        dispatched_units:cleanNum(col(r,'Dispatched units'))!=null?Math.round(cleanNum(col(r,'Dispatched units'))):null,
+        ordered_units:cleanNum(col(r,'Ordered units'))!=null?Math.round(cleanNum(col(r,'Ordered units'))):null,
+        revenue_yoy:parseYoy(col(r,'Dispatched Revenue – Same Period Last Year (%)'),true)??parseYoy(col(r,'Ordered Revenue – Same Period Last Year (%)'),true),
+        units_yoy:parseYoy(col(r,'Dispatched Units – Same Period Last Year (%)'),true)??parseYoy(col(r,'Ordered Units – Same Period Last Year (%)'),true),
+        glance_views:t.gviews?Math.round(t.gviews):null,
+        glance_views_yoy:t.gviewsYoy,
+        oos_pct:iv.oos,
+        unfilled_units:Math.round(iv.unfilled)
       });
-      return;
+    });
+    log(`✓ Built ${rows.length} rows`,'ok');
+
+    log(`Clearing existing data for week ${weekStart}...`);
+    await sbDelete(`/rest/v1/brand_health_snapshots?week_start=eq.${weekStart}`);
+    log('✓ Cleared','ok');
+
+    document.getElementById('overlay-sub').textContent='Uploading to Supabase...';
+    const BATCH=150; let uploaded=0;
+    for(let i=0;i<rows.length;i+=BATCH){
+      let attempts=0;
+      while(attempts<3){
+        try{
+          await sbPost('/rest/v1/brand_health_snapshots',rows.slice(i,i+BATCH));
+          break;
+        }catch(e){
+          attempts++;
+          if(attempts===3) throw e;
+          log(`Retry ${attempts} for batch ${i}...`,'info');
+          await new Promise(r=>setTimeout(r,1000*attempts));
+        }
+      }
+      uploaded+=Math.min(BATCH,rows.length-i);
+      document.getElementById('overlay-progress').textContent=`${uploaded} / ${rows.length} rows`;
+      log(`Uploaded ${uploaded}/${rows.length} rows...`);
+      await new Promise(r=>setTimeout(r,200));
     }
 
-    // month / quarter / year
-    var range=periodDateRange();
-    if(!range||token!==_priorToken)return;
-    var shiftDays=currentComparison==='yoy'?364:28;
-    var rs=new Date(range[0]+'T00:00:00');var re=new Date(range[1]+'T00:00:00');
-    rs.setDate(rs.getDate()-shiftDays);re.setDate(re.getDate()-shiftDays);
-    var priorStart=rs.toISOString().split('T')[0];
-    var priorEnd=re.toISOString().split('T')[0];
+    await sbDelete(`/rest/v1/brand_health_weeks?week_start=eq.${weekStart}`);
+    await sbPost('/rest/v1/brand_health_weeks',{week_start:weekStart,week_label:fmtDate(weekStart)+' – '+fmtDate(weekEnd)});
+    document.getElementById('overlay').classList.remove('on');
+    log(`✅ Done! ${rows.length} rows uploaded for week ${weekStart}`,'ok');
+    await new Promise(r=>setTimeout(r,1500)); // let the DB settle after the batch insert before locking the view
+    await refreshPreorderPipeline(log);
+    loadHistory();
+  } catch(err){
+    document.getElementById('overlay').classList.remove('on');
+    log('❌ Error: '+err.message,'err');
+    console.error(err);
+  }
+}
 
-    var allWs=allWeeks.map(function(w){return w.week_start;});
-    var priorWs=allWs.filter(function(ws){return weekDayFractionInRange(ws,priorStart,priorEnd)>0;});
+// ─── PROCESS ADS ──────────────────────────────────────────────
+async function processAndUploadAds(file, weekStart) {
+  logA(`Reading ${file.name}...`,'info');
+  let parsedRows;
+  if (isPacvueReport(file.name)) {
+    logA('Detected Pacvue report — using campaign name parser...','info');
+    parsedRows = await parsePacvueReport(file);
+  } else {
+    logA('Detected Executive Summary — using brand column parser...','info');
+    parsedRows = await parseExecSummary(file);
+  }
+  logA(`✓ ${parsedRows.length} brand-market rows parsed`,'ok');
+  if (!parsedRows.length) throw new Error('0 rows parsed — check file format');
 
-    // Coverage: fraction-weeks of data available in each range. If the prior
-    // range is missing weeks the current range has, the YoY is not like-for-like.
-    var curFrac=0,priFrac=0;
-    allWs.forEach(function(ws){curFrac+=weekDayFractionInRange(ws,range[0],range[1]);});
-    priorWs.forEach(function(ws){priFrac+=weekDayFractionInRange(ws,priorStart,priorEnd);});
-    priorCoverage={cur:curFrac,pri:priFrac};
+  // Aggregate by brand+market
+  const agg = {};
+  parsedRows.forEach(r => {
+    const k = r.brand_classified+'||'+r.market;
+    if (!agg[k]) agg[k] = {brand_classified:r.brand_classified, market:r.market, ad_revenue:0, ad_spend:0, ad_impressions:0, ad_clicks:0};
+    agg[k].ad_revenue    += r.ad_revenue;
+    agg[k].ad_spend      += r.ad_spend;
+    agg[k].ad_impressions+= r.ad_impressions;
+    agg[k].ad_clicks     += r.ad_clicks;
+  });
 
-    if(!priorWs.length||token!==_priorToken)return;
-    var results=await Promise.all(priorWs.map(function(ws){
-      return sbFetch('/rest/v1/brand_health_snapshots?week_start=eq.'+ws+'&select=brand_classified,market,dispatched_revenue,dispatched_units,glance_views');
-    }));
-    if(token!==_priorToken)return;
-    priorData={};
-    results.forEach(function(rows,i){
-      var frac=weekDayFractionInRange(priorWs[i],priorStart,priorEnd);
-      (rows||[]).forEach(function(r){
-        var k=r.brand_classified+'||'+(r.market||'');
-        if(!priorData[k])priorData[k]={revenue:0,gviews:0,units:0};
-        priorData[k].revenue+=(r.dispatched_revenue||0)*frac;
-        priorData[k].gviews+=(r.glance_views||0)*frac;
-        priorData[k].units+=(r.dispatched_units||0)*frac;
+  // Log brand summary
+  const brandSum = {};
+  Object.values(agg).forEach(r => {
+    if (!brandSum[r.brand_classified]) brandSum[r.brand_classified] = {rev:0,spend:0,clicks:0};
+    brandSum[r.brand_classified].rev    += r.ad_revenue;
+    brandSum[r.brand_classified].spend  += r.ad_spend;
+    brandSum[r.brand_classified].clicks += r.ad_clicks;
+  });
+  Object.entries(brandSum).forEach(([bid,s]) => {
+    logA(`  ${bid}: rev=€${s.rev.toFixed(0)} spend=€${s.spend.toFixed(0)} ROAS=${s.spend>0?(s.rev/s.spend).toFixed(2):'—'} clicks=${Math.round(s.clicks)}`,'ok');
+  });
+
+  // Fetch VC totals for organic split
+  logA('Fetching VC totals for organic split...','info');
+  const vcRows = await sbFetch(`/rest/v1/brand_health_snapshots?week_start=eq.${weekStart}&select=brand_classified,market,dispatched_revenue,ordered_revenue,glance_views&limit=10000`);
+  const vcMap = {};
+  vcRows.forEach(r => {
+    const k = r.brand_classified+'||'+r.market;
+    if (!vcMap[k]) vcMap[k]={revenue:0,gviews:0};
+    vcMap[k].revenue += (r.dispatched_revenue||r.ordered_revenue||0);
+    vcMap[k].gviews  += (r.glance_views||0);
+  });
+
+  const finalRows = Object.values(agg).map(r => {
+    const k = r.brand_classified+'||'+r.market;
+    const vc = vcMap[k]||{revenue:0,gviews:0};
+    return {
+      week_start:          weekStart,
+      brand_classified:    r.brand_classified,
+      market:              r.market,
+      ad_revenue:          Math.round(r.ad_revenue*100)/100,
+      ad_spend:            Math.round(r.ad_spend*100)/100,
+      ad_impressions:      Math.round(r.ad_impressions),
+      ad_clicks:           Math.round(r.ad_clicks),
+      ad_glance_views:     Math.round(r.ad_clicks),
+      organic_revenue:     Math.max(0,Math.round((vc.revenue-r.ad_revenue)*100)/100),
+      organic_glance_views:Math.max(0,Math.round(vc.gviews-r.ad_clicks))
+    };
+  });
+
+  logA(`✓ Built ${finalRows.length} brand-market rows`,'ok');
+  await sbDelete(`/rest/v1/brand_health_ads?week_start=eq.${weekStart}`);
+  await sbPost('/rest/v1/brand_health_ads', finalRows);
+
+  // Ensure week exists in brand_health_weeks
+  const existingWeek = await sbFetch(`/rest/v1/brand_health_weeks?week_start=eq.${weekStart}&select=week_start`);
+  if (!existingWeek.length) {
+    const d = new Date(weekStart);
+    const end = new Date(d); end.setDate(d.getDate()+6);
+    await sbPost('/rest/v1/brand_health_weeks',{week_start:weekStart, week_label:fmtDate(weekStart)+' – '+fmtDate(end.toISOString().split('T')[0])});
+  }
+
+  logA(`✅ Done! ${finalRows.length} rows for week ${weekStart}`,'ok');
+  await new Promise(r=>setTimeout(r,1500));
+  await refreshPreorderPipeline(logA);
+  if (!_processingQueue) loadHistory();
+}
+
+// ─── LOYALTY ──────────────────────────────────────────────────
+async function uploadLoyalty() {
+  const quarter = document.getElementById('loyalty-quarter').value;
+  if (!files.loyalty){alert('Please select the repeat purchase file.');return;}
+  document.getElementById('loyalty-btn').disabled=true;
+  document.getElementById('loyalty-log').innerHTML='';
+  logL('Reading repeat purchase file...','info');
+  try {
+    const text = await files.loyalty.text();
+    const clean = text.replace(/^\uFEFF/,'');
+    const lines = clean.split('\n');
+    let hi=-1;
+    for(let i=0;i<Math.min(lines.length,10);i++){const t=lines[i].trim().replace(/^\uFEFF/,'');if(t.startsWith('Brand,')||t.startsWith('"Brand"')){hi=i;break;}}
+    if(hi===-1) hi=1;
+    const result=Papa.parse(lines.slice(hi).join('\n'),{header:true,skipEmptyLines:true,dynamicTyping:false});
+    logL(`✓ Parsed ${result.data.length} rows`,'ok');
+    const TOTAL_CUST='Unique Customer Count',REPEAT_CUST='Repeat Customer Count: Count',REPEAT_SALES='Repeat Ordered Product Sales: Sales';
+    const BM={DISNEY_KIDS:['spidey and his amazing friends','iron man and his awesome friends','hasbro spidey'],MARVEL:['marvel','avengers','hasbro avengers','spider-man','spiderman','x-men','the eternals','marvel legends','hasbro marvel'],STAR_WARS:['star wars','hasbro star wars'],MONOPOLY:['monopoly','hasbro monopoly'],GAMES:['hasbro gaming','hasbro games','avalon hill','clue','hasbro indiana jones'],PLAY_DOH:['play-doh','play doh','playdoh','hasbro play-doh'],PEPPA_PIG:['peppa pig','peppa'],TRANSFORMERS:['transformers','hasbro transformers'],BEYBLADE:['beyblade','hasbro beyblade'],NERF:['nerf','hasbro nerf','super soaker','supersoaker']};
+    function clf(n){const b=(n||'').toLowerCase().trim();for(const[id,keys]of Object.entries(BM)){if(keys.some(k=>b.includes(k)))return id;}return'OTHER';}
+    const agg={};
+    result.data.forEach(r=>{
+      const bid=clf(r['Brand']);if(bid==='OTHER')return;
+      const tc=parseFloat((r[TOTAL_CUST]||'0').replace(/[^0-9.]/g,''))||0;
+      const rc=parseFloat((r[REPEAT_CUST]||'0').replace(/[^0-9.]/g,''))||0;
+      const rs=parseFloat((r[REPEAT_SALES]||'0').replace(/[^0-9.]/g,''))||0;
+      if(!agg[bid])agg[bid]={tc:0,rc:0,rs:0};
+      agg[bid].tc+=tc;agg[bid].rc+=rc;agg[bid].rs+=rs;
+    });
+    const rows=Object.entries(agg).map(([brand_classified,d])=>({brand_classified,repeat_rate:d.tc>0?d.rc/d.tc:0,repeat_customers:Math.round(d.rc),total_customers:Math.round(d.tc),repeat_sales:d.rs,quarter}));
+    logL(`✓ ${rows.length} brands built`,'ok');
+    if(!rows.length) throw new Error('No matching brands found');
+    await sbDelete(`/rest/v1/brand_health_loyalty?quarter=eq.${quarter}`);
+    await sbPost('/rest/v1/brand_health_loyalty',rows);
+    logL(`✅ Done! ${rows.length} brands uploaded for ${quarter}`,'ok');
+  } catch(err){logL('❌ Error: '+err.message,'err');}
+  document.getElementById('loyalty-btn').disabled=false;
+}
+
+// ─── COVERAGE ─────────────────────────────────────────────────
+async function uploadCoverage() {
+  const quarter = document.getElementById('coverage-quarter').value;
+  if (!files.coverage){alert('Please select the EMEA AMZ Ads file.');return;}
+  document.getElementById('coverage-btn').disabled=true;
+  document.getElementById('coverage-log').innerHTML='';
+  logC('Reading EMEA AMZ Ads file...','info');
+  try {
+    const fname = files.coverage.name.toLowerCase();
+    const isCsv = fname.endsWith('.csv');
+    const BRAND_MAP={'MARVEL':'MARVEL','AVENGERS':'MARVEL','STAR WARS':'STAR_WARS','STARWARS':'STAR_WARS','MONOPOLY':'MONOPOLY','GAMES':'GAMES','HASBRO GAMING':'GAMES','PLAY-DOH':'PLAY_DOH','PLAYDOH':'PLAY_DOH','PLAY DOH':'PLAY_DOH','PEPPA PIG':'PEPPA_PIG','PEPPA':'PEPPA_PIG','TRANSFORMERS':'TRANSFORMERS','BEYBLADE':'BEYBLADE','NERF':'NERF','SPIDEY':'DISNEY_KIDS','SPIDEY AND HIS AMAZING FRIENDS':'DISNEY_KIDS','DISNEY KIDS':'DISNEY_KIDS','AVALON HILL':'GAMES'};
+    function mapBrand(b){b=b.toUpperCase().trim();if(BRAND_MAP[b])return BRAND_MAP[b];for(const[k,v]of Object.entries(BRAND_MAP)){if(b.includes(k))return v;}return null;}
+    // Find a header by trying several possible names, case-insensitive,
+    // substring match — different exports call the same thing different names
+    // ("brand" vs "Brand Name"), and this must not silently skip a whole sheet
+    // just because the exact casing/wording differs from the last file.
+    function findCol(headers, candidates){
+      for(const c of candidates){
+        let i = headers.findIndex(h=>h.trim().toLowerCase()===c.toLowerCase());
+        if(i>=0) return i;
+      }
+      for(const c of candidates){
+        let i = headers.findIndex(h=>h.trim().toLowerCase().includes(c.toLowerCase()));
+        if(i>=0) return i;
+      }
+      return -1;
+    }
+    // Coverage = ASINs marked "Include? Y/N" = Y. We're not tracking ad
+    // format (SP vs SB) — just whether an ASIN is in the plan this quarter,
+    // matched later against the trading catalogue from weekly VC uploads.
+    // The SP/SB checkbox columns are unreliable across exports (some files
+    // use them as real live status, some leave every row as a placeholder
+    // "?" because format hasn't been decided yet) — Include? Y/N is the
+    // one field that's consistently populated with a real Y/N/TBC signal.
+    function hasUsableIncludeSignal(allRows, colIdx){
+      if(colIdx<0) return false;
+      return allRows.some(r=>{
+        const v=String(r[colIdx]||'').trim().toUpperCase();
+        return v==='Y'||v==='N';
+      });
+    }
+    const MARKETPLACE_MAP={'.co.uk':'GB','.de':'DE','.fr':'FR','.it':'IT','.es':'ES','amazon.co.uk':'GB','amazon.de':'DE','amazon.fr':'FR','amazon.it':'IT','amazon.es':'ES'};
+    function marketFromFilename(name){
+      const n=name.toUpperCase();
+      if(/(^|[_\-])UK([_\-]|\.|$)|GB(?![A-Z])/.test(n)) return 'GB';
+      if(/(^|[_\-])DE([_\-]|\.|$)/.test(n)) return 'DE';
+      if(/(^|[_\-])FR([_\-]|\.|$)/.test(n)) return 'FR';
+      if(/(^|[_\-])IT([_\-]|\.|$)/.test(n)) return 'IT';
+      if(/(^|[_\-])ES([_\-]|\.|$)/.test(n)) return 'ES';
+      return null;
+    }
+
+    const rows=[];
+    const flaggedSheets=[]; // sheets/files with no usable Include? Y/N signal
+
+    if (isCsv) {
+      // ── Single-market CSV path ──
+      logC('Detected CSV — single-market format...','info');
+      const buf = await files.coverage.arrayBuffer();
+      let text;
+      try { text = new TextDecoder('utf-8', {fatal:true}).decode(buf); }
+      catch(e) { text = new TextDecoder('windows-1252').decode(buf); } // accented text (French/Italian/Spanish exports are rarely clean UTF-8
+      const parsed = Papa.parse(text, {skipEmptyLines:true});
+      const raw = parsed.data;
+      const headers = raw[0].map(h=>String(h).trim());
+      const asinCol = findCol(headers, ['ASIN']);
+      // NOTE: 'Brand Name' must come before 'brand' — some exports have BOTH
+      // a real "Brand Name" column (MONOPOLY, PEPPA PIG, etc.) and a separate,
+      // mostly-blank internal short-code column literally named "brand". If
+      // "brand" is checked first it wins the exact-match pass and silently
+      // pulls the wrong, near-empty column — this dropped several brands
+      // (GAMES, NERF, MONOPOLY, DISNEY_KIDS) entirely in earlier uploads.
+      const brandCol = findCol(headers, ['Brand Name','brand']);
+      const incCol = findCol(headers, ['Include? Y/N','Include']);
+      const mktCol = findCol(headers, ['Marketplace Name','Marketplace']);
+      if(asinCol<0||brandCol<0){ throw new Error(`Could not find ASIN/brand columns. Found: ${headers.filter(h=>h).join(', ')}`); }
+      const dataRows = raw.slice(1).filter(r=>r.some(v=>v!==''));
+      const incOk = hasUsableIncludeSignal(dataRows, incCol);
+      if(!incOk){
+        flaggedSheets.push(files.coverage.name);
+        logC(`⚠️ No usable "Include? Y/N" column found (or it has no real Y/N values) — can't determine which ASINs are in the plan. Found columns: ${headers.filter(h=>h).join(', ')}`,'err');
+      } else {
+        const market = marketFromFilename(files.coverage.name) || (mktCol>=0 ? MARKETPLACE_MAP[String(dataRows[0][mktCol]||'').toLowerCase()] : null);
+        if(!market){ throw new Error('Could not determine market — expected GB/DE/FR/IT/ES in the filename.'); }
+        const brandAgg={};
+        dataRows.forEach(r=>{
+          const asin=String(r[asinCol]||'').trim();if(!asin||asin.length<5)return;
+          const brand=String(r[brandCol]||'').trim();if(!brand)return;
+          const bid=mapBrand(brand);if(!bid)return;
+          const included=String(r[incCol]||'').trim().toUpperCase()==='Y';
+          if(!brandAgg[bid])brandAgg[bid]={total:0,included:0};
+          brandAgg[bid].total++;if(included)brandAgg[bid].included++;
+        });
+        Object.entries(brandAgg).forEach(([brand_classified,counts])=>{
+          rows.push({quarter,brand_classified,market,total_asins:counts.included,sp_asins:counts.included,sb_asins:counts.included});
+          logC(`  ${market} ${brand_classified}: ${counts.included}/${counts.total} ASINs included (${Math.round(counts.included/counts.total*100)}%)`,'ok');
+        });
+      }
+    } else {
+      // ── xlsx path — flexible sheet-name matching + single-sheet fallback ──
+      // Originally hardcoded to sheets literally named UK/DE/FR/IT/ES. Some
+      // exports use full country names, GB instead of UK, or a single sheet
+      // with a market/marketplace column instead of one sheet per market.
+      // Try aliases first; if nothing matches, fall back to scanning every
+      // sheet for a market column. Coverage = Include? Y/N = Y, matched
+      // later against the trading catalogue — not ad-format specific.
+      const data = await files.coverage.arrayBuffer();
+      const wb = XLSX.read(data,{type:'array'});
+      const MARKET_ALIASES={
+        GB:['uk','gb','united kingdom','great britain'],
+        DE:['de','germany','deutschland'],
+        FR:['fr','france'],
+        IT:['it','italy','italia'],
+        ES:['es','spain','espana','españa']
+      };
+      function findSheetName(sheetNames, aliases){
+        const norm=s=>s.trim().toLowerCase();
+        for(const name of sheetNames){ if(aliases.includes(norm(name))) return name; }
+        for(const name of sheetNames){ if(aliases.some(a=>norm(name).includes(a))) return name; }
+        return null;
+      }
+      function processCoverageRows(dataRows, headers, market, sourceLabel){
+        // 'Brand Name' before 'brand' — see note in the CSV path above on why
+        // order matters here: some files have both, and 'brand' is a near-empty
+        // internal code column, not the real brand field.
+        const brandCol=findCol(headers, ['Brand Name','brand']);
+        const incCol=findCol(headers, ['Include? Y/N','Include']);
+        const asinCol=findCol(headers, ['ASIN']);
+        if(brandCol===-1||asinCol===-1){logC(`⚠️ ${sourceLabel}: missing ASIN/brand columns. Found: ${headers.filter(h=>h).join(', ')}`,'err');return;}
+        if(!hasUsableIncludeSignal(dataRows, incCol)){
+          flaggedSheets.push(sourceLabel);
+          logC(`⚠️ ${sourceLabel}: no usable "Include? Y/N" column/values found — can't determine which ASINs are in the plan. Skipping.`,'err');
+          return;
+        }
+        const brandAgg={};
+        dataRows.forEach(r=>{
+          const asin=String(r[asinCol]||'').trim();if(!asin||asin.length<5)return;
+          const brand=String(r[brandCol]||'').trim();if(!brand)return;
+          const bid=mapBrand(brand);if(!bid)return;
+          const included=String(r[incCol]||'').trim().toUpperCase()==='Y';
+          if(!brandAgg[bid])brandAgg[bid]={total:0,included:0};
+          brandAgg[bid].total++;if(included)brandAgg[bid].included++;
+        });
+        Object.entries(brandAgg).forEach(([brand_classified,counts])=>{
+          rows.push({quarter,brand_classified,market,total_asins:counts.included,sp_asins:counts.included,sb_asins:counts.included});
+          logC(`  ${market} ${brand_classified}: ${counts.included}/${counts.total} ASINs included (${Math.round(counts.included/counts.total*100)}%)`,'ok');
+        });
+      }
+
+      // Attempt 1: one sheet per market, matched via aliases (not exact UK/DE/FR/IT/ES only)
+      let matchedAnySheet=false;
+      for(const[market,aliases]of Object.entries(MARKET_ALIASES)){
+        const sheetName=findSheetName(wb.SheetNames, aliases);
+        if(!sheetName) continue;
+        matchedAnySheet=true;
+        const ws=wb.Sheets[sheetName];
+        const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        if(raw.length<2) continue;
+        const headers=raw[0].map(h=>String(h).trim());
+        const dataRows=raw.slice(1).filter(r=>r.some(v=>v!==''));
+        processCoverageRows(dataRows, headers, market, sheetName);
+      }
+
+      // Attempt 2: no market-named sheets found — look for a single sheet
+      // (or sheets) containing a Marketplace/Market/Country column instead.
+      if(!matchedAnySheet){
+        logC('No sheet names matched known market aliases (UK/DE/FR/IT/ES or full country names) — trying single-sheet-with-market-column format...','info');
+        const COUNTRY_MAP={'united kingdom':'GB','uk':'GB','gb':'GB','great britain':'GB','.co.uk':'GB','germany':'DE','deutschland':'DE','de':'DE','.de':'DE','france':'FR','fr':'FR','.fr':'FR','italy':'IT','italia':'IT','it':'IT','.it':'IT','spain':'ES','espana':'ES','españa':'ES','es':'ES','.es':'ES'};
+        function matchCountry(raw){
+          if(COUNTRY_MAP[raw]) return COUNTRY_MAP[raw];
+          for(const[k,v]of Object.entries(COUNTRY_MAP)){ if(raw.includes(k)) return v; }
+          return null;
+        }
+        let anyRowsFound=false;
+        for(const sheetName of wb.SheetNames){
+          const ws=wb.Sheets[sheetName];
+          const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+          if(raw.length<2) continue;
+          const headers=raw[0].map(h=>String(h).trim());
+          const mktCol=findCol(headers, ['Marketplace Name','Marketplace','Market','Country']);
+          if(mktCol<0) continue;
+          const dataRows=raw.slice(1).filter(r=>r.some(v=>v!==''));
+          const byMarket={};
+          dataRows.forEach(r=>{
+            const market=matchCountry(String(r[mktCol]||'').toLowerCase().trim());
+            if(!market) return;
+            if(!byMarket[market]) byMarket[market]=[];
+            byMarket[market].push(r);
+          });
+          if(Object.keys(byMarket).length===0) continue;
+          anyRowsFound=true;
+          Object.entries(byMarket).forEach(([market,mrows])=>{
+            processCoverageRows(mrows, headers, market, `${sheetName} (${market})`);
+          });
+        }
+        if(!anyRowsFound){
+          logC(`⚠️ Could not find per-market sheets OR a market/marketplace column. Sheets in file: ${wb.SheetNames.join(', ')}`,'err');
+        }
+      }
+    }
+    if(!rows.length){
+      const msg = flaggedSheets.length
+        ? `No usable coverage data — ${flaggedSheets.join(', ')} had no usable "Include? Y/N" values. Source a file with that column populated.`
+        : 'No data extracted';
+      throw new Error(msg);
+    }
+    await sbDelete(`/rest/v1/brand_health_ads_coverage?quarter=eq.${quarter}`);
+    await sbPost('/rest/v1/brand_health_ads_coverage',rows);
+    logC(`✅ Done! ${rows.length} brand-market rows uploaded for ${quarter}`,'ok');
+  } catch(err){logC('❌ Error: '+err.message,'err');}
+  document.getElementById('coverage-btn').disabled=false;
+}
+
+// ─── ADS BACKFILL (Kepler/Adverity export — AMS + Amazon DSP) ──
+// Fills historical gaps using a "Performance Detail by Platform & Brand"
+// export covering any custom date range (the tool this comes from only lets
+// that widget be pulled for one range at a time — monthly is what's
+// practical for now). The range is read straight from the file's own
+// "Widget Date Range" row, then the totals are day-weighted across the
+// Sunday-weeks it spans — same method already used for the June DSP
+// one-off load, just generalised and built into the uploader instead of a
+// manual SQL script.
+//
+// Deliberately conservative: skips €0-spend rows, skips UAE (outside EU5),
+// skips "Totals" rollup rows, excludes Triple Lift (no home for it in the
+// current schema — logged, not merged into AMS or DSP), and — most
+// importantly — will NOT overwrite a week/brand/market that already has
+// real ad_spend data (i.e. already covered by the weekly Pacvue upload or
+// the June DSP load). This is a gap-filler, not a replacement.
+function logB(msg,type=''){log(msg,type,'backfill-log');}
+async function sbGet(path){
+  const r=await fetch(SB_URL+path,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+  if(!r.ok) throw new Error('Fetch failed: '+r.status);
+  return r.json();
+}
+function fmtEuroLog(v){return '€'+Math.round(v).toLocaleString();}
+function round2(v){return Math.round(v*100)/100;}
+
+async function uploadAdsBackfill(){
+  if(!files.backfill){alert('Please select the Performance Detail by Platform & Brand export.');return;}
+  document.getElementById('backfill-btn').disabled=true;
+  document.getElementById('backfill-log').innerHTML='';
+  logB('Reading export...','info');
+  try{
+    const data=await files.backfill.arrayBuffer();
+    const wb=XLSX.read(data,{type:'array'});
+    const sheetName=wb.SheetNames.find(n=>/performance detail/i.test(n));
+    if(!sheetName) throw new Error('No "Performance Detail by Platform & Brand" sheet found. Sheets: '+wb.SheetNames.join(', '));
+    const raw=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:''});
+
+    // ── Date range, read from the file itself ──
+    const rangeRow=raw.find(r=>String(r[0]||'').trim()==='Widget Date Range:');
+    if(!rangeRow) throw new Error('Could not find "Widget Date Range:" row in this sheet.');
+    const m=String(rangeRow[1]||'').match(/(\d{2})-(\d{2})-(\d{4})\s+(\d{2})-(\d{2})-(\d{4})/);
+    if(!m) throw new Error('Could not parse date range: "'+rangeRow[1]+'"');
+    const rangeStart=new Date(parseInt(m[3]),parseInt(m[2])-1,parseInt(m[1]),12);
+    const rangeEnd=new Date(parseInt(m[6]),parseInt(m[5])-1,parseInt(m[4]),12);
+    logB('Date range detected: '+rangeStart.toISOString().slice(0,10)+' to '+rangeEnd.toISOString().slice(0,10),'info');
+
+    // ── Header row + columns ──
+    const hi=raw.findIndex(r=>r.some(c=>String(c).trim()==='k_Buying Platform'));
+    if(hi<0) throw new Error('Could not find header row (k_Buying Platform). This may not be the right export.');
+    const headers=raw[hi].map(h=>String(h).trim());
+    const ci=name=>headers.indexOf(name);
+    const platCol=ci('k_Buying Platform'),brandCol=ci('Brand'),geoCol=ci('Marketing Geography'),
+          mediaCol=ci('Media Buy Name'),spendCol=ci('Spend'),posCol=ci('Nominal POS'),
+          impCol=ci('Impressions'),clickCol=ci('Clicks'),ordersCol=ci('Total Orders'),dpvrCol=ci('DPVR');
+    if([platCol,brandCol,geoCol,spendCol,posCol].some(c=>c<0)) throw new Error('Missing expected columns. Found: '+headers.filter(h=>h).join(', '));
+
+    const GEO_MAP={'united kingdom':'GB','germany':'DE','france':'FR','italy':'IT','spain':'ES'};
+    const BRAND_MAP={
+      GAMES:['gaming','hasbro gaming','hasbro gaming brand week','game performance plus'],
+      PLAY_DOH:['playdoh','playdoh always on','play-doh performance plus','play-doh performance plus q4'],
+      BEYBLADE:['beyblade'],DISNEY_KIDS:['disney kids','spidey and friends'],
+      MONOPOLY:['monopoly'],NERF:['nerf'],PEPPA_PIG:['peppa pig'],
+      STAR_WARS:['star wars'],TRANSFORMERS:['transformers']
+    };
+    // Collector's Corner is shared between Star Wars and Marvel with no clean
+    // brand column for it — same ambiguity already handled in the Pacvue
+    // uploader. Same rule applied here for consistency: read the campaign
+    // name (Media Buy Name) for a STARWARS tag, default to MARVEL otherwise
+    // (including the "GENERAL" campaigns, which aren't brand-specific).
+    function mapBrand(rawBrand,mediaBuyName){
+      const b=(rawBrand||'').toLowerCase().trim();
+      if(b==="collector's corner") return /starwars/i.test(mediaBuyName||'')?'STAR_WARS':'MARVEL';
+      for(const[bid,keys]of Object.entries(BRAND_MAP)){ if(keys.includes(b)) return bid; }
+      return null;
+    }
+
+    const dataRows=raw.slice(hi+1).filter(r=>r.some(v=>v!==''));
+    const agg={};
+    let excludedUAE=0,excludedTripleLift=0,excludedZeroSpend=0;
+    const unmapped={};
+    dataRows.forEach(r=>{
+      const plat=String(r[platCol]||'').trim();
+      if(plat==='Totals') return;
+      if(plat==='Triple Lift'){ excludedTripleLift+=Number(r[spendCol])||0; return; }
+      if(plat!=='Amazon'&&plat!=='Amazon DSP') return;
+      const geoRaw=String(r[geoCol]||'').trim().toLowerCase();
+      if(geoRaw==='united arab emirates'){ excludedUAE+=Number(r[spendCol])||0; return; }
+      const market=GEO_MAP[geoRaw];
+      if(!market) return;
+      const spend=Number(r[spendCol])||0;
+      if(spend===0){ excludedZeroSpend++; return; }
+      const brandRaw=String(r[brandCol]||'').trim();
+      const bid=mapBrand(brandRaw,r[mediaCol]);
+      if(!bid){ unmapped[brandRaw]=(unmapped[brandRaw]||0)+spend; return; }
+      const bucket=plat==='Amazon'?'AMS':'DSP';
+      const key=bucket+'|'+bid+'|'+market;
+      if(!agg[key]) agg[key]={bucket,bid,market,spend:0,pos:0,imp:0,clicks:0,orders:0,dpvEst:0};
+      const imp=Number(r[impCol])||0,dpvr=Number(r[dpvrCol])||0;
+      agg[key].spend+=spend;
+      agg[key].pos+=Number(r[posCol])||0;
+      agg[key].imp+=imp;
+      agg[key].clicks+=Number(r[clickCol])||0;
+      agg[key].orders+=Number(r[ordersCol])||0;
+      // DPVR read as Detail Page Views ÷ Impressions — Impressions×DPVR summed
+      // per row gives an estimated DPV count. Flagged as an estimate in the
+      // log below rather than presented as a native imported figure.
+      agg[key].dpvEst+=imp*dpvr;
+    });
+
+    logB(`Excluded: ${fmtEuroLog(excludedUAE)} UAE spend, ${fmtEuroLog(excludedTripleLift)} Triple Lift spend (not in current schema), ${excludedZeroSpend} zero-spend rows`,'info');
+    Object.entries(unmapped).forEach(([b,s])=>logB(`⚠️ Unmapped brand "${b}" — ${fmtEuroLog(s)} spend excluded, not guessed at.`,'err'));
+    if(!Object.keys(agg).length) throw new Error('No usable rows after filtering — nothing to upload.');
+
+    // ── Day-weighted split across the Sunday-weeks the range covers ──
+    function snapToSunday(d){const x=new Date(d);x.setDate(x.getDate()-x.getDay());x.setHours(12,0,0,0);return x;}
+    const totalDays=Math.round((rangeEnd-rangeStart)/86400000)+1;
+    const weeks=[];
+    let cursor=snapToSunday(rangeStart);
+    while(cursor<=rangeEnd){
+      const weekEnd=new Date(cursor);weekEnd.setDate(weekEnd.getDate()+6);
+      const overlapStart=cursor>rangeStart?cursor:rangeStart;
+      const overlapEnd=weekEnd<rangeEnd?weekEnd:rangeEnd;
+      const overlapDays=Math.max(0,Math.round((overlapEnd-overlapStart)/86400000)+1);
+      if(overlapDays>0) weeks.push({weekStart:cursor.toISOString().slice(0,10),fraction:overlapDays/totalDays});
+      cursor=new Date(cursor);cursor.setDate(cursor.getDate()+7);
+    }
+    logB(`Splitting across ${weeks.length} week(s): `+weeks.map(w=>w.weekStart+' ('+(w.fraction*100).toFixed(0)+'%)').join(', '),'info');
+
+    const amsRows=[],dspRows=[];
+    Object.values(agg).forEach(a=>{
+      weeks.forEach(w=>{
+        const f=w.fraction;
+        if(a.bucket==='AMS'){
+          amsRows.push({week_start:w.weekStart,brand_classified:a.bid,market:a.market,
+            ad_revenue:round2(a.pos*f),ad_spend:round2(a.spend*f),ad_impressions:Math.round(a.imp*f),
+            ad_clicks:Math.round(a.clicks*f),ad_glance_views:Math.round(a.dpvEst*f),
+            organic_revenue:0,organic_glance_views:0});
+        }else{
+          dspRows.push({week_start:w.weekStart,brand_classified:a.bid,market:a.market,
+            dsp_spend:round2(a.spend*f),dsp_revenue:round2(a.pos*f),dsp_impressions:Math.round(a.imp*f),
+            dsp_clicks:Math.round(a.clicks*f),dsp_dpv:Math.round(a.dpvEst*f),dsp_units:Math.round(a.orders*f)});
+        }
       });
     });
-  }catch(e){console.warn('loadPriorData error:',e);if(token===_priorToken){priorData={};priorCoverage=null;}}
+
+    // ── Never overwrite a week/brand/market that already has real spend ──
+    const targetWeeks=weeks.map(w=>w.weekStart);
+    async function filterAgainstExisting(rowsIn,table,spendField){
+      if(!rowsIn.length) return rowsIn;
+      const existing=await sbGet(`/rest/v1/${table}?week_start=in.(${targetWeeks.join(',')})&select=week_start,brand_classified,market,${spendField}`);
+      const existingMap={};
+      existing.forEach(r=>{existingMap[r.week_start+'|'+r.brand_classified+'|'+r.market]=r[spendField]||0;});
+      const keep=[],skipped=[];
+      rowsIn.forEach(r=>{
+        const k=r.week_start+'|'+r.brand_classified+'|'+r.market;
+        if((existingMap[k]||0)>0) skipped.push(k); else keep.push(r);
+      });
+      if(skipped.length) logB(`⚠️ Skipped ${skipped.length} row(s) in ${table} — already has real data for that week/brand/market (not overwritten): `+skipped.slice(0,8).join('; ')+(skipped.length>8?' …':''),'err');
+      return keep;
+    }
+    const amsToWrite=await filterAgainstExisting(amsRows,'brand_health_ads','ad_spend');
+    const dspToWrite=await filterAgainstExisting(dspRows,'brand_health_dsp','dsp_spend');
+    if(!amsToWrite.length&&!dspToWrite.length) throw new Error('Nothing to upload — every targeted week/brand/market already has real data.');
+
+    if(amsToWrite.length){ await sbPost('/rest/v1/brand_health_ads',amsToWrite); logB(`✅ Inserted ${amsToWrite.length} AMS rows into brand_health_ads`,'ok'); }
+    if(dspToWrite.length){ await sbPost('/rest/v1/brand_health_dsp',dspToWrite); logB(`✅ Inserted ${dspToWrite.length} DSP rows into brand_health_dsp`,'ok'); }
+    logB('Done.','ok');
+  }catch(err){logB('❌ Error: '+err.message,'err');}
+  document.getElementById('backfill-btn').disabled=false;
 }
 
-function aggregateBrand(brandId){
-  var rows=allRows.filter(function(r){return r.brand_classified===brandId;});
-  if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});
-  var revenue=0,units=0,gviews=0,unfilled=0,oosVals=[];
-  rows.forEach(function(r){
-    revenue+=r.dispatched_revenue||0;
-    units+=r.dispatched_units||0;
-    gviews+=r.glance_views||0;
-    unfilled+=r.unfilled_units||0;
-    if(r.oos_pct!=null)oosVals.push(r.oos_pct);
-  });
-  var priorRevenue=0,priorGviews=0;
-  if(currentMarket==='ALL'){
-    ['GB','DE','FR','IT','ES'].forEach(function(mkt){var k=brandId+'||'+mkt;if(priorData[k]){priorRevenue+=priorData[k].revenue;priorGviews+=priorData[k].gviews;}});
-  }else{
-    var k=brandId+'||'+currentMarket;
-    if(priorData[k]){priorRevenue=priorData[k].revenue;priorGviews=priorData[k].gviews;}
-  }
-  var revenueYoy=priorRevenue>0?(revenue-priorRevenue)/priorRevenue:null;
-  var gviewsYoy=priorGviews>0?(gviews-priorGviews)/priorGviews:null;
-  var avgOos=oosVals.length>0?oosVals.reduce(function(a,b){return a+b;},0)/oosVals.length:0;
-  var conv=gviews>0?(units/gviews)*100:0,asp=units>0?revenue/units:0;
-  var loyalty=loyaltyData[brandId],repeatRate=loyalty?loyalty.repeat_rate:null;
-  // QoQ trend: compare the most recent quarter's repeat rate to the one
-  // before it. Only shows once at least 2 quarters have been uploaded —
-  // with 1 quarter there's nothing to compare against yet.
-  var loyaltyHist=loyaltyHistory[brandId]||[];
-  var repeatRateQoq=null,priorRepeatRate=null,priorQuarterLabel=null;
-  if(loyaltyHist.length>=2&&loyaltyHist[0].repeat_rate!=null&&loyaltyHist[1].repeat_rate!=null){
-    priorRepeatRate=loyaltyHist[1].repeat_rate;
-    priorQuarterLabel=loyaltyHist[1].quarter;
-    repeatRateQoq=loyaltyHist[0].repeat_rate-priorRepeatRate; // percentage-point delta, not relative %
-  }
-  var ltv=repeatRate&&repeatRate<1&&asp>0?asp/(1-repeatRate):null;
-  var ads=null;
-  if(adsData[brandId]){
-    var mkts=currentMarket==='ALL'?Object.keys(adsData[brandId]):[currentMarket];
-    ads={ad_revenue:0,ad_spend:0,ad_impressions:0,ad_clicks:0,ad_glance_views:0};
-    mkts.forEach(function(mk){var a=adsData[brandId][mk];if(a){ads.ad_revenue+=(a.ad_revenue||0);ads.ad_spend+=(a.ad_spend||0);ads.ad_glance_views+=(a.ad_glance_views||0);ads.ad_clicks+=(a.ad_clicks||0);ads.ad_impressions+=(a.ad_impressions||0);}});
-    if(ads.ad_revenue===0&&ads.ad_spend===0)ads=null;
-  }
-  return{revenue:revenue,revenueYoy:revenueYoy,units:units,asp:asp,conv:conv,gviews:gviews,gviewsYoy:gviewsYoy,unfilled:unfilled,avgOos:avgOos,repeatRate:repeatRate,repeatRateQoq:repeatRateQoq,priorQuarterLabel:priorQuarterLabel,ltv:ltv,ads:ads};
-}
+// ─── SEARCH TERMS ─────────────────────────────────────────────
+const HASBRO_KEYWORDS={TRANSFORMERS:['transformers','optimus prime','megatron','autobot','decepticon','bumblebee transformer'],NERF:['nerf','super soaker','supersoaker'],MONOPOLY:['monopoly'],PLAY_DOH:['play-doh','play doh','playdoh'],BEYBLADE:['beyblade','bey blade'],PEPPA_PIG:['peppa pig','peppa'],MARVEL:['marvel','spider-man','spiderman','spidey','avengers','iron man toy','thor toy','hulk toy','marvel legends','captain america toy'],STAR_WARS:['star wars','lightsaber','mandalorian','darth vader','yoda toy','stormtrooper toy','boba fett','grogu'],GAMES:['monopoly','cluedo','hasbro game','jenga','battleship game','connect 4','operation game','guess who','trivial pursuit','hasbro gaming'],DISNEY_KIDS:['spidey and his','spidey amazing friends'],HASBRO:['hasbro']};
+function classifySearchTerm(term){const t=term.toLowerCase();for(const[brand,kws]of Object.entries(HASBRO_KEYWORDS)){if(kws.some(k=>t.includes(k)))return brand;}return null;}
+function estimateSearchVol(rank){if(!rank||rank<=0)return null;return Math.round(500000/Math.pow(rank,0.7));}
 
-function getToysRank(brandId){
-  if(!searchTermsData.length)return null;
-  var weeks=searchTermsData.map(function(t){return t.week_start;}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
-  if(!weeks.length)return null;
-  var latestWeek=weeks[weeks.length-1],priorWeek=weeks.length>=2?weeks[weeks.length-2]:null;
-  var brandTerms=searchTermsData.filter(function(t){return t.brand_classified===brandId&&t.week_start===latestWeek&&(t.top_clicked_category||'').toLowerCase().indexOf('toy')>=0&&t.rank;});
-  if(!brandTerms.length)return null;
-  var bestRank=Math.min.apply(null,brandTerms.map(function(t){return t.rank;}));
-  var priorRank=null;
-  if(priorWeek){var pt=searchTermsData.filter(function(t){return t.brand_classified===brandId&&t.week_start===priorWeek&&(t.top_clicked_category||'').toLowerCase().indexOf('toy')>=0&&t.rank;});if(pt.length)priorRank=Math.min.apply(null,pt.map(function(t){return t.rank;}));}
-  return{rank:bestRank,priorRank:priorRank,change:priorRank?priorRank-bestRank:null};
-}
-
-function getSentiment(d){
-  var revDown=d.revenueYoy!==null&&d.revenueYoy<-0.02;
-  var revUp=d.revenueYoy!==null&&d.revenueYoy>0.02;
-  var gvDown=d.gviewsYoy!==null&&d.gviewsYoy<-0.05;
-  var cvrBad=cvrLevel(d.conv)==='bad';
-  var oosRed=oosLabel(d.avgOos)==='red';
-  if(d.avgOos>20)return'cry';
-  if(oosRed&&cvrBad)return'cry';
-  if(revDown&&gvDown)return'cry';
-  if(revUp&&!cvrBad&&!oosRed)return'happy';
-  return'sad';
-}
-var SC={happy:{emoji:'🤑',label:'Happy',cls:'happy'},sad:{emoji:'🧐',label:'Mixed',cls:'sad'},cry:{emoji:'😭',label:'Needs Attention',cls:'cry'}};
-
-// ─── PORTFOLIO-LEVEL AGGREGATION (Key Metrics section) ────────
-// Mirrors aggregateBrand exactly but across ALL rows in the current
-// period/market selection, so the overall numbers always reconcile
-// with the sum of the brand cards below.
-function aggregatePortfolio(){
-  var rows=allRows;
-  if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});
-  var revenue=0,units=0,gviews=0,oosVals=[];
-  rows.forEach(function(r){
-    revenue+=r.dispatched_revenue||0;
-    units+=r.dispatched_units||0;
-    gviews+=r.glance_views||0;
-    if(r.oos_pct!=null)oosVals.push(r.oos_pct);
-  });
-  // Prior period totals: sum every brand||market key in priorData that
-  // matches the current market filter — same source the brand cards use.
-  var priorRevenue=0,priorGviews=0,priorUnits=0;
-  Object.keys(priorData).forEach(function(k){
-    var mkt=k.split('||')[1];
-    if(currentMarket!=='ALL'&&mkt!==currentMarket)return;
-    priorRevenue+=priorData[k].revenue||0;
-    priorGviews+=priorData[k].gviews||0;
-    priorUnits+=priorData[k].units||0;
-  });
-  var revenueYoy=priorRevenue>0?(revenue-priorRevenue)/priorRevenue:null;
-  var gviewsYoy=priorGviews>0?(gviews-priorGviews)/priorGviews:null;
-  var priorAsp=priorUnits>0?priorRevenue/priorUnits:0;
-  var avgOos=oosVals.length>0?oosVals.reduce(function(a,b){return a+b;},0)/oosVals.length:0;
-  var conv=gviews>0?(units/gviews)*100:0,asp=units>0?revenue/units:0;
-  var aspYoy=priorAsp>0&&asp>0?(asp-priorAsp)/priorAsp:null;
-  // Portfolio repeat rate: customer-weighted across brands, NOT a simple
-  // average of brand rates — sum(repeat customers)/sum(total customers).
-  var repeatCust=0,totalCust=0;
-  Object.keys(loyaltyData).forEach(function(bid){
-    var l=loyaltyData[bid];
-    if(l&&l.total_customers){repeatCust+=(l.repeat_customers||0);totalCust+=l.total_customers;}
-  });
-  var repeatRate=totalCust>0?repeatCust/totalCust:null;
-  return{revenue:revenue,revenueYoy:revenueYoy,units:units,gviews:gviews,gviewsYoy:gviewsYoy,conv:conv,asp:asp,aspYoy:aspYoy,avgOos:avgOos,repeatRate:repeatRate};
-}
-
-function renderOverallMetrics(){
-  var p=aggregatePortfolio();
-  var fmtEuro=function(v){return v>=1000000?'€'+(v/1000000).toFixed(1)+'M':v>=1000?'€'+(v/1000).toFixed(0)+'K':'€'+Math.round(v);};
-  var fmtNum=function(v){return v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'K':Math.round(v).toLocaleString();};
-  var yoyHtml=function(y){
-    if(y===null)return'<span style="opacity:0.6">no prior data</span>';
-    var cls=y>=0?'yoy-up':'yoy-down';var arr=y>=0?'▲':'▼';
-    // Flag comparisons where the prior range is missing weeks the current range
-    // has — the % is then not like-for-like and will read inflated.
-    var warn=(priorCoverage&&priorCoverage.pri<priorCoverage.cur-0.15)?' <span title="Prior period is missing '+((priorCoverage.cur-priorCoverage.pri)).toFixed(1)+' weeks of data — comparison not like-for-like">⚠️</span>':'';
-    return'<span class="'+cls+'">'+arr+Math.abs(y*100).toFixed(1)+'% '+(currentComparison==='yoy'?'YoY':currentComparison==='4w'?'vs 4W':'WoW')+'</span>'+warn;
-  };
-  // Per-metric sentiment, reusing the exact thresholds the brand cards use
-  // (getSentiment ±2% revenue, ±5% GVs; cvrLevel; oosLabel).
-  var sRev=p.revenueYoy===null?'sad':p.revenueYoy>0.02?'happy':p.revenueYoy<-0.02?'cry':'sad';
-  var sGv=p.gviewsYoy===null?'sad':p.gviewsYoy>0.05?'happy':p.gviewsYoy<-0.05?'cry':'sad';
-  // CVR judged against the FY25 portfolio average when available: at or above
-  // benchmark = happy, within 10% relative = mixed, below that = attention.
-  // Falls back to the fixed cvrLevel thresholds until the benchmark is set.
-  var sCvr,cvrSub;
-  if(FY25_CVR_BENCHMARK!==null){
-    sCvr=p.conv>=FY25_CVR_BENCHMARK?'happy':p.conv>=FY25_CVR_BENCHMARK*0.9?'sad':'cry';
-    cvrSub='FY25 avg: '+FY25_CVR_BENCHMARK.toFixed(2)+'%  ·  '+fmtNum(p.units)+' units';
-  }else{
-    sCvr=cvrLevel(p.conv)==='good'?'happy':cvrLevel(p.conv)==='ok'?'sad':'cry';
-    cvrSub=fmtNum(p.units)+' units';
-  }
-  var sOos=oosLabel(p.avgOos)==='green'?'happy':oosLabel(p.avgOos)==='amber'?'sad':'cry';
-  // Pre-order pipeline for the topline card: pending (ordered-not-dispatched)
-  // revenue and units across flagged ASINs. Recomputed every render, so as
-  // items ship their dispatch rate rises past 25% and they drop out — the
-  // number self-corrects as revenue converts to shipped.
-  var poGroups=computePreOrders();
-  var poRev=0,poUnits=0;
-  poGroups.forEach(function(g){poRev+=g.pending;poUnits+=g.pendingUnits;});
-  // Secondary line: orders placed on book ASINs within the SELECTED period —
-  // moves with the week/month selector while the headline stays cumulative.
-  var flaggedAsins={};
-  poGroups.forEach(function(g){g.asins.forEach(function(a){flaggedAsins[a.asin]=1;});});
-  var poNewRev=0;
-  var poRows=currentMarket==='ALL'?allRows:allRows.filter(function(r){return r.market===currentMarket;});
-  poRows.forEach(function(r){if(flaggedAsins[r.asin])poNewRev+=r.ordered_revenue||0;});
-  var card=function(label,value,sub,sent){
-    var emoji=sent?('<div class="metric-emoji">'+SC[sent].emoji+'</div>'):'';
-    var cls=sent?(' m-'+SC[sent].cls):'';
-    return'<div class="metric-card'+cls+'">'+emoji+
-      '<div class="metric-label">'+label+'</div>'+
-      '<div class="metric-value">'+value+'</div>'+
-      '<div class="metric-sub">'+sub+'</div></div>';
-  };
-  document.getElementById('overall-metrics').innerHTML=
-    card('Revenue',fmtEuro(p.revenue),yoyHtml(p.revenueYoy),sRev)+
-    card('Glance Views',fmtNum(p.gviews),yoyHtml(p.gviewsYoy),sGv)+
-    card('Conversion Rate',p.conv.toFixed(2)+'%',cvrSub,sCvr)+
-    card('ASP','€'+p.asp.toFixed(2),yoyHtml(p.aspYoy),null)+
-    card('Avg OOS',p.avgOos.toFixed(1)+'%','target ≤6%',sOos)+
-    card('Pre-Order Pipeline',poRev>0?fmtEuro(poRev):'€0',fmtNum(poUnits)+' units · excl. shipped rev'+(poNewRev>0?'<br>+'+fmtEuro(poNewRev)+' ordered in period':''),null);
-}
-
-// ─── PRE-ORDER / PENDING SHIP PIPELINE ─────────────────────────
-// Detection is at ASIN level, not brand level: within the selected period an
-// ASIN with meaningful ordered revenue but a dispatch rate under 25% is a
-// pre-order or pending-ship line (unreleased launches — Star Wars movie items,
-// Monopoly F1 — or heavily backordered stock). Brand-level ordered-minus-
-// dispatched alone would drown that signal in ordinary order-to-ship lag.
-// Thresholds now live in the preorder_pipeline VIEW in Supabase (>=€500
-// cumulative ordered, dispatch rate <25%) — tune them there, not here.
-// The view is cumulative YTD per ASIN+market: an order stays in the book
-// from the week it's placed until the week it ships, then drains out as
-// dispatched revenue catches up. Period-independent by design — the book
-// is a running total, so it does NOT change with the week/month selector.
-function computePreOrders(){
-  var rows=preorderData;
-  if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});
-  var byAsin={};
-  rows.forEach(function(r){
-    var k=r.asin;
-    if(!byAsin[k])byAsin[k]={asin:r.asin,title:r.product_title,brand:r.brand_classified,ordered:0,dispatched:0,orderedUnits:0,dispatchedUnits:0};
-    byAsin[k].ordered+=r.ordered_revenue||0;
-    byAsin[k].dispatched+=r.dispatched_revenue||0;
-    byAsin[k].orderedUnits+=r.ordered_units||0;
-    byAsin[k].dispatchedUnits+=r.dispatched_units||0;
-  });
-  var byBrand={};
-  Object.values(byAsin).forEach(function(a){
-    a.pending=Math.max(0,a.ordered-a.dispatched);
-    a.pendingUnits=Math.max(0,a.orderedUnits-a.dispatchedUnits);
-    if(a.pending<=0)return;
-    if(!byBrand[a.brand])byBrand[a.brand]={brand:a.brand,pending:0,pendingUnits:0,ordered:0,asins:[]};
-    byBrand[a.brand].pending+=a.pending;
-    byBrand[a.brand].pendingUnits+=a.pendingUnits;
-    byBrand[a.brand].ordered+=a.ordered;
-    byBrand[a.brand].asins.push(a);
-  });
-  return Object.values(byBrand).sort(function(x,y){return y.pending-x.pending;});
-}
-
-function renderPreOrders(){
-  var panel=document.getElementById('preorder-panel');
-  var el=document.getElementById('preorder-items');
-  if(!panel||!el)return;
-  var groups=computePreOrders();
-  if(!groups.length){panel.style.display='none';return;}
-  panel.style.display='';
-  var fmtEuro=function(v){return v>=1000000?'€'+(v/1000000).toFixed(1)+'M':v>=1000?'€'+(v/1000).toFixed(1)+'K':'€'+Math.round(v);};
-  var totalPending=groups.reduce(function(s,g){return s+g.pending;},0);
-  var html='<div style="padding:10px 0;font-family:\'Syne\',sans-serif;font-size:14px;font-weight:700;color:var(--text);">Total pending: '+fmtEuro(totalPending)+' across '+groups.reduce(function(s,g){return s+g.asins.length;},0)+' ASINs</div>';
-  groups.forEach(function(g){
-    var label=(typeof BRAND_LABELS!=='undefined'&&BRAND_LABELS[g.brand])?BRAND_LABELS[g.brand]:g.brand;
-    var top=g.asins.sort(function(a,b){return b.pending-a.pending;}).slice(0,8);
-    html+='<details style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:white;">'+
-      '<summary style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;list-style:none;">'+
-        '<span style="font-family:\'Syne\',sans-serif;font-weight:700;font-size:13px;flex:1;">'+label+'</span>'+
-        '<span style="font-size:11px;color:var(--text2);">'+g.asins.length+' ASIN'+(g.asins.length>1?'s':'')+'</span>'+
-        '<span style="font-family:\'DM Mono\',monospace;font-weight:700;font-size:13px;color:var(--purple);">'+fmtEuro(g.pending)+' pending</span>'+
-      '</summary>'+
-      '<div style="padding:4px 14px 12px;">'+
-        top.map(function(a){
-          var rate=a.ordered>0?(a.dispatched/a.ordered*100):0;
-          return'<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--border);font-size:11px;">'+
-            '<span style="font-family:\'DM Mono\',monospace;color:var(--text2);flex-shrink:0;">'+a.asin+'</span>'+
-            '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);" title="'+(a.title||'').replace(/"/g,'&quot;')+'">'+(a.title||'—')+'</span>'+
-            '<span style="color:var(--text2);flex-shrink:0;">'+Math.round(a.orderedUnits).toLocaleString()+' u</span>'+
-            '<span style="color:'+(rate<5?'var(--purple)':'var(--amber)')+';flex-shrink:0;font-weight:700;">'+rate.toFixed(0)+'% shipped</span>'+
-            '<span style="font-family:\'DM Mono\',monospace;font-weight:700;flex-shrink:0;">'+fmtEuro(a.pending)+'</span>'+
-          '</div>';
-        }).join('')+
-        (g.asins.length>8?'<div style="padding-top:6px;font-size:10px;color:var(--text3);">+'+(g.asins.length-8)+' more ASINs</div>':'')+
-      '</div></details>';
-  });
-  el.innerHTML=html;
-}
-
-function renderAdsMetrics(){
-  var el=document.getElementById('ads-metrics');if(!el)return;
-  var fmtEuro=function(v){return v>=1000000?'€'+(v/1000000).toFixed(1)+'M':v>=1000?'€'+(v/1000).toFixed(0)+'K':'€'+Math.round(v);};
-  var fmtNum=function(v){return v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'K':Math.round(v).toLocaleString();};
-  // Ads totals for the selected period + market (AMS only — DSP not captured)
-  var spend=0,adRev=0,adGv=0,imps=0,activeBrands={},allBrands={};
-  Object.keys(adsData).forEach(function(bid){
-    Object.keys(adsData[bid]).forEach(function(mkt){
-      if(currentMarket!=='ALL'&&mkt!==currentMarket)return;
-      var v=adsData[bid][mkt];
-      spend+=v.ad_spend||0;adRev+=v.ad_revenue||0;adGv+=v.ad_glance_views||0;imps+=v.ad_impressions||0;
-      if((v.ad_spend||0)>10)activeBrands[bid]=1;
+async function uploadSearchTerms() {
+  const weekStart = document.getElementById('week-start').value;
+  if (!weekStart){alert('Please upload VC data first to set the week date.');return;}
+  document.getElementById('search-log').innerHTML='';
+  logS('Reading Search Terms report...','info');
+  try {
+    const text = await files.search.text();
+    const clean = text.replace(/^\uFEFF/,'');
+    const lines = clean.split('\n');
+    const result=Papa.parse(lines.slice(1).join('\n'),{header:true,skipEmptyLines:true,dynamicTyping:false});
+    const headers=result.meta.fields||[];
+    logS(`${result.data.length.toLocaleString()} total terms in file`,'info');
+    const rankKey=headers.find(h=>h.includes('Search Frequency Rank'));
+    const termKey=headers.find(h=>h.includes('Search Term')&&!h.includes('Rank'));
+    const cat1Key=headers.find(h=>h.includes('Top Clicked Category No. 1'));
+    const asin1Key=headers.find(h=>h.includes('Product No. 1: ASIN'));
+    const title1Key=headers.find(h=>h.includes('Product No. 1: Product Title'));
+    const cs1Key=headers.find(h=>h.includes('Product No. 1: Click Share'));
+    const cvr1Key=headers.find(h=>h.includes('Product No. 1: Conversion Share'));
+    const asin2Key=headers.find(h=>h.includes('Product No. 2: ASIN'));
+    const asin3Key=headers.find(h=>h.includes('Product No. 3: ASIN'));
+    const top500=[],branded=[];
+    result.data.forEach(r=>{
+      const rank=parseInt(r[rankKey])||null;
+      const term=String(r[termKey]||'').trim();
+      if(!rank||!term)return;
+      const base={week_start:weekStart,term,rank,top_clicked_category:String(r[cat1Key]||'').replace('_',' '),asin1:String(r[asin1Key]||'').trim()||null,product_title_1:String(r[title1Key]||'').trim().substring(0,200)||null,click_share_1:parseFloat(r[cs1Key])||null,cvr_1:parseFloat(r[cvr1Key])||null,asin2:String(r[asin2Key]||'').trim()||null,asin3:String(r[asin3Key]||'').trim()||null,est_weekly_searches:estimateSearchVol(rank)};
+      if(rank<=500){top500.push({...base,brand_classified:classifySearchTerm(term)||'PLATFORM',category:'TOP500'});return;}
+      const brand=classifySearchTerm(term);
+      if(!brand)return;
+      branded.push({...base,brand_classified:brand,category:'BRAND'});
     });
-  });
-  // Revenue-weighted advertised share: portfolio revenue behind brands with
-  // active spend / total portfolio revenue (brand-grain ads — best available).
-  var rows=currentMarket==='ALL'?allRows:allRows.filter(function(r){return r.market===currentMarket;});
-  var totRev=0,totGv=0;
-  rows.forEach(function(r){totRev+=r.dispatched_revenue||0;totGv+=r.glance_views||0;});
-  // Blend DSP (brand_health_dsp) for whatever weeks of the selected period have
-  // DSP rows. Combined view per the business call: the audience cares about
-  // total ad investment, not the AMS/DSP org chart. DPVs stand in for ad-driven
-  // GVs on the DSP side (closest funnel equivalent to a glance view).
-  var periodWeeks={};allRows.forEach(function(r){periodWeeks[r.week_start]=1;});
-  var dspSpend=0,dspRev=0,dspDpv=0,dspImps=0;
-  dspRows.forEach(function(r){
-    if(!periodWeeks[r.week_start])return;
-    if(currentMarket!=='ALL'&&r.market!==currentMarket)return;
-    dspSpend+=Number(r.dsp_spend)||0;dspRev+=Number(r.dsp_revenue)||0;dspDpv+=Number(r.dsp_dpv)||0;dspImps+=Number(r.dsp_impressions)||0;
-  });
-  var hasDsp=dspSpend>0;
-  spend+=dspSpend;adRev+=dspRev;adGv+=dspDpv;imps+=dspImps;
-  var roas=spend>0?adRev/spend:0;
-  var gvPct=totGv>0?adGv/totGv*100:0;
-  // ASIN-level advertising coverage:
-  // NUMERATOR — advertised ASIN count from the quarterly coverage upload
-  //   (reliable: it's a list of ASINs with SP live).
-  // DENOMINATOR — distinct ASINs actually trading in the selected period,
-  //   from the already-loaded snapshots. The Pacvue export only contains
-  //   advertised ASINs, so using its own total would always read 100%.
-  var covAdv=0,covQ=null;
-  Object.keys(adsCoverageData).forEach(function(bid){
-    Object.keys(adsCoverageData[bid]).forEach(function(mkt){
-      if(currentMarket!=='ALL'&&mkt!==currentMarket)return;
-      var v=adsCoverageData[bid][mkt];
-      covAdv+=v.sp||0;if(v.quarter)covQ=v.quarter;
-    });
-  });
-  var catAsins={};
-  rows.forEach(function(r){if(r.asin)catAsins[r.market+'|'+r.asin]=1;});
-  var covTot=Object.keys(catAsins).length;
-  var advPct=covTot>0&&covAdv>0?Math.min(100,covAdv/covTot*100):null;
-  var sRoas=spend<=0?null:roas>=4?'happy':roas>=2?'sad':'cry';
-  var card=function(label,value,sub,sent){
-    var emoji=sent?('<div class="metric-emoji">'+SC[sent].emoji+'</div>'):'';
-    var cls=sent?(' m-'+SC[sent].cls):'';
-    return'<div class="metric-card'+cls+'">'+emoji+'<div class="metric-label">'+label+'</div><div class="metric-value">'+value+'</div><div class="metric-sub">'+sub+'</div></div>';
-  };
-  el.innerHTML=
-    card('Ad Spend',spend>0?fmtEuro(spend):'€0',spend>0?(hasDsp?'AMS '+fmtEuro(spend-dspSpend)+' + DSP '+fmtEuro(dspSpend):'AMS only — no DSP data for period'):'no ads data for period',null)+
-    card('Ad Attributed Revenue',fmtEuro(adRev),totRev>0?(adRev/totRev*100).toFixed(1)+'% of total revenue':'—',null)+
-    card('Ad-Driven Glance Views',fmtNum(adGv),gvPct.toFixed(1)+'% of total GVs'+(hasDsp?' · incl. DSP DPVs':''),null)+
-    card('Impressions',fmtNum(imps),'served · '+(hasDsp?'AMS + DSP':'AMS only'),null)+
-    card('ROAS',spend>0?roas.toFixed(1)+'x':'—',hasDsp?'blended AMS + DSP':'AMS attributed',sRoas)+
-    card('Portfolio Advertised',advPct!==null?advPct.toFixed(1)+'%':'—',advPct!==null?fmtNum(covAdv)+' ASINs in plan of '+fmtNum(covTot)+' active in period'+(covQ?' · '+covQ:''):'no coverage data — upload quarterly file',null);
+    const allRows=[...top500,...branded];
+    logS(`✓ ${top500.length} top-500 + ${branded.length} Hasbro brand terms = ${allRows.length} total`,'ok');
+    if(!allRows.length) throw new Error('No rows parsed');
+    await sbDelete(`/rest/v1/brand_health_search_terms?week_start=eq.${weekStart}`);
+    const BATCH=500;
+    for(let i=0;i<allRows.length;i+=BATCH){await sbPost('/rest/v1/brand_health_search_terms',allRows.slice(i,i+BATCH));logS(`Uploaded ${Math.min(i+BATCH,allRows.length)}/${allRows.length}...`);}
+    logS(`✅ Done! ${allRows.length} terms uploaded for week ${weekStart}`,'ok');
+  } catch(err){logS('❌ Error: '+err.message,'err');}
 }
 
-function buildDashboard(){renderOverallMetrics();renderAdsMetrics();renderSentimentBar();renderBrandCards();renderSupplyAlerts();renderPreOrders();if(selectedBrand)renderRCA(selectedBrand,currentTab);}
-
-function renderSentimentBar(){
-  var counts={happy:0,sad:0,cry:0};
-  BRAND_ORDER.forEach(function(id){var d=aggregateBrand(id);if(d.revenue===0&&d.gviews===0)return;counts[getSentiment(d)]++;});
-  document.getElementById('sentiment-bar').innerHTML=
-    '<div class="sentiment-pill happy"><span style="font-size:20px">🤑</span><span style="font-size:22px;font-weight:800">'+counts.happy+'</span><span style="font-size:12px;font-weight:600;opacity:0.8">Brands Happy</span></div>'+
-    '<div class="sentiment-pill sad"><span style="font-size:20px">🧐</span><span style="font-size:22px;font-weight:800">'+counts.sad+'</span><span style="font-size:12px;font-weight:600;opacity:0.8">Brands Mixed</span></div>'+
-    '<div class="sentiment-pill cry"><span style="font-size:20px">😭</span><span style="font-size:22px;font-weight:800">'+counts.cry+'</span><span style="font-size:12px;font-weight:600;opacity:0.8">Need Attention</span></div>';
+// ─── HISTORY ─────────────────────────────────────────────────
+async function loadHistory() {
+  const [weeks,adsWeeks] = await Promise.all([
+    sbFetch('/rest/v1/brand_health_weeks?select=*&order=week_start.desc&limit=52'),
+    sbFetch('/rest/v1/brand_health_ads?select=week_start&order=week_start.desc&limit=1000')
+  ]);
+  const adsSet = new Set(adsWeeks.map(r=>r.week_start?.slice(0,10)));
+  const tbody = document.getElementById('history-tbody');
+  if(!weeks.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">No uploads yet</td></tr>';return;}
+  tbody.innerHTML = weeks.map(w=>`<tr>
+    <td>${w.week_label||w.week_start}</td>
+    <td>${new Date(w.uploaded_at||w.created_at).toLocaleString('en-GB')}</td>
+    <td>—</td>
+    <td>${adsSet.has(w.week_start?.slice(0,10))?'<span style="color:var(--ad-color);font-weight:700">✅ Ads</span>':'<span style="color:var(--text3);font-size:11px">No ads</span>'}</td>
+    <td><button class="del-btn" onclick="deleteWeek('${w.week_start}')">Delete</button></td>
+  </tr>`).join('');
 }
 
-function getSortedBrands(){
-  var brands=BRAND_ORDER.map(function(id){return{id:id,data:aggregateBrand(id)};}).filter(function(b){return b.data.revenue>0||b.data.gviews>0;});
-  if(currentSort==='revenue')brands.sort(function(a,b){return b.data.revenue-a.data.revenue;});
-  else if(currentSort==='sentiment'){var order={cry:0,sad:1,happy:2};brands.sort(function(a,b){return order[getSentiment(a.data)]-order[getSentiment(b.data)];});}
-  else if(currentSort==='ltv')brands.sort(function(a,b){return(b.data.ltv||0)-(a.data.ltv||0);});
-  return brands;
+async function deleteWeek(weekStart){
+  if(!confirm(`Delete all data for week ${weekStart}? This cannot be undone.`)) return;
+  await Promise.all([
+    sbDelete(`/rest/v1/brand_health_snapshots?week_start=eq.${weekStart}`),
+    sbDelete(`/rest/v1/brand_health_ads?week_start=eq.${weekStart}`),
+    sbDelete(`/rest/v1/brand_health_weeks?week_start=eq.${weekStart}`)
+  ]);
+  loadHistory();
 }
 
-function renderBrandCards(){
-  var grid=document.getElementById('brand-grid');grid.innerHTML='';
-  getSortedBrands().forEach(function(item){
-    var id=item.id,d=item.data,s=getSentiment(d),sc=SC[s],color=BRAND_COLORS[id];
-    var issueCount=0;
-    if(oosLabel(d.avgOos)==='red')issueCount++;if(oosLabel(d.avgOos)==='amber')issueCount+=0.5;
-    if(cvrLevel(d.conv)==='bad')issueCount++;if(cvrLevel(d.conv)==='ok')issueCount+=0.5;
-    if(d.revenueYoy!==null&&d.revenueYoy<-0.05)issueCount++;if(d.gviewsYoy!==null&&d.gviewsYoy<-0.1)issueCount+=0.5;
-    var issueInt=Math.ceil(issueCount);
-    var supplyClass=issueCount>=2?'show-red':issueCount>=1?'show-amber':'';
-    var supplyText=issueCount>=1?'⚠️ Root Cause ('+issueInt+' issue'+(issueInt>1?'s':'')+')':'';
-    var ads=d.ads,hasAds=ads!=null&&(ads.ad_spend>0||ads.ad_revenue>0);
-    var adRevPct=hasAds&&d.revenue>0?((ads.ad_revenue/d.revenue)*100).toFixed(0):null;
-    var adGvPct=hasAds&&d.gviews>0?((ads.ad_glance_views/d.gviews)*100).toFixed(0):null;
-    var orgRev=hasAds?Math.max(0,d.revenue-(ads.ad_revenue||0)):0;
-    var orgGv=hasAds?Math.max(0,d.gviews-(ads.ad_glance_views||0)):0;
-    var subRevHtml=hasAds?
-      '<div class="bm-sub-row"><span class="bm-sub-label"><span class="dot-org"></span>Organic</span><span class="bm-sub-value">'+fmtCur(orgRev)+'</span></div>'+
-      '<div class="bm-sub-row"><span class="bm-sub-label"><span class="dot-ad"></span>Ad Attributed</span><span class="bm-sub-value">'+fmtCur(ads.ad_revenue||0)+' <span style="color:var(--ad-color);font-size:9px">'+adRevPct+'%</span></span></div>'+
-      '<div class="bm-sub-row"><span class="bm-sub-label" style="color:var(--ad-color)">◆ ROAS</span><span class="bm-sub-value" style="font-weight:700">'+(ads.ad_spend>0?(ads.ad_revenue/ads.ad_spend).toFixed(2)+'x':'—')+'</span></div>':
-      '<div class="bm-sub-row"><span class="bm-sub-label" style="color:var(--text3)">No ads data</span></div>';
-    var subGvHtml=hasAds?
-      '<div class="bm-sub-row"><span class="bm-sub-label"><span class="dot-org"></span>Organic</span><span class="bm-sub-value">'+fmtNum(orgGv)+'</span></div>'+
-      '<div class="bm-sub-row"><span class="bm-sub-label"><span class="dot-ad"></span>Ad Traffic</span><span class="bm-sub-value">'+fmtNum(ads.ad_glance_views||0)+' <span style="color:var(--ad-color);font-size:9px">'+adGvPct+'%</span></span></div>':
-      '<div class="bm-sub-row"><span class="bm-sub-label" style="color:var(--text3)">No ads data</span></div>';
-    var card=document.createElement('div');
-    card.className='brand-card '+sc.cls+(selectedBrand===id?' selected':'');
-    card.onclick=(function(bid,c){return function(){selectBrand(bid,c);};})(id,card);
-    card.innerHTML=
-      '<div class="brand-card-accent" style="background:'+color+'"></div>'+
-      '<div class="brand-sentiment-emoji">'+sc.emoji+'</div>'+
-      '<div class="brand-card-name">'+BRAND_LABELS[id]+'</div>'+
-      '<div class="brand-sentiment-label '+sc.cls+'">'+sc.label+'</div>'+
-      '<div class="brand-metrics">'+
-      '<div class="bm-expand-row" onclick="toggleExpand(event,\'rev-'+id+'\')"><span class="bm-label">Revenue <span class="expand-toggle" id="tog-rev-'+id+'">▶</span></span><span class="bm-right"><span class="bm-value">'+fmtCur(d.revenue)+'</span>'+fmtYoy(d.revenueYoy)+'</span></div>'+
-      '<div class="bm-sub-rows" id="rev-'+id+'">'+subRevHtml+'</div>'+
-      '<div class="bm-expand-row" onclick="toggleExpand(event,\'gv-'+id+'\')"><span class="bm-label">Glance Views <span class="expand-toggle" id="tog-gv-'+id+'">▶</span></span><span class="bm-right"><span class="bm-value">'+fmtNum(d.gviews)+'</span>'+fmtYoy(d.gviewsYoy)+'</span></div>'+
-      '<div class="bm-sub-rows" id="gv-'+id+'">'+subGvHtml+'</div>'+
-      '<div class="bm-row"><span class="bm-label">Conversion</span><span class="bm-right"><span class="bm-value '+cvrClass(d.conv)+'">'+d.conv.toFixed(2)+'%</span></span></div>'+
-      '<div class="bm-row"><span class="bm-label">ASP</span><span class="bm-right"><span class="bm-value">'+fmtCur(d.asp)+'</span></span></div>'+
-      '<div class="bm-row"><span class="bm-label">OOS</span><span class="bm-right"><span class="bm-value '+oosClass(d.avgOos)+'">'+d.avgOos.toFixed(1)+'%</span></span></div>'+
-      (function(){var tr=getToysRank(id);if(!tr)return'';var ch='';if(tr.change!==null){var cls=tr.change>0?'yoy-up':tr.change<0?'yoy-down':'yoy-na';var arr=tr.change>0?'▲':tr.change<0?'▼':'';ch='<span class="yoy '+cls+'">'+arr+Math.abs(tr.change)+'</span>';}return'<div class="bm-row"><span class="bm-label">🔍 Toys Rank</span><span class="bm-right"><span class="bm-value">#'+tr.rank.toLocaleString()+'</span>'+ch+'</span></div>';})()+
-      '<div class="brand-divider"></div>'+
-      '<div class="bm-row"><span class="bm-label">Repeat Rate</span><span class="bm-right"><span class="bm-value">'+(d.repeatRate!==null?(d.repeatRate*100).toFixed(1)+'%':'<span style="color:var(--text3);font-size:9px">No data</span>')+'</span>'+(d.repeatRate!==null?fmtPP(d.repeatRateQoq,'QoQ'):'')+'</span></div>'+
-      '<div class="bm-row"><span class="bm-label">Est. LTV</span><span class="bm-right"><span class="ltv-badge" style="'+(d.ltv?'':'opacity:0.35')+'">'+(d.ltv?fmtCur(d.ltv):'—')+'</span></span></div>'+
-      '</div>'+(supplyClass?'<div class="supply-alert '+supplyClass+'">'+supplyText+'</div>':'');
-    grid.appendChild(card);
-  });
-}
+// ─── SUPABASE HELPERS ─────────────────────────────────────────
+function sbFetch(path){return fetch(SB_URL+path,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Range':'0-1999','Prefer':'count=none'}}).then(r=>r.json()).then(d=>Array.isArray(d)?d:[]);}
+async function sbDelete(path){const r=await fetch(SB_URL+path,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});if(!r.ok)throw new Error('Delete failed: '+r.status);}
+async function sbPost(path,body){const r=await fetch(SB_URL+path,{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=minimal'},body:JSON.stringify(body)});if(!r.ok){const e=await r.text();throw new Error('Upload failed: '+e);}}
 
-function toggleExpand(evt,id){evt.stopPropagation();var el=document.getElementById(id);var tog=document.getElementById('tog-'+id);if(!el)return;var open=el.classList.toggle('open');if(tog)tog.classList.toggle('open',open);}
-
-function selectBrand(brandId,cardEl){
-  selectedBrand=brandId;
-  document.querySelectorAll('.brand-card').forEach(function(c){c.classList.remove('selected');});
-  if(cardEl)cardEl.classList.add('selected');
-  var d=aggregateBrand(brandId);
-  document.getElementById('rca-emoji').textContent=SC[getSentiment(d)].emoji;
-  document.getElementById('rca-name').textContent=BRAND_LABELS[brandId];
-  document.getElementById('rca-panel').style.display='block';
-  renderRCA(brandId,currentTab);renderSupplyAlerts();
-  setTimeout(function(){document.getElementById('rca-panel').scrollIntoView({behavior:'smooth',block:'start'});},100);
-}
-function setTab(tab,btn){currentTab=tab;document.querySelectorAll('.rca-tab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');if(selectedBrand)renderRCA(selectedBrand,tab);}
-
-function renderRCA(brandId,tab){
-  var rows=allRows.filter(function(r){return r.brand_classified===brandId;});
-  if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});
-  var d=aggregateBrand(brandId),ads=d.ads;
-  var adRevPct=ads&&d.revenue>0?((ads.ad_revenue/d.revenue)*100).toFixed(0):null;
-  var rcaOrgRev=ads?Math.max(0,d.revenue-(ads.ad_revenue||0)):0;
-  var rcaOrgGv=ads?Math.max(0,d.gviews-(ads.ad_glance_views||0)):0;
-  var compLabel=currentComparison==='wow'?'vs last week':currentComparison==='4w'?'vs 4 weeks ago':'vs last year';
-  document.getElementById('kpi-row').innerHTML=
-    '<div class="kpi-card"><div class="kpi-label">Revenue</div><div class="kpi-value c-blue">'+fmtCur(d.revenue)+'</div><div class="kpi-yoy">'+fmtYoyText(d.revenueYoy)+' '+compLabel+'</div>'+(ads?'<div class="kpi-ads-split"><span class="kpi-split-pill org">🌿 Org '+fmtCur(rcaOrgRev)+'</span><span class="kpi-split-pill ad">🎯 Ads '+fmtCur(ads.ad_revenue||0)+' ('+adRevPct+'%)</span></div>':'')+'</div>'+
-    '<div class="kpi-card"><div class="kpi-label">Glance Views</div><div class="kpi-value c-green">'+fmtNum(d.gviews)+'</div><div class="kpi-yoy">'+fmtYoyText(d.gviewsYoy)+' '+compLabel+'</div>'+(ads?'<div class="kpi-ads-split"><span class="kpi-split-pill org">🌿 Org '+fmtNum(rcaOrgGv)+'</span><span class="kpi-split-pill ad">🎯 Ad '+fmtNum(ads.ad_glance_views||0)+'</span></div>':'')+'</div>'+
-    '<div class="kpi-card"><div class="kpi-label">Conversion Rate</div><div class="kpi-value '+(cvrLevel(d.conv)==='good'?'c-green':cvrLevel(d.conv)==='ok'?'c-amber':'c-red')+'">'+d.conv.toFixed(2)+'%</div><div class="kpi-yoy">'+(d.conv>=10?'✅ Good (≥10%)':d.conv>=5?'⚠️ Average (5–9%)':'🔴 Low (<5%)')+'</div></div>'+
-    '<div class="kpi-card"><div class="kpi-label">Avg OOS</div><div class="kpi-value '+(oosLabel(d.avgOos)==='green'?'c-green':oosLabel(d.avgOos)==='amber'?'c-amber':'c-red')+'">'+d.avgOos.toFixed(1)+'%</div><div class="kpi-yoy">'+(d.avgOos<=6?'✅ Good (≤6%)':d.avgOos<=9?'⚠️ Monitor (7–9%)':'🔴 High (≥10%)')+' · Unfilled: '+Math.round(d.unfilled)+'</div></div>';
-  var wrap=document.getElementById('table-wrap');
-  if(tab==='revenue')renderRevenueTab(rows,wrap);
-  else if(tab==='traffic')renderTrafficTab(rows,wrap);
-  else if(tab==='conversion')renderConversionTab(rows,wrap);
-  else if(tab==='supply')renderSupplyTab(rows,wrap);
-  else if(tab==='ads')renderAdsTab(brandId,d,ads,wrap);
-  else if(tab==='adopp')renderAdOppTab(rows,wrap);
-  else if(tab==='search')renderSearchTab(brandId,wrap);
-  else if(tab==='trends')renderTrendsTab(brandId,wrap);
-}
-
-function buildAsinMap(rows,extractor){
-  var useMarket=currentMarket!=='ALL',m={},noSumKeys=['revYoy','gvYoy','oos'];
-  rows.forEach(function(r){
-    var k=useMarket?r.asin+'_'+r.market:r.asin;
-    if(!m[k]){m[k]={asin:r.asin,name:r.product_title,market:useMarket?r.market:'EU5',markets:{}};var vals=extractor(r);Object.keys(vals).forEach(function(key){m[k][key]=typeof vals[key]==='number'?0:null;});}
-    m[k].markets[r.market]=1;
-    if(!useMarket&&r.product_title&&r.product_title.length>(m[k].name||'').length)m[k].name=r.product_title;
-    var vals=extractor(r);
-    Object.keys(vals).forEach(function(key){var val=vals[key];if(val!=null){if(noSumKeys.indexOf(key)>=0){if(m[k][key]===null)m[k][key]=val;else m[k][key]=(m[k][key]+val)/2;}else{m[k][key]=(m[k][key]||0)+val;}}});
-  });
-  Object.keys(m).forEach(function(k){m[k].marketsStr=currentMarket!=='ALL'?m[k].market:Object.keys(m[k].markets).sort().join(' ');delete m[k].markets;});
-  return m;
-}
-
-var sortState={};
-function buildSortableTable(cols,data,defaultKey,defaultDir,rowRenderer,tabId){
-  var st=sortState[tabId]||{key:defaultKey,dir:defaultDir};sortState[tabId]=st;
-  var sorted=data.slice().sort(function(a,b){var va=a[st.key]!=null?a[st.key]:(st.dir==='asc'?Infinity:-Infinity);var vb=b[st.key]!=null?b[st.key]:(st.dir==='asc'?Infinity:-Infinity);return st.dir==='asc'?va-vb:vb-va;});
-  var headers=cols.map(function(c){
-    if(c.k==='#'||c.k==='asin'||c.k==='name'||c.k==='markets')return'<th>'+c.label+'</th>';
-    var active=st.key===c.k,arrow=active?(st.dir==='asc'?' ↑':' ↓'):' ↕';
-    var nextDir=active?(st.dir==='asc'?'desc':'asc'):(c.dir||'desc');
-    return'<th class="'+(c.r?'r':'')+'" style="cursor:pointer;'+(active?'color:var(--blue);':'')+'" onclick="rcaSort(\''+tabId+'\',\''+c.k+'\',\''+nextDir+'\')">'+c.label+'<span style="font-size:9px;opacity:0.6">'+arrow+'</span></th>';
-  }).join('');
-  var trs=sorted.map(function(r){return'<tr>'+rowRenderer(r)+'</tr>';}).join('');
-  return'<table class="data-table"><thead><tr>'+headers+'</tr></thead><tbody>'+trs+'</tbody></table>';
-}
-function rcaSort(tabId,key,dir){sortState[tabId]={key:key,dir:dir};if(selectedBrand)renderRCA(selectedBrand,tabId);}
-
-function renderRevenueTab(rows,wrap){
-  var m=buildAsinMap(rows,function(r){return{rev:r.dispatched_revenue||0,revYoy:r.revenue_yoy,units:r.dispatched_units||0};});
-  var data=Object.values(m).sort(function(a,b){return b.rev-a.rev;}).slice(0,30);var maxR=data[0]?data[0].rev:1;
-  wrap.innerHTML=buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'rev',label:'Revenue',r:true,dir:'desc'},{k:'revYoy',label:'YoY',r:true},{k:'units',label:'Units',r:true}],data,'rev','desc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name" title="'+r.name+'">'+r.name+'</span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val">'+fmtCur(r.rev)+'<div class="bar-bg"><div class="bar-fg" style="width:'+((r.rev/maxR)*100).toFixed(1)+'%"></div></div></td><td class="td-yoy">'+fmtYoyText(r.revYoy)+'</td><td class="td-val">'+Math.round(r.units).toLocaleString()+'</td>';},'revenue');
-}
-function renderTrafficTab(rows,wrap){
-  var m=buildAsinMap(rows,function(r){return{gv:r.glance_views||0,gvYoy:r.glance_views_yoy};});
-  var data=Object.values(m).sort(function(a,b){return b.gv-a.gv;}).slice(0,30);var maxG=data[0]?data[0].gv:1;
-  wrap.innerHTML=buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'gv',label:'Glance Views',r:true,dir:'desc'},{k:'gvYoy',label:'YoY',r:true}],data,'gv','desc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name">'+r.name+'</span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val">'+r.gv.toLocaleString()+'<div class="bar-bg"><div class="bar-fg" style="width:'+((r.gv/maxG)*100).toFixed(1)+'%"></div></div></td><td class="td-yoy">'+fmtYoyText(r.gvYoy)+'</td>';},'traffic');
-}
-function renderConversionTab(rows,wrap){
-  var m=buildAsinMap(rows,function(r){return{gv:r.glance_views||0,units:r.dispatched_units||0,rev:r.dispatched_revenue||0};});
-  var data=Object.values(m).filter(function(r){return r.gv>50;}).map(function(r){return Object.assign({},r,{conv:r.gv>0?(r.units/r.gv)*100:0,asp:r.units>0?r.rev/r.units:0});}).sort(function(a,b){return a.conv-b.conv;}).slice(0,30);
-  wrap.innerHTML='<div style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text2);"><b style="color:var(--amber)">Thresholds:</b> ≥10% green ✅ · 5–9% amber ⚠️ · &lt;5% red 🔴</div>'+buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'conv',label:'CVR %',r:true,dir:'asc'},{k:'asp',label:'ASP',r:true},{k:'gv',label:'Views',r:true},{k:'units',label:'Units',r:true}],data,'conv','asc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name">'+r.name+'</span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val"><span class="'+cvrClass(r.conv)+'">'+r.conv.toFixed(2)+'%</span></td><td class="td-val">'+fmtCur(r.asp)+'</td><td class="td-val">'+r.gv.toLocaleString()+'</td><td class="td-val">'+Math.round(r.units).toLocaleString()+'</td>';},'conversion');
-}
-function renderSupplyTab(rows,wrap){
-  var m=buildAsinMap(rows,function(r){return{oos:r.oos_pct||0,unfilled:r.unfilled_units||0,rev:r.dispatched_revenue||0};});
-  var data=Object.values(m).filter(function(r){return r.oos>0||r.unfilled>0;}).map(function(r){return Object.assign({},r,{risk:r.oos>=10?r.rev*(r.oos/100):0});}).sort(function(a,b){return b.risk-a.risk||b.unfilled-a.unfilled;}).slice(0,30);
-  wrap.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text2);"><b style="color:var(--red)">OOS Thresholds:</b> ≤6% green ✅ · 7–9% amber ⚠️ · ≥10% red 🔴</div>'+buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'oos',label:'OOS %',r:true},{k:'unfilled',label:'Unfilled',r:true},{k:'rev',label:'Revenue',r:true},{k:'risk',label:'Rev at Risk',r:true,dir:'desc'}],data,'risk','desc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name">'+r.name+'</span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val"><span class="'+oosClass(r.oos)+'">'+r.oos.toFixed(1)+'%</span></td><td class="td-val" style="color:'+(r.unfilled>100?'var(--red)':r.unfilled>50?'var(--amber)':'var(--text)')+'">'+Math.round(r.unfilled).toLocaleString()+'</td><td class="td-val">'+fmtCur(r.rev)+'</td><td class="td-val" style="color:var(--red);font-weight:700">'+(r.risk>0?fmtCur(r.risk):'—')+'</td>';},'supply');
-}
-
-async function renderAdsTab(brandId,d,ads,wrap){
-  if(!ads||(!ads.ad_revenue&&!ads.ad_spend)){wrap.innerHTML='<div class="empty">📊 No ads data uploaded for this brand/period.</div>';return;}
-  var roas=ads.ad_spend>0?(ads.ad_revenue/ads.ad_spend).toFixed(2):null;
-  var blendedRoas=ads.ad_spend>0?(d.revenue/ads.ad_spend).toFixed(1):null;
-  var acos=ads.ad_revenue>0?((ads.ad_spend/ads.ad_revenue)*100).toFixed(1):null;
-  var adRevPct2=d.revenue>0?(((ads.ad_revenue||0)/d.revenue)*100).toFixed(0):null;
-  var roasNum=parseFloat(roas)||0;
-  wrap.innerHTML='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">'+
-    ['True ROAS','Blended ROAS','Ad Spend','ACoS'].map(function(l,i){
-      var vals=[roas?roas+'x':'—',blendedRoas?blendedRoas+'x':'—',fmtCur(ads.ad_spend||0),(acos||'—')+'%'];
-      var cols=[roasNum>=4?'var(--green)':roasNum>=2?'var(--amber)':'var(--red)','var(--text)','var(--ad-color)',parseFloat(acos)>30?'var(--red)':parseFloat(acos)>20?'var(--amber)':'var(--green)'];
-      return'<div style="background:var(--bg);border-radius:10px;padding:12px;border:1px solid var(--border);"><div style="font-size:10px;color:var(--text2);font-weight:600;margin-bottom:4px">'+l+'</div><div style="font-family:\'Syne\',sans-serif;font-size:22px;font-weight:800;color:'+cols[i]+'">'+vals[i]+'</div></div>';
-    }).join('')+'</div>'+
-    '<div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:20px;overflow:hidden;"><div style="width:'+adRevPct2+'%;height:100%;background:var(--ad-color);border-radius:2px;"></div></div>';
-}
-
-function renderAdOppTab(rows,wrap){
-  var m=buildAsinMap(rows,function(r){return{rev:r.dispatched_revenue||0,units:r.dispatched_units||0,gv:r.glance_views||0,oos:r.oos_pct||0};});
-  var data=Object.values(m).filter(function(r){return r.gv>50;}).map(function(r){return Object.assign({},r,{asp:r.units>0?r.rev/r.units:0,conv:r.gv>0?(r.units/r.gv)*100:0});}).filter(function(r){return r.asp>5&&r.oos<10;}).map(function(r){return Object.assign({},r,{score:Math.round((r.asp*r.gv/1000)*(1-(r.conv/8)))});}).sort(function(a,b){return b.score-a.score;}).slice(0,30);
-  wrap.innerHTML='<div style="background:var(--ad-bg);border:1px solid var(--ad-color);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text2);"><b style="color:var(--ad-color)">💡 Ad Opportunity:</b> High ASP + low CVR + traffic + in stock.</div>'+(data.length===0?'<div class="empty">No strong ad opportunities identified.</div>':buildSortableTable([{k:'#',label:'#'},{k:'asin',label:'ASIN'},{k:'name',label:'Product'},{k:'markets',label:'Markets'},{k:'asp',label:'ASP',r:true},{k:'conv',label:'CVR',r:true},{k:'gv',label:'Views',r:true},{k:'oos',label:'OOS',r:true},{k:'score',label:'Score',r:true,dir:'desc'}],data,'score','desc',function(r){var i=data.indexOf(r);return'<td style="color:var(--text3);font-size:11px">'+(i<9?'0'+(i+1):i+1)+'</td><td><div class="td-asin">'+r.asin+'</div></td><td><span class="td-name">'+r.name+'<span class="flag flag-ad">AD OPP</span></span></td><td>'+r.marketsStr.split(' ').map(function(m){return'<span class="mp mp-'+m+'">'+m+'</span>';}).join(' ')+'</td><td class="td-val" style="color:var(--amber);font-weight:700">'+fmtCur(r.asp)+'</td><td class="td-val"><span class="'+cvrClass(r.conv)+'">'+r.conv.toFixed(2)+'%</span></td><td class="td-val">'+r.gv.toLocaleString()+'</td><td class="td-val"><span class="'+oosClass(r.oos)+'">'+r.oos.toFixed(1)+'%</span></td><td class="td-val" style="color:var(--ad-color);font-weight:700">'+r.score+'</td>';},'adopp'));
-}
-
-function renderSearchTab(brandId,wrap){
-  if(!searchTermsData.length){wrap.innerHTML='<div class="empty">🔍 No search terms data uploaded yet.</div>';return;}
-  var activeView=window._searchView||'brand';
-  var top500=searchTermsData.filter(function(t){return t.category==='TOP500';});
-  var brandTerms=searchTermsData.filter(function(t){return t.category==='BRAND'&&t.brand_classified===brandId;});
-  var toysOnly=brandTerms.filter(function(t){return(t.top_clicked_category||'').toLowerCase().indexOf('toy')>=0;});
-  var viewData=activeView==='top500'?top500:activeView==='toys'?toysOnly:brandTerms;
-  var viewBtns=[{k:'top500',label:'🌐 Top 500 ('+top500.length+')'},{k:'brand',label:'🎯 '+BRAND_LABELS[brandId]+' ('+brandTerms.length+')'},{k:'toys',label:'🧸 Toys ('+toysOnly.length+')'}].map(function(v){return'<button onclick="setSearchView(\''+brandId+'\',\''+v.k+'\')" style="padding:6px 14px;border-radius:6px;border:2px solid '+(activeView===v.k?'var(--blue)':'var(--border)')+';background:'+(activeView===v.k?'var(--blue)':'var(--blue-light)')+';color:'+(activeView===v.k?'white':'var(--blue-dark)')+';font-size:11px;font-weight:700;cursor:pointer;">'+v.label+'</button>';}).join('');
-  if(!viewData.length){wrap.innerHTML='<div style="margin-bottom:12px;display:flex;gap:8px;">'+viewBtns+'</div><div class="empty">No terms found.</div>';return;}
-  var sorted=viewData.slice().sort(function(a,b){return(a.rank||999999)-(b.rank||999999);});
-  var rows=sorted.slice(0,100).map(function(t){var isHasbro=t.brand_classified&&t.brand_classified!=='PLATFORM';var rowStyle=activeView==='top500'&&isHasbro?'background:var(--blue-light);':'';return'<tr style="'+rowStyle+'"><td style="font-family:\'DM Mono\',monospace;font-size:11px;font-weight:700;color:'+(t.rank<=500?'var(--blue)':t.rank<=5000?'var(--green)':'var(--text2)')+'">'+( t.rank?t.rank.toLocaleString():'—')+'</td><td style="font-weight:600;color:var(--text)">'+t.term+'</td><td><span style="font-size:10px;color:var(--text2);background:var(--bg);padding:2px 6px;border-radius:4px;border:1px solid var(--border)">'+(t.top_clicked_category||'—').replace(/_/g,' ')+'</span></td><td class="td-val">'+(t.est_weekly_searches?t.est_weekly_searches.toLocaleString():'—')+'</td><td style="font-size:11px;color:var(--text2);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(t.product_title_1||t.asin1||'—')+'</td><td class="td-val">'+(t.click_share_1!=null?t.click_share_1.toFixed(1)+'%':'—')+'</td><td class="td-val">'+(t.cvr_1!=null?t.cvr_1.toFixed(1)+'%':'—')+'</td></tr>';}).join('');
-  wrap.innerHTML='<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">'+viewBtns+'</div><table class="data-table"><thead><tr><th style="width:50px">Rank</th><th>Search Term</th><th>Category</th><th class="r">Est. Searches/wk</th><th>Top Clicked</th><th class="r">Click Share</th><th class="r">CVR %</th></tr></thead><tbody>'+rows+'</tbody></table>'+(sorted.length>100?'<div style="text-align:center;padding:12px;font-size:11px;color:var(--text3)">Showing 100 of '+sorted.length+' terms</div>':'');
-}
-function setSearchView(brandId,view){window._searchView=view;renderRCA(brandId,'search');}
-
-async function renderTrendsTab(brandId,wrap){
-  wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--text2);font-size:13px;">Loading trend data...</div>';
-  var trendRows=await sbFetch('/rest/v1/brand_health_snapshots?select=week_start,brand_classified,market,dispatched_revenue,dispatched_units,glance_views,oos_pct&brand_classified=eq.'+brandId+'&order=week_start.asc');
-  if(currentMarket!=='ALL')trendRows=trendRows.filter(function(r){return r.market===currentMarket;});
-  var byWeek={};
-  trendRows.forEach(function(r){if(!byWeek[r.week_start])byWeek[r.week_start]={revenue:0,gviews:0,units:0,oos:[]};byWeek[r.week_start].revenue+=(r.dispatched_revenue||0);byWeek[r.week_start].gviews+=(r.glance_views||0);byWeek[r.week_start].units+=(r.dispatched_units||0);if(r.oos_pct!=null)byWeek[r.week_start].oos.push(r.oos_pct);});
-  var byPeriod={};
-  Object.keys(byWeek).forEach(function(ws){var pk=periodKey(ws);if(!byPeriod[pk])byPeriod[pk]={revenue:0,gviews:0,units:0,oos:[],label:periodLabel(pk)};var d=byWeek[ws];byPeriod[pk].revenue+=d.revenue;byPeriod[pk].gviews+=d.gviews;byPeriod[pk].units+=d.units;byPeriod[pk].oos=byPeriod[pk].oos.concat(d.oos);});
-  var periods=Object.keys(byPeriod).sort().slice(-26);
-  if(!periods.length){wrap.innerHTML='<div class="empty">Not enough historical data yet.</div>';return;}
-  var labels=periods.map(function(p){return byPeriod[p].label||p;});
-  var revenues=periods.map(function(p){return byPeriod[p].revenue;});
-  var gviews=periods.map(function(p){return byPeriod[p].gviews;});
-  var convs=periods.map(function(p){var pd=byPeriod[p];return pd.gviews>0?(pd.units/pd.gviews)*100:0;});
-  var ooss=periods.map(function(p){var pd=byPeriod[p];return pd.oos.length>0?pd.oos.reduce(function(a,b){return a+b;},0)/pd.oos.length:0;});
-  var tableRows=periods.map(function(p){var pd=byPeriod[p],conv=pd.gviews>0?(pd.units/pd.gviews)*100:0,oos=pd.oos.length>0?pd.oos.reduce(function(a,b){return a+b;},0)/pd.oos.length:0;return'<tr><td style="font-weight:600">'+(pd.label||p)+'</td><td class="td-val">'+fmtCur(pd.revenue)+'</td><td class="td-val">'+fmtNum(pd.gviews)+'</td><td class="td-val"><span class="'+cvrClass(conv)+'">'+conv.toFixed(2)+'%</span></td><td class="td-val"><span class="'+oosClass(oos)+'">'+oos.toFixed(1)+'%</span></td></tr>';}).join('');
-  wrap.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;"><div style="background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:14px;"><div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Revenue Trend</div><canvas id="c-rev" height="120"></canvas></div><div style="background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:14px;"><div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Glance Views Trend</div><canvas id="c-gv" height="120"></canvas></div><div style="background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:14px;"><div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Conversion Rate %</div><canvas id="c-cvr" height="120"></canvas></div><div style="background:var(--bg);border-radius:10px;border:1px solid var(--border);padding:14px;"><div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">OOS % (avg)</div><canvas id="c-oos" height="120"></canvas></div></div><div class="pivot-table-wrap"><table class="pivot-table"><thead><tr><th>'+periodMode.charAt(0).toUpperCase()+periodMode.slice(1)+'</th><th class="r">Revenue</th><th class="r">Glance Views</th><th class="r">CVR %</th><th class="r">Avg OOS %</th></tr></thead><tbody>'+tableRows+'<tr><td>TOTAL / AVG</td><td class="td-val">'+fmtCur(revenues.reduce(function(a,b){return a+b;},0))+'</td><td class="td-val">'+fmtNum(gviews.reduce(function(a,b){return a+b;},0))+'</td><td class="td-val">'+(convs.reduce(function(a,b){return a+b;},0)/convs.length).toFixed(2)+'%</td><td class="td-val">'+(ooss.reduce(function(a,b){return a+b;},0)/ooss.length).toFixed(1)+'%</td></tr></tbody></table></div>';
-  requestAnimationFrame(function(){drawLineChart('c-rev',labels,revenues,'#009CDE',function(v){return fmtCur(v);});drawLineChart('c-gv',labels,gviews,'#00B388',function(v){return fmtNum(v);});drawLineChart('c-cvr',labels,convs,'#F5A623',function(v){return v.toFixed(1)+'%';},[5,10]);drawLineChart('c-oos',labels,ooss,'#E8423F',function(v){return v.toFixed(1)+'%';},[6,10]);});
-}
-
-function drawLineChart(canvasId,labels,data,color,fmt,thresholds){
-  var canvas=document.getElementById(canvasId);if(!canvas)return;
-  var dpr=window.devicePixelRatio||1,w=canvas.clientWidth||300,h=parseInt(canvas.getAttribute('height'))||120;
-  canvas.width=w*dpr;canvas.height=h*dpr;
-  var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
-  var pad={t:10,r:10,b:30,l:50},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;
-  if(!data.length)return;
-  var min=Math.min.apply(null,data)*0.9,max=Math.max.apply(null,data)*1.1,range=max-min||1;
-  var toX=function(i){return pad.l+i*(cw/(data.length-1||1));};
-  var toY=function(v){return pad.t+ch-(((v-min)/range)*ch);};
-  ctx.strokeStyle='rgba(208,234,245,0.8)';ctx.lineWidth=1;
-  [0,0.25,0.5,0.75,1].forEach(function(t){var y=pad.t+t*ch;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();ctx.fillStyle='#5A8DA0';ctx.font='9px Inter,sans-serif';ctx.textAlign='right';ctx.fillText(fmt(min+(1-t)*range),pad.l-4,y+3);});
-  ctx.beginPath();ctx.moveTo(toX(0),toY(data[0]));data.forEach(function(v,i){if(i>0)ctx.lineTo(toX(i),toY(v));});ctx.lineTo(toX(data.length-1),h-pad.b);ctx.lineTo(toX(0),h-pad.b);ctx.closePath();
-  var grad=ctx.createLinearGradient(0,pad.t,0,h-pad.b);grad.addColorStop(0,color+'33');grad.addColorStop(1,color+'00');ctx.fillStyle=grad;ctx.fill();
-  ctx.beginPath();ctx.moveTo(toX(0),toY(data[0]));data.forEach(function(v,i){if(i>0)ctx.lineTo(toX(i),toY(v));});ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();
-  data.forEach(function(v,i){ctx.beginPath();ctx.arc(toX(i),toY(v),3,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();});
-  var step=Math.ceil(labels.length/6);ctx.fillStyle='#5A8DA0';ctx.font='9px Inter,sans-serif';ctx.textAlign='center';labels.forEach(function(l,i){if(i%step===0)ctx.fillText(l.substring(0,8),toX(i),h-pad.b+12);});
-}
-
-var supplySort={key:'gv',dir:'desc'}; // default: highest-demand SKUs first (biggest opportunity), unfilled as secondary
-function setSupplySort(key){if(supplySort.key===key)supplySort.dir=supplySort.dir==='asc'?'desc':'asc';else{supplySort.key=key;supplySort.dir='desc';}renderSupplyAlerts();}
-
-function renderSupplyAlerts(){
-  var rows=allRows;if(currentMarket!=='ALL')rows=rows.filter(function(r){return r.market===currentMarket;});if(selectedBrand)rows=rows.filter(function(r){return r.brand_classified===selectedBrand;});
-  var seen={},alerts=[];
-  rows.forEach(function(r){var oos=r.oos_pct||0,uf=r.unfilled_units||0;if((oos>=10||uf>50)&&r.asin){var k=currentMarket==='ALL'?r.asin:r.asin+'_'+r.market;if(!seen[k]){seen[k]=1;alerts.push({asin:r.asin,name:r.product_title,market:r.market,oos:oos,uf:uf,gv:r.glance_views||0});}else if(currentMarket==='ALL'){var ex=alerts.find(function(a){return a.asin===r.asin;});if(ex){ex.uf+=uf;ex.gv+=(r.glance_views||0);}}}});
-  alerts.sort(function(a,b){var d=supplySort.dir==='asc'?a[supplySort.key]-b[supplySort.key]:b[supplySort.key]-a[supplySort.key];if(d!==0)return d;return b.uf-a.uf;}); // secondary sort: unfilled desc
-  var g=document.getElementById('supply-items'),header=document.getElementById('supply-title'),resetBtn=document.getElementById('supply-reset-btn');
-  if(header)header.textContent='⚠️ Supply Gap Alerts'+(selectedBrand?' — '+BRAND_LABELS[selectedBrand]:'');
-  if(resetBtn)resetBtn.style.display=selectedBrand?'block':'none';
-  if(!alerts.length){g.innerHTML='<div class="empty">✅ No supply gap alerts this week</div>';return;}
-  function sTh(label,key){var active=supplySort.key===key,arrow=active?(supplySort.dir==='asc'?' ↑':' ↓'):' ↕';return'<th style="text-align:right;font-size:10px;font-weight:700;color:'+(active?'var(--blue)':'var(--text2)')+';text-transform:uppercase;letter-spacing:1px;padding:8px 12px;cursor:pointer;" onclick="setSupplySort(\''+key+'\')">'+label+'<span style="font-size:9px;opacity:0.6">'+arrow+'</span></th>';}
-  g.innerHTML='<table style="width:100%;border-collapse:collapse;"><thead><tr style="border-bottom:2px solid var(--border);"><th style="text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">ASIN</th><th style="text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">Product</th><th style="text-align:center;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;">Market</th>'+sTh('OOS %','oos')+sTh('Unfilled','uf')+sTh('Demand (GVs)','gv')+'</tr></thead><tbody>'+alerts.slice(0,30).map(function(a){return'<tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 12px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--blue);">'+a.asin+'</td><td style="padding:7px 12px;font-size:11px;color:var(--text);max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+a.name+'">'+a.name+'</td><td style="padding:7px 12px;text-align:center;">'+(currentMarket==='ALL'?'<span style="font-size:9px;color:var(--text3)">EU5</span>':'<span class="mp mp-'+a.market+'">'+a.market+'</span>')+'</td><td style="padding:7px 12px;text-align:right;font-family:\'DM Mono\',monospace;font-size:11px;font-weight:700;" class="'+oosClass(a.oos)+'">'+a.oos.toFixed(1)+'%</td><td style="padding:7px 12px;text-align:right;font-family:\'DM Mono\',monospace;font-size:11px;font-weight:700;color:'+(a.uf>100?'var(--red)':'var(--amber)')+';">'+Math.round(a.uf).toLocaleString()+'</td><td style="padding:7px 12px;text-align:right;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--blue-dark);">'+(a.gv>0?Math.round(a.gv).toLocaleString():'—')+'</td></tr>';}).join('')+'</tbody></table>';
-}
-
-function resetSupplyFilter(){selectedBrand=null;document.querySelectorAll('.brand-card').forEach(function(c){c.classList.remove('selected');});document.getElementById('rca-panel').style.display='none';renderSupplyAlerts();}
-function setMarket(m,btn){currentMarket=m;document.querySelectorAll('.market-tab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');buildDashboard();}
-function setSort(s,btn){currentSort=s;document.querySelectorAll('.sort-tab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');renderBrandCards();}
-function setCurrency(c){currency=c;['eur','gbp','usd'].forEach(function(x){document.getElementById('btn-'+x).classList.remove('active');});document.getElementById('btn-'+c).classList.add('active');renderBrandCards();if(selectedBrand)renderRCA(selectedBrand,currentTab);}
-
-function fmtCur(val){var v=val*FX[currency],sym=currency==='gbp'?'£':currency==='usd'?'$':'€';if(v>=1000000)return sym+(v/1000000).toFixed(1)+'M';if(v>=1000)return sym+(v/1000).toFixed(1)+'K';return sym+v.toFixed(0);}
-function fmtNum(n){if(n>=1000000)return(n/1000000).toFixed(1)+'M';if(n>=1000)return(n/1000).toFixed(0)+'K';return Math.round(n).toLocaleString();}
-function fmtYoy(val){if(val==null||isNaN(val))return'';var p=(val*100).toFixed(1),cls=val>0?'yoy-up':val<0?'yoy-down':'yoy-na',arr=val>0?'▲':val<0?'▼':'';return'<span class="yoy '+cls+'">'+arr+Math.abs(p)+'%</span>';}
-// Percentage-POINT change (not relative %) — for metrics that are already a
-// rate/percentage, like repeat rate. 45%→48% should read "+3.0pp", not the
-// relative "+6.7%" fmtYoy would give if reused here.
-function fmtPP(val,suffix){if(val==null||isNaN(val))return'';var p=(val*100).toFixed(1),cls=val>0?'yoy-up':val<0?'yoy-down':'yoy-na',arr=val>0?'▲':val<0?'▼':'';return' <span class="yoy '+cls+'">'+arr+Math.abs(p)+'pp'+(suffix?' '+suffix:'')+'</span>';}
-function fmtYoyText(val){if(val==null||isNaN(val))return'';var p=(val*100).toFixed(1),col=val>0?'var(--green)':val<0?'var(--red)':'var(--text3)',arr=val>0?'▲':val<0?'▼':'';return'<span style="color:'+col+';font-weight:700">'+arr+Math.abs(p)+'%</span>';}
-
-
-
-init();
-
-document.addEventListener('visibilitychange',function(){
-  if(!document.hidden){
-    if(!allWeeks.length||!allRows.length){init();}
-    else{var main=document.getElementById('main-content');if(main){main.style.display='grid';buildDashboard();}}
-  }
-});
+function fmtDate(d){const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
 </script>
 </body>
 </html>
