@@ -363,16 +363,29 @@ function snapWeek(y, mo, da) {
 // Refresh the preorder_pipeline materialized view so the dashboard's
 // pre-order book reflects this upload immediately. Fire-and-forget:
 // an error here must never fail the upload itself.
-async function refreshPreorderPipeline(logFn) {
+//
+// Retries built in: REFRESH ... CONCURRENTLY needs a brief exclusive lock on
+// the view's unique index, which can collide with the tail end of a large
+// batch insert (seen once in practice — manual re-run succeeded straight
+// away). Rather than surface a false alarm on a transient clash, retry with
+// a short backoff before giving up and telling the user.
+async function refreshPreorderPipeline(logFn, attempt) {
+  attempt = attempt || 1;
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/refresh_preorder_pipeline`, {
       method: 'POST',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
       body: '{}'
     });
-    if (logFn) logFn(r.ok ? '↻ Pre-order book refreshed' : `⚠ Pre-order refresh failed (${r.status}) — book may be stale until next upload`, r.ok ? 'ok' : 'warn');
+    if (r.ok) { if (logFn) logFn('↻ Pre-order book refreshed', 'ok'); return; }
+    throw new Error(`HTTP ${r.status}`);
   } catch (e) {
-    if (logFn) logFn('⚠ Pre-order refresh failed — book may be stale until next upload', 'warn');
+    if (attempt < 3) {
+      if (logFn) logFn(`Pre-order refresh busy, retrying (${attempt}/3)...`, 'info');
+      await new Promise(res => setTimeout(res, attempt * 2000)); // 2s, 4s
+      return refreshPreorderPipeline(logFn, attempt + 1);
+    }
+    if (logFn) logFn('⚠ Pre-order refresh failed after 3 attempts — run select refresh_preorder_pipeline(); in Supabase, or it will catch up on the next upload', 'warn');
   }
 }
 
@@ -890,6 +903,7 @@ async function processVC() {
     await sbPost('/rest/v1/brand_health_weeks',{week_start:weekStart,week_label:fmtDate(weekStart)+' – '+fmtDate(weekEnd)});
     document.getElementById('overlay').classList.remove('on');
     log(`✅ Done! ${rows.length} rows uploaded for week ${weekStart}`,'ok');
+    await new Promise(r=>setTimeout(r,1500)); // let the DB settle after the batch insert before locking the view
     await refreshPreorderPipeline(log);
     loadHistory();
   } catch(err){
@@ -977,6 +991,7 @@ async function processAndUploadAds(file, weekStart) {
   }
 
   logA(`✅ Done! ${finalRows.length} rows for week ${weekStart}`,'ok');
+  await new Promise(r=>setTimeout(r,1500));
   await refreshPreorderPipeline(logA);
   if (!_processingQueue) loadHistory();
 }
@@ -1027,39 +1042,204 @@ async function uploadCoverage() {
   document.getElementById('coverage-log').innerHTML='';
   logC('Reading EMEA AMZ Ads file...','info');
   try {
-    const data = await files.coverage.arrayBuffer();
-    const wb = XLSX.read(data,{type:'array'});
-    const MARKET_SHEET={UK:'GB',DE:'DE',FR:'FR',IT:'IT',ES:'ES'};
-    const rows=[];
-    const BRAND_MAP={'MARVEL':'MARVEL','AVENGERS':'MARVEL','STAR WARS':'STAR_WARS','STARWARS':'STAR_WARS','MONOPOLY':'MONOPOLY','GAMES':'GAMES','HASBRO GAMING':'GAMES','PLAY-DOH':'PLAY_DOH','PLAYDOH':'PLAY_DOH','PLAY DOH':'PLAY_DOH','PEPPA PIG':'PEPPA_PIG','PEPPA':'PEPPA_PIG','TRANSFORMERS':'TRANSFORMERS','BEYBLADE':'BEYBLADE','NERF':'NERF','SPIDEY':'DISNEY_KIDS','DISNEY KIDS':'DISNEY_KIDS'};
-    function mapBrand(b){if(BRAND_MAP[b])return BRAND_MAP[b];for(const[k,v]of Object.entries(BRAND_MAP)){if(b.includes(k))return v;}return null;}
-    for(const[sheetName,market]of Object.entries(MARKET_SHEET)){
-      const ws=wb.Sheets[sheetName];
-      if(!ws){logC(`⚠️ Sheet "${sheetName}" not found — skipping`,'err');continue;}
-      const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-      if(raw.length<2) continue;
-      const headers=raw[0].map(h=>String(h).trim());
-      const brandCol=headers.indexOf('brand');
-      const spCol=headers.indexOf('Sponsored Product');
-      const sbCol=headers.indexOf('Sponsored Brand');
-      const asinCol=headers.indexOf('ASIN');
-      if(brandCol===-1||spCol===-1||asinCol===-1){logC(`⚠️ ${sheetName}: missing columns. Found: ${headers.filter(h=>h).join(', ')}`,'err');continue;}
-      const brandAgg={};
-      raw.slice(1).forEach(r=>{
-        const asin=String(r[asinCol]||'').trim();if(!asin||asin.length<5)return;
-        const brand=String(r[brandCol]||'').trim().toUpperCase();if(!brand)return;
-        const sp=String(r[spCol]||'').includes('☑');
-        const sb=sbCol>=0?String(r[sbCol]||'').includes('☑'):false;
-        const bid=mapBrand(brand);if(!bid)return;
-        if(!brandAgg[bid])brandAgg[bid]={total:0,sp:0,sb:0};
-        brandAgg[bid].total++;if(sp)brandAgg[bid].sp++;if(sb)brandAgg[bid].sb++;
-      });
-      Object.entries(brandAgg).forEach(([brand_classified,counts])=>{
-        rows.push({quarter,brand_classified,market,total_asins:counts.total,sp_asins:counts.sp,sb_asins:counts.sb});
-        logC(`  ${market} ${brand_classified}: ${counts.sp}/${counts.total} SP (${Math.round(counts.sp/counts.total*100)}%)`,'ok');
-      });
+    const fname = files.coverage.name.toLowerCase();
+    const isCsv = fname.endsWith('.csv');
+    const BRAND_MAP={'MARVEL':'MARVEL','AVENGERS':'MARVEL','STAR WARS':'STAR_WARS','STARWARS':'STAR_WARS','MONOPOLY':'MONOPOLY','GAMES':'GAMES','HASBRO GAMING':'GAMES','PLAY-DOH':'PLAY_DOH','PLAYDOH':'PLAY_DOH','PLAY DOH':'PLAY_DOH','PEPPA PIG':'PEPPA_PIG','PEPPA':'PEPPA_PIG','TRANSFORMERS':'TRANSFORMERS','BEYBLADE':'BEYBLADE','NERF':'NERF','SPIDEY':'DISNEY_KIDS','SPIDEY AND HIS AMAZING FRIENDS':'DISNEY_KIDS','DISNEY KIDS':'DISNEY_KIDS','AVALON HILL':'GAMES'};
+    function mapBrand(b){b=b.toUpperCase().trim();if(BRAND_MAP[b])return BRAND_MAP[b];for(const[k,v]of Object.entries(BRAND_MAP)){if(b.includes(k))return v;}return null;}
+    // Find a header by trying several possible names, case-insensitive,
+    // substring match — different exports call the same thing different names
+    // ("brand" vs "Brand Name"), and this must not silently skip a whole sheet
+    // just because the exact casing/wording differs from the last file.
+    function findCol(headers, candidates){
+      for(const c of candidates){
+        let i = headers.findIndex(h=>h.trim().toLowerCase()===c.toLowerCase());
+        if(i>=0) return i;
+      }
+      for(const c of candidates){
+        let i = headers.findIndex(h=>h.trim().toLowerCase().includes(c.toLowerCase()));
+        if(i>=0) return i;
+      }
+      return -1;
     }
-    if(!rows.length) throw new Error('No data extracted');
+    // A column only counts as real checkbox/coverage data if it actually
+    // contains a checkbox mark somewhere. Files that use a placeholder like
+    // "?" for every row (seen in some KAM recommendation exports) are NOT
+    // coverage data — including them would silently fabricate an ad-status
+    // signal from a column that never actually recorded one.
+    function hasRealCheckboxSignal(allRows, colIdx){
+      if(colIdx<0) return false;
+      return allRows.some(r=>String(r[colIdx]||'').includes('☑'));
+    }
+    const MARKETPLACE_MAP={'.co.uk':'GB','.de':'DE','.fr':'FR','.it':'IT','.es':'ES','amazon.co.uk':'GB','amazon.de':'DE','amazon.fr':'FR','amazon.it':'IT','amazon.es':'ES'};
+    function marketFromFilename(name){
+      const n=name.toUpperCase();
+      if(/(^|[_\-])UK([_\-]|\.|$)|GB(?![A-Z])/.test(n)) return 'GB';
+      if(/(^|[_\-])DE([_\-]|\.|$)/.test(n)) return 'DE';
+      if(/(^|[_\-])FR([_\-]|\.|$)/.test(n)) return 'FR';
+      if(/(^|[_\-])IT([_\-]|\.|$)/.test(n)) return 'IT';
+      if(/(^|[_\-])ES([_\-]|\.|$)/.test(n)) return 'ES';
+      return null;
+    }
+
+    const rows=[];
+    const flaggedSheets=[]; // sheets/files whose SP/SB column had no real signal
+
+    if (isCsv) {
+      // ── Single-market CSV path ──
+      logC('Detected CSV — single-market format...','info');
+      const buf = await files.coverage.arrayBuffer();
+      let text;
+      try { text = new TextDecoder('utf-8', {fatal:true}).decode(buf); }
+      catch(e) { text = new TextDecoder('windows-1252').decode(buf); } // accented text (French/Italian/Spanish exports are rarely clean UTF-8
+      const parsed = Papa.parse(text, {skipEmptyLines:true});
+      const raw = parsed.data;
+      const headers = raw[0].map(h=>String(h).trim());
+      const asinCol = findCol(headers, ['ASIN']);
+      // NOTE: 'Brand Name' must come before 'brand' — some exports have BOTH
+      // a real "Brand Name" column (MONOPOLY, PEPPA PIG, etc.) and a separate,
+      // mostly-blank internal short-code column literally named "brand". If
+      // "brand" is checked first it wins the exact-match pass and silently
+      // pulls the wrong, near-empty column — this dropped several brands
+      // (GAMES, NERF, MONOPOLY, DISNEY_KIDS) entirely in earlier uploads.
+      const brandCol = findCol(headers, ['Brand Name','brand']);
+      const spCol = findCol(headers, ['Sponsored Product Priority','Sponsored Product']);
+      const sbCol = findCol(headers, ['Sponsored Brand']);
+      const mktCol = findCol(headers, ['Marketplace Name','Marketplace']);
+      if(asinCol<0||brandCol<0){ throw new Error(`Could not find ASIN/brand columns. Found: ${headers.filter(h=>h).join(', ')}`); }
+      const dataRows = raw.slice(1).filter(r=>r.some(v=>v!==''));
+      const spOk = hasRealCheckboxSignal(dataRows, spCol);
+      const sbOk = hasRealCheckboxSignal(dataRows, sbCol);
+      if(!spOk){
+        flaggedSheets.push(files.coverage.name);
+        logC(`⚠️ "${headers[spCol]||'Sponsored Product'}" column contains no ☑ marks anywhere in this file — every value is a placeholder ("${String(dataRows[0][spCol]||'').slice(0,3)}" etc). This looks like a recommendation list, not a live coverage export. Skipping — will NOT fabricate ad-status from this column.`,'err');
+      } else {
+        const market = marketFromFilename(files.coverage.name) || (mktCol>=0 ? MARKETPLACE_MAP[String(dataRows[0][mktCol]||'').toLowerCase()] : null);
+        if(!market){ throw new Error('Could not determine market — expected GB/DE/FR/IT/ES in the filename.'); }
+        const brandAgg={};
+        dataRows.forEach(r=>{
+          const asin=String(r[asinCol]||'').trim();if(!asin||asin.length<5)return;
+          const brand=String(r[brandCol]||'').trim();if(!brand)return;
+          const bid=mapBrand(brand);if(!bid)return;
+          const sp=String(r[spCol]||'').includes('☑');
+          const sb=sbCol>=0?String(r[sbCol]||'').includes('☑'):false;
+          if(!brandAgg[bid])brandAgg[bid]={total:0,sp:0,sb:0};
+          brandAgg[bid].total++;if(sp)brandAgg[bid].sp++;if(sb)brandAgg[bid].sb++;
+        });
+        Object.entries(brandAgg).forEach(([brand_classified,counts])=>{
+          rows.push({quarter,brand_classified,market,total_asins:counts.total,sp_asins:counts.sp,sb_asins:counts.sb});
+          logC(`  ${market} ${brand_classified}: ${counts.sp}/${counts.total} SP (${Math.round(counts.sp/counts.total*100)}%)`,'ok');
+        });
+      }
+    } else {
+      // ── xlsx path — flexible sheet-name matching + single-sheet fallback ──
+      // Originally hardcoded to sheets literally named UK/DE/FR/IT/ES. Some
+      // exports use full country names, GB instead of UK, or a single sheet
+      // with a market/marketplace column instead of one sheet per market.
+      // Try aliases first; if nothing matches, fall back to scanning every
+      // sheet for a market column. Never guess at column semantics beyond
+      // structure — hasRealCheckboxSignal() still gates every SP/SB column.
+      const data = await files.coverage.arrayBuffer();
+      const wb = XLSX.read(data,{type:'array'});
+      const MARKET_ALIASES={
+        GB:['uk','gb','united kingdom','great britain'],
+        DE:['de','germany','deutschland'],
+        FR:['fr','france'],
+        IT:['it','italy','italia'],
+        ES:['es','spain','espana','españa']
+      };
+      function findSheetName(sheetNames, aliases){
+        const norm=s=>s.trim().toLowerCase();
+        for(const name of sheetNames){ if(aliases.includes(norm(name))) return name; }
+        for(const name of sheetNames){ if(aliases.some(a=>norm(name).includes(a))) return name; }
+        return null;
+      }
+      function processCoverageRows(dataRows, headers, market, sourceLabel){
+        // 'Brand Name' before 'brand' — see note in the CSV path above on why
+        // order matters here: some files have both, and 'brand' is a near-empty
+        // internal code column, not the real brand field.
+        const brandCol=findCol(headers, ['Brand Name','brand']);
+        const spCol=findCol(headers, ['Sponsored Product Priority','Sponsored Product']);
+        const sbCol=findCol(headers, ['Sponsored Brand']);
+        const asinCol=findCol(headers, ['ASIN']);
+        if(brandCol===-1||spCol===-1||asinCol===-1){logC(`⚠️ ${sourceLabel}: missing columns. Found: ${headers.filter(h=>h).join(', ')}`,'err');return;}
+        if(!hasRealCheckboxSignal(dataRows, spCol)){
+          flaggedSheets.push(sourceLabel);
+          logC(`⚠️ ${sourceLabel}: "${headers[spCol]}" column has no ☑ marks anywhere — looks like a placeholder, not live coverage. Skipping.`,'err');
+          return;
+        }
+        const brandAgg={};
+        dataRows.forEach(r=>{
+          const asin=String(r[asinCol]||'').trim();if(!asin||asin.length<5)return;
+          const brand=String(r[brandCol]||'').trim();if(!brand)return;
+          const sp=String(r[spCol]||'').includes('☑');
+          const sb=sbCol>=0?String(r[sbCol]||'').includes('☑'):false;
+          const bid=mapBrand(brand);if(!bid)return;
+          if(!brandAgg[bid])brandAgg[bid]={total:0,sp:0,sb:0};
+          brandAgg[bid].total++;if(sp)brandAgg[bid].sp++;if(sb)brandAgg[bid].sb++;
+        });
+        Object.entries(brandAgg).forEach(([brand_classified,counts])=>{
+          rows.push({quarter,brand_classified,market,total_asins:counts.total,sp_asins:counts.sp,sb_asins:counts.sb});
+          logC(`  ${market} ${brand_classified}: ${counts.sp}/${counts.total} SP (${Math.round(counts.sp/counts.total*100)}%)`,'ok');
+        });
+      }
+
+      // Attempt 1: one sheet per market, matched via aliases (not exact UK/DE/FR/IT/ES only)
+      let matchedAnySheet=false;
+      for(const[market,aliases]of Object.entries(MARKET_ALIASES)){
+        const sheetName=findSheetName(wb.SheetNames, aliases);
+        if(!sheetName) continue;
+        matchedAnySheet=true;
+        const ws=wb.Sheets[sheetName];
+        const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        if(raw.length<2) continue;
+        const headers=raw[0].map(h=>String(h).trim());
+        const dataRows=raw.slice(1).filter(r=>r.some(v=>v!==''));
+        processCoverageRows(dataRows, headers, market, sheetName);
+      }
+
+      // Attempt 2: no market-named sheets found — look for a single sheet
+      // (or sheets) containing a Marketplace/Market/Country column instead.
+      if(!matchedAnySheet){
+        logC('No sheet names matched known market aliases (UK/DE/FR/IT/ES or full country names) — trying single-sheet-with-market-column format...','info');
+        const COUNTRY_MAP={'united kingdom':'GB','uk':'GB','gb':'GB','great britain':'GB','.co.uk':'GB','germany':'DE','deutschland':'DE','de':'DE','.de':'DE','france':'FR','fr':'FR','.fr':'FR','italy':'IT','italia':'IT','it':'IT','.it':'IT','spain':'ES','espana':'ES','españa':'ES','es':'ES','.es':'ES'};
+        function matchCountry(raw){
+          if(COUNTRY_MAP[raw]) return COUNTRY_MAP[raw];
+          for(const[k,v]of Object.entries(COUNTRY_MAP)){ if(raw.includes(k)) return v; }
+          return null;
+        }
+        let anyRowsFound=false;
+        for(const sheetName of wb.SheetNames){
+          const ws=wb.Sheets[sheetName];
+          const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+          if(raw.length<2) continue;
+          const headers=raw[0].map(h=>String(h).trim());
+          const mktCol=findCol(headers, ['Marketplace Name','Marketplace','Market','Country']);
+          if(mktCol<0) continue;
+          const dataRows=raw.slice(1).filter(r=>r.some(v=>v!==''));
+          const byMarket={};
+          dataRows.forEach(r=>{
+            const market=matchCountry(String(r[mktCol]||'').toLowerCase().trim());
+            if(!market) return;
+            if(!byMarket[market]) byMarket[market]=[];
+            byMarket[market].push(r);
+          });
+          if(Object.keys(byMarket).length===0) continue;
+          anyRowsFound=true;
+          Object.entries(byMarket).forEach(([market,mrows])=>{
+            processCoverageRows(mrows, headers, market, `${sheetName} (${market})`);
+          });
+        }
+        if(!anyRowsFound){
+          logC(`⚠️ Could not find per-market sheets OR a market/marketplace column. Sheets in file: ${wb.SheetNames.join(', ')}`,'err');
+        }
+      }
+    }
+    if(!rows.length){
+      const msg = flaggedSheets.length
+        ? `No usable coverage data — ${flaggedSheets.join(', ')} had no real ☑ signal. Source a file with live Sponsored Product/Brand checkboxes, not a recommendation list.`
+        : 'No data extracted';
+      throw new Error(msg);
+    }
     await sbDelete(`/rest/v1/brand_health_ads_coverage?quarter=eq.${quarter}`);
     await sbPost('/rest/v1/brand_health_ads_coverage',rows);
     logC(`✅ Done! ${rows.length} brand-market rows uploaded for ${quarter}`,'ok');
