@@ -110,11 +110,11 @@
         <option value="2026-07">July</option>
       </select>
       <input type="date" id="weekEndingInput">
-      <input type="file" id="csvFile" accept=".csv,.xlsx,.xls" style="display:none;">
-      <button id="addActualsBtn" class="primary"><i class="ti ti-upload"></i>Upload file</button>
+      <input type="file" id="csvFile" accept=".csv,.xlsx,.xls" multiple style="display:none;">
+      <button id="addActualsBtn" class="primary"><i class="ti ti-upload"></i>Upload files</button>
     </div>
   </div>
-  <div class="foot-note" style="padding:0 0 12px;">Accepts .csv or .xlsx. Columns: <code>market,brand,spend,revenue,purchases,glanceViews</code> for AMS or <code>market,tactic,spend,revenue,purchases,glanceViews</code> for DSP, one row per market/brand (or market/tactic).</div>
+  <div class="foot-note" style="padding:0 0 12px;">Select multiple weekly Kepler exports at once for backfill \u2014 each file's week-ending date is auto-detected from its "Widget Date Range". For non-Kepler CSV/xlsx: accepts <code>market,brand,spend,revenue,purchases,glanceViews</code> (AMS) or <code>market,tactic,...</code> (DSP), using the date/month set above for every row in that file.</div>
 
   <div class="kpis" id="kpiRow"></div>
 
@@ -531,75 +531,115 @@ function parseCSV(text){
 document.getElementById('addActualsBtn').onclick = () => {
   document.getElementById('csvFile').click();
 };
-document.getElementById('csvFile').onchange = (e) => {
-  const file = e.target.files[0];
-  if(!file) return;
-  const isExcel = /\.(xlsx|xls)$/i.test(file.name);
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    if(isExcel){
-      const wb = XLSX.read(ev.target.result, {type:'array'});
-      const keplerSheetName = wb.SheetNames.find(n => /performance detail by platform/i.test(n));
-      if(keplerSheetName){
-        processKeplerExport(wb.Sheets[keplerSheetName]);
-        return;
+function readFileAsync(file, isExcel){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => resolve(ev.target.result);
+    reader.onerror = reject;
+    if(isExcel) reader.readAsArrayBuffer(file); else reader.readAsText(file);
+  });
+}
+
+function extractWidgetDate(raw){
+  // raw = array-of-arrays from sheet_to_json({header:1}); look for 'Widget Date Range:' row
+  for(const row of raw.slice(0,5)){
+    const label = String(row[0]||'');
+    if(/widget date range/i.test(label)){
+      const cell = String(row[1]||'');
+      const dates = cell.match(/(\d{2})-(\d{2})-(\d{4})/g);
+      if(dates && dates.length){
+        const last = dates[dates.length-1];
+        const [dd,mm,yyyy] = last.split('-');
+        return `${yyyy}-${mm}-${dd}`;
       }
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(sheet, {defval:''});
-      const rows = json.map(r => {
-        const lower = {};
-        Object.keys(r).forEach(k => lower[k.trim().toLowerCase()] = r[k]);
-        return lower;
-      });
-      processUploadedRows(rows);
-    } else {
-      processUploadedRows(parseCSV(ev.target.result));
     }
-  };
-  if(isExcel) reader.readAsArrayBuffer(file); else reader.readAsText(file);
+  }
+  return null;
+}
+
+document.getElementById('csvFile').onchange = async (e) => {
+  const files = Array.from(e.target.files);
+  if(!files.length) return;
+  const summary = { amsRows:0, dspRows:0, filesProcessed:0, filesFailed:[], glanceViewsNote:false, tripleLift:0,
+                     unmappedMarkets:new Set(), unmappedBrands:new Set() };
+
+  for(const file of files){
+    const isExcel = /\.(xlsx|xls)$/i.test(file.name);
+    try{
+      const data = await readFileAsync(file, isExcel);
+      if(isExcel){
+        const wb = XLSX.read(data, {type:'array'});
+        const keplerSheetName = wb.SheetNames.find(n => /performance detail by platform/i.test(n));
+        if(keplerSheetName){
+          processKeplerExport(wb.Sheets[keplerSheetName], summary, file.name);
+        } else {
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json(sheet, {defval:''});
+          const rows = json.map(r => { const lower={}; Object.keys(r).forEach(k=>lower[k.trim().toLowerCase()]=r[k]); return lower; });
+          processUploadedRows(rows, summary);
+        }
+      } else {
+        processUploadedRows(parseCSV(data), summary);
+      }
+      summary.filesProcessed++;
+    }catch(err){
+      summary.filesFailed.push(file.name + ': ' + err.message);
+    }
+  }
+
+  saveState();
+  render();
+
+  let msg = `Processed ${summary.filesProcessed} of ${files.length} files.\nAMS rows: ${summary.amsRows} | DSP rows: ${summary.dspRows}`;
+  if(summary.glanceViewsNote) msg += '\n\nGlance Views populated from Clicks (Kepler export has no true glance view metric).';
+  if(summary.tripleLift) msg += `\n\n${summary.tripleLift} TripleLift rows skipped across all files.`;
+  if(summary.unmappedMarkets.size) msg += '\n\nUnmapped markets: ' + [...summary.unmappedMarkets].join(', ');
+  if(summary.unmappedBrands.size) msg += '\n\nUnmapped brands: ' + [...summary.unmappedBrands].join(', ');
+  if(summary.filesFailed.length) msg += '\n\nFailed files:\n' + summary.filesFailed.join('\n');
+  alert(msg);
+  e.target.value = '';
 };
 
-function processKeplerExport(sheet){
+function processKeplerExport(sheet, summary, fileName){
   const raw = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
   const headerRowIdx = raw.findIndex(row => row.some(c => /buying platform/i.test(String(c))));
-  if(headerRowIdx === -1){ alert('Could not find the header row in this file.'); return; }
+  if(headerRowIdx === -1){ summary.filesFailed.push(fileName + ': no header row found'); return; }
   const headers = raw[headerRowIdx].map(h => String(h).trim());
   const col = name => headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
   const iPlatform = col('k_Buying Platform'), iBrand = col('Brand'), iMarket = col('Marketing Geography'),
         iSpend = col('Spend'), iRevenue = col('Nominal POS'), iOrders = col('Total Orders'), iClicks = col('Clicks');
 
-  const weekEnding = document.getElementById('weekEndingInput').value;
   const reportType = document.getElementById('reportType').value;
+  const detectedDate = extractWidgetDate(raw);
+  const weekEnding = detectedDate || document.getElementById('weekEndingInput').value;
   const period = reportType === 'monthly' ? {month: document.getElementById('monthSelect').value} : {weekEnding};
 
   const amsAgg = {}, dspAgg = {};
-  const unmappedMarkets = new Set(), unmappedBrands = new Set();
-  let tripleLiftRows = 0;
 
   for(let r = headerRowIdx+1; r < raw.length; r++){
     const row = raw[r];
     if(!row || !row[iPlatform]) continue;
     const platform = String(row[iPlatform]).trim();
     if(platform === 'Totals') continue;
-    if(platform === 'Triple Lift'){ tripleLiftRows++; continue; }
+    if(platform === 'Triple Lift'){ summary.tripleLift++; continue; }
 
     const marketRaw = String(row[iMarket]||'').trim().toLowerCase();
     const brandRaw = String(row[iBrand]||'').trim().toLowerCase();
     const market = KEPLER_MARKET_MAP[marketRaw];
-    if(!market){ if(marketRaw) unmappedMarkets.add(row[iMarket]); continue; }
+    if(!market){ if(marketRaw) summary.unmappedMarkets.add(row[iMarket]); continue; }
 
     const spend = Number(row[iSpend]||0), revenue = Number(row[iRevenue]||0), purchases = Number(row[iOrders]||0),
           glanceViews = Number(row[iClicks]||0);
 
     if(platform === 'Amazon'){
       const brand = KEPLER_BRAND_MAP[brandRaw];
-      if(!brand){ if(brandRaw) unmappedBrands.add(row[iBrand]); continue; }
+      if(!brand){ if(brandRaw) summary.unmappedBrands.add(row[iBrand]); continue; }
       const key = market+'|'+brand;
       amsAgg[key] = amsAgg[key] || {market, brand, spend:0, revenue:0, purchases:0, glanceViews:0};
       amsAgg[key].spend += spend; amsAgg[key].revenue += revenue; amsAgg[key].purchases += purchases; amsAgg[key].glanceViews += glanceViews;
     } else if(platform === 'Amazon DSP'){
       const tactic = KEPLER_DSP_TACTIC_MAP[brandRaw];
-      if(!tactic){ if(brandRaw) unmappedBrands.add(row[iBrand] + ' (DSP)'); continue; }
+      if(!tactic){ if(brandRaw) summary.unmappedBrands.add(row[iBrand] + ' (DSP)'); continue; }
       const key = market+'|'+tactic;
       dspAgg[key] = dspAgg[key] || {market, tactic, spend:0, revenue:0, purchases:0, glanceViews:0};
       dspAgg[key].spend += spend; dspAgg[key].revenue += revenue; dspAgg[key].purchases += purchases; dspAgg[key].glanceViews += glanceViews;
@@ -614,19 +654,13 @@ function processKeplerExport(sheet){
     const rec = {...entry, ...period};
     if(reportType === 'monthly') state.dspMonthly.push(rec); else state.dspActuals.push(rec);
   });
-  saveState();
-  render();
 
-  let msg = `Loaded ${Object.keys(amsAgg).length} AMS rows and ${Object.keys(dspAgg).length} DSP rows.`;
-  msg += '\n\nGlance Views column is populated from Clicks (per your instruction) since this file has no true glance view metric.';
-  if(tripleLiftRows) msg += `\n\n${tripleLiftRows} TripleLift rows were skipped \u2014 not yet mapped into either pivot.`;
-  if(unmappedMarkets.size) msg += '\n\nUnmapped markets (rows skipped): ' + [...unmappedMarkets].join(', ');
-  if(unmappedBrands.size) msg += '\n\nUnmapped brands (rows skipped): ' + [...unmappedBrands].join(', ');
-  alert(msg);
-  document.getElementById('csvFile').value = '';
+  summary.amsRows += Object.keys(amsAgg).length;
+  summary.dspRows += Object.keys(dspAgg).length;
+  summary.glanceViewsNote = true;
 }
 
-function processUploadedRows(rows){
+function processUploadedRows(rows, summary){
     const pivot = document.getElementById('pivotView').value;
     const reportType = document.getElementById('reportType').value;
     const period = reportType === 'monthly'
@@ -637,19 +671,17 @@ function processUploadedRows(rows){
     const secondKey = pivot === 'dsp' ? 'tactic' : 'brand';
 
     let matched = 0;
-    const problems = [];
     const headerKeys = rows.length ? Object.keys(rows[0]) : [];
-    const hasSpendCol = headerKeys.includes('spend');
+    if(!headerKeys.includes('spend')) summary.unmappedBrands.add('(missing "spend" column)');
 
-    rows.forEach((r, idx) => {
+    rows.forEach((r) => {
       const market = (r.market||'').toString().trim();
       const second = (r[secondKey]||'').toString().trim();
       const marketOk = validMarkets.some(m => m.toLowerCase() === market.toLowerCase());
       const secondOk = validSecond.some(b => b.toLowerCase() === second.toLowerCase());
-      if(!marketOk || !secondOk){
-        problems.push(`Row ${idx+2}: market="${market}" ${marketOk?'':'(no match)'}, ${secondKey}="${second}" ${secondOk?'':'(no match)'}`);
-        return;
-      }
+      if(!marketOk) summary.unmappedMarkets.add(market || '(blank)');
+      if(!secondOk) summary.unmappedBrands.add(second || '(blank)');
+      if(!marketOk || !secondOk) return;
       const marketCanon = validMarkets.find(m => m.toLowerCase() === market.toLowerCase());
       const secondCanon = validSecond.find(b => b.toLowerCase() === second.toLowerCase());
       const spend = Number(r.spend||0), revenue = Number(r.revenue||0),
@@ -657,20 +689,14 @@ function processUploadedRows(rows){
       if(pivot === 'dsp'){
         const entry = {market: marketCanon, tactic: secondCanon, spend, revenue, purchases, glanceViews, ...period};
         if(reportType === 'monthly') state.dspMonthly.push(entry); else state.dspActuals.push(entry);
+        summary.dspRows++;
       } else {
         const entry = {market: marketCanon, brand: secondCanon, spend, revenue, purchases, glanceViews, ...period};
         if(reportType === 'monthly') state.monthly.push(entry); else state.actuals.push(entry);
+        summary.amsRows++;
       }
       matched++;
     });
-    saveState();
-    render();
-
-    let msg = matched + ' of ' + rows.length + ' rows matched and loaded.';
-    if(!hasSpendCol) msg += '\n\nWarning: no "spend" column found in your file headers (' + headerKeys.join(', ') + '). Spend will show as 0 until the column is named exactly "spend".';
-    if(problems.length) msg += '\n\nRows not matched:\n' + problems.slice(0,10).join('\n') + (problems.length>10 ? '\n...and '+(problems.length-10)+' more' : '');
-    alert(msg);
-    document.getElementById('csvFile').value = '';
 }
 
 document.getElementById('addActionBtn').onclick = () => {
