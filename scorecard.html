@@ -112,6 +112,7 @@
       <input type="date" id="weekEndingInput">
       <input type="file" id="csvFile" accept=".csv,.xlsx,.xls" multiple style="display:none;">
       <button id="addActualsBtn" class="primary"><i class="ti ti-upload"></i>Upload files</button>
+      <button id="dedupeBtn"><i class="ti ti-copy-off"></i>Deduplicate</button>
     </div>
   </div>
   <div class="foot-note" style="padding:0 0 12px;">Select multiple weekly Kepler exports at once for backfill \u2014 each file's week-ending date is auto-detected from its "Widget Date Range". For non-Kepler CSV/xlsx: accepts <code>market,brand,spend,revenue,purchases,glanceViews</code> (AMS) or <code>market,tactic,...</code> (DSP), using the date/month set above for every row in that file.</div>
@@ -321,7 +322,8 @@ function windowedSums(entries, view){
 function aggregate(market, brand){
   const weekly = actualsFor(market, brand);
   const monthly = monthlyFor(market, brand);
-  const cumulativeSpend = sumField(weekly, 'spend') + sumField(monthly, 'spend');
+  const includeBackfill = document.getElementById('budgetPeriod').value === 'fy';
+  const cumulativeSpend = sumField(weekly, 'spend') + (includeBackfill ? sumField(monthly, 'spend') : 0);
   const w = windowedSums(weekly, document.getElementById('timeView').value);
   return {
     budget: planFor(market, brand), cumulativeSpend,
@@ -333,7 +335,8 @@ function aggregate(market, brand){
 function dspAggregate(market, tactic){
   const weekly = dspActualsFor(market, tactic);
   const monthly = dspMonthlyFor(market, tactic);
-  const cumulativeSpend = sumField(weekly, 'spend') + sumField(monthly, 'spend');
+  const includeBackfill = document.getElementById('budgetPeriod').value === 'fy';
+  const cumulativeSpend = sumField(weekly, 'spend') + (includeBackfill ? sumField(monthly, 'spend') : 0);
   const w = windowedSums(weekly, document.getElementById('timeView').value);
   return {
     budget: dspPlanFor(market, tactic), cumulativeSpend,
@@ -527,6 +530,27 @@ function parseCSV(text){
     return row;
   });
 }
+
+function dedupeArray(arr, keyFields){
+  const seen = new Map();
+  arr.forEach(entry => {
+    const key = keyFields.map(f => entry[f]).join('|');
+    seen.set(key, entry); // later entries overwrite earlier ones = "most recent upload wins"
+  });
+  return Array.from(seen.values());
+}
+
+document.getElementById('dedupeBtn').onclick = () => {
+  const before = state.actuals.length + state.dspActuals.length + state.monthly.length + state.dspMonthly.length;
+  state.actuals = dedupeArray(state.actuals, ['market','brand','weekEnding']);
+  state.dspActuals = dedupeArray(state.dspActuals, ['market','tactic','weekEnding']);
+  state.monthly = dedupeArray(state.monthly, ['market','brand','month']);
+  state.dspMonthly = dedupeArray(state.dspMonthly, ['market','tactic','month']);
+  const after = state.actuals.length + state.dspActuals.length + state.monthly.length + state.dspMonthly.length;
+  saveState();
+  render();
+  alert(`Removed ${before-after} duplicate records. Kept one record per market/brand (or tactic) per week or month \u2014 the most recently uploaded.`);
+};
 
 document.getElementById('addActualsBtn').onclick = () => {
   document.getElementById('csvFile').click();
