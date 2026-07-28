@@ -319,11 +319,26 @@ function windowedSums(entries, view){
   };
 }
 
+function inBudgetRange(dateStr, period){
+  if(!dateStr) return false;
+  const d = new Date(dateStr);
+  if(isNaN(d.getTime())) return false;
+  const h2Start = new Date('2026-08-01'), h2End = new Date('2026-12-31T23:59:59');
+  const fyStart = new Date('2026-01-01'), fyEnd = new Date('2026-12-31T23:59:59');
+  if(period === 'fy') return d >= fyStart && d <= fyEnd;
+  return d >= h2Start && d <= h2End;
+}
+function cumulativeInRange(weekly, monthly, period){
+  const weeklySum = weekly.filter(e => inBudgetRange(e.weekEnding, period)).reduce((s,e)=>s+Number(e.spend||0),0);
+  const monthlySum = monthly.filter(e => inBudgetRange((e.month||'')+'-01', period)).reduce((s,e)=>s+Number(e.spend||0),0);
+  return weeklySum + monthlySum;
+}
+
 function aggregate(market, brand){
   const weekly = actualsFor(market, brand);
   const monthly = monthlyFor(market, brand);
-  const includeBackfill = document.getElementById('budgetPeriod').value === 'fy';
-  const cumulativeSpend = sumField(weekly, 'spend') + (includeBackfill ? sumField(monthly, 'spend') : 0);
+  const period = document.getElementById('budgetPeriod').value;
+  const cumulativeSpend = cumulativeInRange(weekly, monthly, period);
   const w = windowedSums(weekly, document.getElementById('timeView').value);
   return {
     budget: planFor(market, brand), cumulativeSpend,
@@ -335,8 +350,8 @@ function aggregate(market, brand){
 function dspAggregate(market, tactic){
   const weekly = dspActualsFor(market, tactic);
   const monthly = dspMonthlyFor(market, tactic);
-  const includeBackfill = document.getElementById('budgetPeriod').value === 'fy';
-  const cumulativeSpend = sumField(weekly, 'spend') + (includeBackfill ? sumField(monthly, 'spend') : 0);
+  const period = document.getElementById('budgetPeriod').value;
+  const cumulativeSpend = cumulativeInRange(weekly, monthly, period);
   const w = windowedSums(weekly, document.getElementById('timeView').value);
   return {
     budget: dspPlanFor(market, tactic), cumulativeSpend,
