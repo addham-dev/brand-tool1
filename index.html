@@ -1117,7 +1117,7 @@ function renderAdsMetrics(){
     card('Ad-Driven Glance Views',fmtNum(adGv),gvPct.toFixed(1)+'% of total GVs'+(hasDsp?' · incl. DSP DPVs':''),null)+
     card('Impressions',fmtNum(imps),'served · '+(hasDsp?'AMS + DSP':'AMS only'),null)+
     card('ROAS',spend>0?roas.toFixed(1)+'x':'—',hasDsp?'blended AMS + DSP':'AMS attributed',sRoas)+
-    card('Portfolio Advertised',advPct!==null?advPct.toFixed(1)+'%':'—',advPct!==null?fmtNum(covAdv)+' SP ASINs of '+fmtNum(covTot)+' active in period'+(covQ?' · '+covQ:''):'no coverage data — upload quarterly file',null);
+    card('Portfolio Advertised',advPct!==null?advPct.toFixed(1)+'%':'—',advPct!==null?fmtNum(covAdv)+' ASINs in plan of '+fmtNum(covTot)+' active in period'+(covQ?' · '+covQ:''):'no coverage data — upload quarterly file',null);
 }
 
 function buildDashboard(){renderOverallMetrics();renderAdsMetrics();renderSentimentBar();renderBrandCards();renderSupplyAlerts();renderPreOrders();if(selectedBrand)renderRCA(selectedBrand,currentTab);}

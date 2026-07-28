@@ -1061,14 +1061,19 @@ async function uploadCoverage() {
       }
       return -1;
     }
-    // A column only counts as real checkbox/coverage data if it actually
-    // contains a checkbox mark somewhere. Files that use a placeholder like
-    // "?" for every row (seen in some KAM recommendation exports) are NOT
-    // coverage data — including them would silently fabricate an ad-status
-    // signal from a column that never actually recorded one.
-    function hasRealCheckboxSignal(allRows, colIdx){
+    // Coverage = ASINs marked "Include? Y/N" = Y. We're not tracking ad
+    // format (SP vs SB) — just whether an ASIN is in the plan this quarter,
+    // matched later against the trading catalogue from weekly VC uploads.
+    // The SP/SB checkbox columns are unreliable across exports (some files
+    // use them as real live status, some leave every row as a placeholder
+    // "?" because format hasn't been decided yet) — Include? Y/N is the
+    // one field that's consistently populated with a real Y/N/TBC signal.
+    function hasUsableIncludeSignal(allRows, colIdx){
       if(colIdx<0) return false;
-      return allRows.some(r=>String(r[colIdx]||'').includes('☑'));
+      return allRows.some(r=>{
+        const v=String(r[colIdx]||'').trim().toUpperCase();
+        return v==='Y'||v==='N';
+      });
     }
     const MARKETPLACE_MAP={'.co.uk':'GB','.de':'DE','.fr':'FR','.it':'IT','.es':'ES','amazon.co.uk':'GB','amazon.de':'DE','amazon.fr':'FR','amazon.it':'IT','amazon.es':'ES'};
     function marketFromFilename(name){
@@ -1082,7 +1087,7 @@ async function uploadCoverage() {
     }
 
     const rows=[];
-    const flaggedSheets=[]; // sheets/files whose SP/SB column had no real signal
+    const flaggedSheets=[]; // sheets/files with no usable Include? Y/N signal
 
     if (isCsv) {
       // ── Single-market CSV path ──
@@ -1102,16 +1107,14 @@ async function uploadCoverage() {
       // pulls the wrong, near-empty column — this dropped several brands
       // (GAMES, NERF, MONOPOLY, DISNEY_KIDS) entirely in earlier uploads.
       const brandCol = findCol(headers, ['Brand Name','brand']);
-      const spCol = findCol(headers, ['Sponsored Product Priority','Sponsored Product']);
-      const sbCol = findCol(headers, ['Sponsored Brand']);
+      const incCol = findCol(headers, ['Include? Y/N','Include']);
       const mktCol = findCol(headers, ['Marketplace Name','Marketplace']);
       if(asinCol<0||brandCol<0){ throw new Error(`Could not find ASIN/brand columns. Found: ${headers.filter(h=>h).join(', ')}`); }
       const dataRows = raw.slice(1).filter(r=>r.some(v=>v!==''));
-      const spOk = hasRealCheckboxSignal(dataRows, spCol);
-      const sbOk = hasRealCheckboxSignal(dataRows, sbCol);
-      if(!spOk){
+      const incOk = hasUsableIncludeSignal(dataRows, incCol);
+      if(!incOk){
         flaggedSheets.push(files.coverage.name);
-        logC(`⚠️ "${headers[spCol]||'Sponsored Product'}" column contains no ☑ marks anywhere in this file — every value is a placeholder ("${String(dataRows[0][spCol]||'').slice(0,3)}" etc). This looks like a recommendation list, not a live coverage export. Skipping — will NOT fabricate ad-status from this column.`,'err');
+        logC(`⚠️ No usable "Include? Y/N" column found (or it has no real Y/N values) — can't determine which ASINs are in the plan. Found columns: ${headers.filter(h=>h).join(', ')}`,'err');
       } else {
         const market = marketFromFilename(files.coverage.name) || (mktCol>=0 ? MARKETPLACE_MAP[String(dataRows[0][mktCol]||'').toLowerCase()] : null);
         if(!market){ throw new Error('Could not determine market — expected GB/DE/FR/IT/ES in the filename.'); }
@@ -1120,14 +1123,13 @@ async function uploadCoverage() {
           const asin=String(r[asinCol]||'').trim();if(!asin||asin.length<5)return;
           const brand=String(r[brandCol]||'').trim();if(!brand)return;
           const bid=mapBrand(brand);if(!bid)return;
-          const sp=String(r[spCol]||'').includes('☑');
-          const sb=sbCol>=0?String(r[sbCol]||'').includes('☑'):false;
-          if(!brandAgg[bid])brandAgg[bid]={total:0,sp:0,sb:0};
-          brandAgg[bid].total++;if(sp)brandAgg[bid].sp++;if(sb)brandAgg[bid].sb++;
+          const included=String(r[incCol]||'').trim().toUpperCase()==='Y';
+          if(!brandAgg[bid])brandAgg[bid]={total:0,included:0};
+          brandAgg[bid].total++;if(included)brandAgg[bid].included++;
         });
         Object.entries(brandAgg).forEach(([brand_classified,counts])=>{
-          rows.push({quarter,brand_classified,market,total_asins:counts.total,sp_asins:counts.sp,sb_asins:counts.sb});
-          logC(`  ${market} ${brand_classified}: ${counts.sp}/${counts.total} SP (${Math.round(counts.sp/counts.total*100)}%)`,'ok');
+          rows.push({quarter,brand_classified,market,total_asins:counts.included,sp_asins:counts.included,sb_asins:counts.included});
+          logC(`  ${market} ${brand_classified}: ${counts.included}/${counts.total} ASINs included (${Math.round(counts.included/counts.total*100)}%)`,'ok');
         });
       }
     } else {
@@ -1136,8 +1138,8 @@ async function uploadCoverage() {
       // exports use full country names, GB instead of UK, or a single sheet
       // with a market/marketplace column instead of one sheet per market.
       // Try aliases first; if nothing matches, fall back to scanning every
-      // sheet for a market column. Never guess at column semantics beyond
-      // structure — hasRealCheckboxSignal() still gates every SP/SB column.
+      // sheet for a market column. Coverage = Include? Y/N = Y, matched
+      // later against the trading catalogue — not ad-format specific.
       const data = await files.coverage.arrayBuffer();
       const wb = XLSX.read(data,{type:'array'});
       const MARKET_ALIASES={
@@ -1158,28 +1160,26 @@ async function uploadCoverage() {
         // order matters here: some files have both, and 'brand' is a near-empty
         // internal code column, not the real brand field.
         const brandCol=findCol(headers, ['Brand Name','brand']);
-        const spCol=findCol(headers, ['Sponsored Product Priority','Sponsored Product']);
-        const sbCol=findCol(headers, ['Sponsored Brand']);
+        const incCol=findCol(headers, ['Include? Y/N','Include']);
         const asinCol=findCol(headers, ['ASIN']);
-        if(brandCol===-1||spCol===-1||asinCol===-1){logC(`⚠️ ${sourceLabel}: missing columns. Found: ${headers.filter(h=>h).join(', ')}`,'err');return;}
-        if(!hasRealCheckboxSignal(dataRows, spCol)){
+        if(brandCol===-1||asinCol===-1){logC(`⚠️ ${sourceLabel}: missing ASIN/brand columns. Found: ${headers.filter(h=>h).join(', ')}`,'err');return;}
+        if(!hasUsableIncludeSignal(dataRows, incCol)){
           flaggedSheets.push(sourceLabel);
-          logC(`⚠️ ${sourceLabel}: "${headers[spCol]}" column has no ☑ marks anywhere — looks like a placeholder, not live coverage. Skipping.`,'err');
+          logC(`⚠️ ${sourceLabel}: no usable "Include? Y/N" column/values found — can't determine which ASINs are in the plan. Skipping.`,'err');
           return;
         }
         const brandAgg={};
         dataRows.forEach(r=>{
           const asin=String(r[asinCol]||'').trim();if(!asin||asin.length<5)return;
           const brand=String(r[brandCol]||'').trim();if(!brand)return;
-          const sp=String(r[spCol]||'').includes('☑');
-          const sb=sbCol>=0?String(r[sbCol]||'').includes('☑'):false;
           const bid=mapBrand(brand);if(!bid)return;
-          if(!brandAgg[bid])brandAgg[bid]={total:0,sp:0,sb:0};
-          brandAgg[bid].total++;if(sp)brandAgg[bid].sp++;if(sb)brandAgg[bid].sb++;
+          const included=String(r[incCol]||'').trim().toUpperCase()==='Y';
+          if(!brandAgg[bid])brandAgg[bid]={total:0,included:0};
+          brandAgg[bid].total++;if(included)brandAgg[bid].included++;
         });
         Object.entries(brandAgg).forEach(([brand_classified,counts])=>{
-          rows.push({quarter,brand_classified,market,total_asins:counts.total,sp_asins:counts.sp,sb_asins:counts.sb});
-          logC(`  ${market} ${brand_classified}: ${counts.sp}/${counts.total} SP (${Math.round(counts.sp/counts.total*100)}%)`,'ok');
+          rows.push({quarter,brand_classified,market,total_asins:counts.included,sp_asins:counts.included,sb_asins:counts.included});
+          logC(`  ${market} ${brand_classified}: ${counts.included}/${counts.total} ASINs included (${Math.round(counts.included/counts.total*100)}%)`,'ok');
         });
       }
 
@@ -1236,7 +1236,7 @@ async function uploadCoverage() {
     }
     if(!rows.length){
       const msg = flaggedSheets.length
-        ? `No usable coverage data — ${flaggedSheets.join(', ')} had no real ☑ signal. Source a file with live Sponsored Product/Brand checkboxes, not a recommendation list.`
+        ? `No usable coverage data — ${flaggedSheets.join(', ')} had no usable "Include? Y/N" values. Source a file with that column populated.`
         : 'No data extracted';
       throw new Error(msg);
     }
