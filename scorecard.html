@@ -136,13 +136,13 @@
           <th class="num">Pacing</th>
           <th class="num">ROAS</th>
           <th class="num">CPA</th>
-          <th class="num">Glance views</th>
+          <th class="num">Glance views*</th>
           <th>Status</th>
         </tr>
       </thead>
       <tbody id="tableBody"></tbody>
     </table>
-    <div class="foot-note">Pacing = cumulative spend to date vs the selected budget period. ROAS, CPA and glance views reflect the selected time period above.</div>
+    <div class="foot-note">Pacing = cumulative spend to date vs the selected budget period. ROAS, CPA and glance views reflect the selected time period above. *Glance views = Clicks from the Kepler export (no true glance view metric in that file).</div>
   </div>
 
   <div class="panel" id="dspPanel" style="display:none;">
@@ -163,7 +163,7 @@
           <th class="num">Pacing</th>
           <th class="num">ROAS</th>
           <th class="num">CPA</th>
-          <th class="num">Glance views</th>
+          <th class="num">Glance views*</th>
           <th>Status</th>
         </tr>
       </thead>
@@ -566,7 +566,7 @@ function processKeplerExport(sheet){
   const headers = raw[headerRowIdx].map(h => String(h).trim());
   const col = name => headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
   const iPlatform = col('k_Buying Platform'), iBrand = col('Brand'), iMarket = col('Marketing Geography'),
-        iSpend = col('Spend'), iRevenue = col('Nominal POS'), iOrders = col('Total Orders');
+        iSpend = col('Spend'), iRevenue = col('Nominal POS'), iOrders = col('Total Orders'), iClicks = col('Clicks');
 
   const weekEnding = document.getElementById('weekEndingInput').value;
   const reportType = document.getElementById('reportType').value;
@@ -588,20 +588,21 @@ function processKeplerExport(sheet){
     const market = KEPLER_MARKET_MAP[marketRaw];
     if(!market){ if(marketRaw) unmappedMarkets.add(row[iMarket]); continue; }
 
-    const spend = Number(row[iSpend]||0), revenue = Number(row[iRevenue]||0), purchases = Number(row[iOrders]||0);
+    const spend = Number(row[iSpend]||0), revenue = Number(row[iRevenue]||0), purchases = Number(row[iOrders]||0),
+          glanceViews = Number(row[iClicks]||0);
 
     if(platform === 'Amazon'){
       const brand = KEPLER_BRAND_MAP[brandRaw];
       if(!brand){ if(brandRaw) unmappedBrands.add(row[iBrand]); continue; }
       const key = market+'|'+brand;
       amsAgg[key] = amsAgg[key] || {market, brand, spend:0, revenue:0, purchases:0, glanceViews:0};
-      amsAgg[key].spend += spend; amsAgg[key].revenue += revenue; amsAgg[key].purchases += purchases;
+      amsAgg[key].spend += spend; amsAgg[key].revenue += revenue; amsAgg[key].purchases += purchases; amsAgg[key].glanceViews += glanceViews;
     } else if(platform === 'Amazon DSP'){
       const tactic = KEPLER_DSP_TACTIC_MAP[brandRaw];
       if(!tactic){ if(brandRaw) unmappedBrands.add(row[iBrand] + ' (DSP)'); continue; }
       const key = market+'|'+tactic;
       dspAgg[key] = dspAgg[key] || {market, tactic, spend:0, revenue:0, purchases:0, glanceViews:0};
-      dspAgg[key].spend += spend; dspAgg[key].revenue += revenue; dspAgg[key].purchases += purchases;
+      dspAgg[key].spend += spend; dspAgg[key].revenue += revenue; dspAgg[key].purchases += purchases; dspAgg[key].glanceViews += glanceViews;
     }
   }
 
@@ -617,7 +618,7 @@ function processKeplerExport(sheet){
   render();
 
   let msg = `Loaded ${Object.keys(amsAgg).length} AMS rows and ${Object.keys(dspAgg).length} DSP rows.`;
-  msg += '\n\nNote: this file has no Glance Views column (that lives in Supabase, not the Kepler export) \u2014 Glance Views will show 0 for this upload.';
+  msg += '\n\nGlance Views column is populated from Clicks (per your instruction) since this file has no true glance view metric.';
   if(tripleLiftRows) msg += `\n\n${tripleLiftRows} TripleLift rows were skipped \u2014 not yet mapped into either pivot.`;
   if(unmappedMarkets.size) msg += '\n\nUnmapped markets (rows skipped): ' + [...unmappedMarkets].join(', ');
   if(unmappedBrands.size) msg += '\n\nUnmapped brands (rows skipped): ' + [...unmappedBrands].join(', ');
