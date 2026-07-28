@@ -116,7 +116,7 @@
       <button id="resetAllBtn" class="ghost-danger" style="border:1px solid var(--red);"><i class="ti ti-alert-triangle"></i>Reset all data</button>
     </div>
   </div>
-  <div class="foot-note" style="padding:0 0 12px;">Select multiple weekly Kepler exports at once for backfill \u2014 each file's week-ending date is auto-detected from its "Widget Date Range". For non-Kepler CSV/xlsx: accepts <code>market,brand,spend,revenue,purchases,glanceViews</code> (AMS) or <code>market,tactic,...</code> (DSP), using the date/month set above for every row in that file.</div>
+  <div class="foot-note" style="padding:0 0 12px;">Kepler exports (weekly or monthly pulls) always use their own file's "Widget Date Range" \u2014 the Report/Month/Week controls above don't affect Kepler files at all, only the generic CSV/xlsx path (columns <code>market,brand,spend,revenue,purchases,glanceViews</code> for AMS or <code>market,tactic,...</code> for DSP). If a Kepler file's date can't be detected, it's rejected rather than guessed.</div>
 
   <div class="kpis" id="kpiRow"></div>
 
@@ -692,6 +692,7 @@ document.getElementById('csvFile').onchange = async (e) => {
   if(summary.unmappedMarkets.size) msg += '\n\nUnmapped markets: ' + [...summary.unmappedMarkets].join(', ');
   if(summary.unmappedBrands.size) msg += '\n\nUnmapped brands: ' + [...summary.unmappedBrands].join(', ');
   if(summary.overlapWarnings.size) msg += '\n\n\u26a0\ufe0f OVERLAP WARNING \u2014 this data likely double-counts:\n' + [...summary.overlapWarnings].join('\n');
+  if(summary.wideSpanFiles && summary.wideSpanFiles.size) msg += '\n\n\u2139\ufe0f These files span more than a single week (monthly-style pulls). Their totals count correctly toward Pacing/FY, but Trailing week/2-week ROAS/CPA will only reflect them if the window happens to include the end date, and will overstate that window since the whole span\'s total lands there at once:\n' + [...summary.wideSpanFiles].join('\n');
   if(summary.filesFailed.length) msg += '\n\nFailed files:\n' + summary.filesFailed.join('\n');
   alert(msg);
   e.target.value = '';
@@ -706,19 +707,19 @@ function processKeplerExport(sheet, summary, fileName){
   const iPlatform = col('k_Buying Platform'), iBrand = col('Brand'), iMarket = col('Marketing Geography'),
         iSpend = col('Spend'), iRevenue = col('Nominal POS'), iOrders = col('Total Orders'), iClicks = col('Clicks');
 
-  const reportType = document.getElementById('reportType').value;
   const detectedRange = extractWidgetDateRange(raw);
 
-  if(reportType !== 'monthly' && !detectedRange){
+  if(!detectedRange){
     const debugRows = raw.slice(0,4).map(r => JSON.stringify(r.slice(0,3))).join(' | ');
-    summary.filesFailed.push(`${fileName}: could not detect Widget Date Range \u2014 refusing to guess "today". First rows seen: ${debugRows}`);
+    summary.filesFailed.push(`${fileName}: could not detect Widget Date Range \u2014 refusing to guess. First rows seen: ${debugRows}`);
     return;
   }
-  const weekEnding = reportType === 'monthly'
-    ? document.getElementById('weekEndingInput').value
-    : detectedRange.end;
-  const rangeStart = reportType === 'monthly' ? weekEnding : detectedRange.start;
-  const period = reportType === 'monthly' ? {month: document.getElementById('monthSelect').value} : {weekEnding, rangeStart};
+  // Kepler files always use their own real date range \u2014 the Report Type toggle does not affect this,
+  // so a monthly-backfill file uploaded with the toggle on "weekly" (or vice versa) still gets tagged correctly.
+  const weekEnding = detectedRange.end;
+  const rangeStart = detectedRange.start;
+  const spanDays = (new Date(weekEnding) - new Date(rangeStart)) / 86400000;
+  const period = {weekEnding, rangeStart, spanDays};
 
   // Overlap check against already-stored weekly data for the markets this file touches
   if(reportType !== 'monthly'){
@@ -772,16 +773,20 @@ function processKeplerExport(sheet, summary, fileName){
 
   Object.values(amsAgg).forEach(entry => {
     const rec = {...entry, ...period};
-    if(reportType === 'monthly') state.monthly.push(rec); else state.actuals.push(rec);
+    state.actuals.push(rec);
   });
   Object.values(dspAgg).forEach(entry => {
     const rec = {...entry, ...period};
-    if(reportType === 'monthly') state.dspMonthly.push(rec); else state.dspActuals.push(rec);
+    state.dspActuals.push(rec);
   });
 
   summary.amsRows += Object.keys(amsAgg).length;
   summary.dspRows += Object.keys(dspAgg).length;
   summary.glanceViewsNote = true;
+  if(spanDays > 10){
+    summary.wideSpanFiles = summary.wideSpanFiles || new Set();
+    summary.wideSpanFiles.add(`${fileName}: ${rangeStart}\u2192${weekEnding} (${Math.round(spanDays)} days)`);
+  }
 }
 
 function processUploadedRows(rows, summary){
