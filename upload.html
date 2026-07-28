@@ -292,6 +292,26 @@
     <div class="log-area" id="search-log" style="height:100px;"><span class="log-line">Upload the Top Search Terms CSV.</span></div>
   </div>
 
+  <!-- ADS BACKFILL (Adverity/Kepler export) -->
+  <div class="section-card" style="border-color:var(--green);">
+    <div class="card-title" style="color:var(--green);">📅 Ads Backfill — Kepler/Adverity Export (AMS + Amazon DSP)</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">
+      Upload the "Performance Detail by Platform &amp; Brand" export for a custom date range (monthly works well). The date range is read automatically from the file's "Widget Date Range" row and the totals are day-weighted across the Sunday-weeks it covers — same method as the June DSP one-off load.<br>
+      Rules applied automatically: rows with €0 Spend are skipped, United Arab Emirates is excluded, "Totals" rows are excluded, and any week that already has real (Pacvue) ad_spend data is skipped rather than overwritten — this is a gap-filler, not a replacement for weekly Pacvue uploads. Triple Lift rows and any unmapped brand (e.g. "Preschool Brand Week") are logged and excluded rather than guessed at.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;margin-bottom:16px;">
+      <div class="upload-card" id="card-backfill" onclick="document.getElementById('file-backfill').click()" ondragover="dOver(event,'card-backfill')" ondragleave="dLeave('card-backfill')" ondrop="dDrop(event,'backfill')" style="border-color:var(--green);background:var(--green-bg);">
+        <div class="uc-icon">📅</div>
+        <div class="uc-title">Performance Detail by Platform &amp; Brand</div>
+        <div class="uc-sub" id="lbl-backfill">Kepler/Adverity export · any custom date range</div>
+        <div class="uc-check">✅</div>
+        <input type="file" id="file-backfill" accept=".xlsx" onchange="onFile(event,'backfill')">
+      </div>
+      <button class="process-btn" id="backfill-btn" onclick="uploadAdsBackfill()" disabled style="padding:12px 20px;font-size:13px;align-self:end;background:var(--green);color:#fff;">Upload Backfill</button>
+    </div>
+    <div class="log-area" id="backfill-log" style="height:180px;"><span class="log-line">Upload the Performance Detail by Platform &amp; Brand export.</span></div>
+  </div>
+
   <!-- UPLOAD HISTORY -->
   <div class="section-card">
     <div class="card-title">Upload History</div>
@@ -310,7 +330,7 @@ const ADMIN_PW = 'hasbro2026';
 const EU5 = ['GB','DE','FR','IT','ES'];
 const YOY_CAP = 2.0;
 
-let files = { loyalty:null, coverage:null, search:null };
+let files = { loyalty:null, coverage:null, search:null, backfill:null };
 
 // ─── LOGIN ────────────────────────────────────────────────────
 function checkPassword() {
@@ -338,6 +358,7 @@ function loadFile(f,type){
   if(type==='loyalty') document.getElementById('loyalty-btn').disabled=false;
   if(type==='coverage') document.getElementById('coverage-btn').disabled=false;
   if(type==='search') document.getElementById('search-btn').disabled=false;
+  if(type==='backfill') document.getElementById('backfill-btn').disabled=false;
 }
 
 // ─── DATE DETECTION ───────────────────────────────────────────
@@ -1245,6 +1266,177 @@ async function uploadCoverage() {
     logC(`✅ Done! ${rows.length} brand-market rows uploaded for ${quarter}`,'ok');
   } catch(err){logC('❌ Error: '+err.message,'err');}
   document.getElementById('coverage-btn').disabled=false;
+}
+
+// ─── ADS BACKFILL (Kepler/Adverity export — AMS + Amazon DSP) ──
+// Fills historical gaps using a "Performance Detail by Platform & Brand"
+// export covering any custom date range (the tool this comes from only lets
+// that widget be pulled for one range at a time — monthly is what's
+// practical for now). The range is read straight from the file's own
+// "Widget Date Range" row, then the totals are day-weighted across the
+// Sunday-weeks it spans — same method already used for the June DSP
+// one-off load, just generalised and built into the uploader instead of a
+// manual SQL script.
+//
+// Deliberately conservative: skips €0-spend rows, skips UAE (outside EU5),
+// skips "Totals" rollup rows, excludes Triple Lift (no home for it in the
+// current schema — logged, not merged into AMS or DSP), and — most
+// importantly — will NOT overwrite a week/brand/market that already has
+// real ad_spend data (i.e. already covered by the weekly Pacvue upload or
+// the June DSP load). This is a gap-filler, not a replacement.
+function logB(msg,type=''){log(msg,type,'backfill-log');}
+async function sbGet(path){
+  const r=await fetch(SB_URL+path,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+  if(!r.ok) throw new Error('Fetch failed: '+r.status);
+  return r.json();
+}
+function fmtEuroLog(v){return '€'+Math.round(v).toLocaleString();}
+function round2(v){return Math.round(v*100)/100;}
+
+async function uploadAdsBackfill(){
+  if(!files.backfill){alert('Please select the Performance Detail by Platform & Brand export.');return;}
+  document.getElementById('backfill-btn').disabled=true;
+  document.getElementById('backfill-log').innerHTML='';
+  logB('Reading export...','info');
+  try{
+    const data=await files.backfill.arrayBuffer();
+    const wb=XLSX.read(data,{type:'array'});
+    const sheetName=wb.SheetNames.find(n=>/performance detail/i.test(n));
+    if(!sheetName) throw new Error('No "Performance Detail by Platform & Brand" sheet found. Sheets: '+wb.SheetNames.join(', '));
+    const raw=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:''});
+
+    // ── Date range, read from the file itself ──
+    const rangeRow=raw.find(r=>String(r[0]||'').trim()==='Widget Date Range:');
+    if(!rangeRow) throw new Error('Could not find "Widget Date Range:" row in this sheet.');
+    const m=String(rangeRow[1]||'').match(/(\d{2})-(\d{2})-(\d{4})\s+(\d{2})-(\d{2})-(\d{4})/);
+    if(!m) throw new Error('Could not parse date range: "'+rangeRow[1]+'"');
+    const rangeStart=new Date(parseInt(m[3]),parseInt(m[2])-1,parseInt(m[1]),12);
+    const rangeEnd=new Date(parseInt(m[6]),parseInt(m[5])-1,parseInt(m[4]),12);
+    logB('Date range detected: '+rangeStart.toISOString().slice(0,10)+' to '+rangeEnd.toISOString().slice(0,10),'info');
+
+    // ── Header row + columns ──
+    const hi=raw.findIndex(r=>r.some(c=>String(c).trim()==='k_Buying Platform'));
+    if(hi<0) throw new Error('Could not find header row (k_Buying Platform). This may not be the right export.');
+    const headers=raw[hi].map(h=>String(h).trim());
+    const ci=name=>headers.indexOf(name);
+    const platCol=ci('k_Buying Platform'),brandCol=ci('Brand'),geoCol=ci('Marketing Geography'),
+          mediaCol=ci('Media Buy Name'),spendCol=ci('Spend'),posCol=ci('Nominal POS'),
+          impCol=ci('Impressions'),clickCol=ci('Clicks'),ordersCol=ci('Total Orders'),dpvrCol=ci('DPVR');
+    if([platCol,brandCol,geoCol,spendCol,posCol].some(c=>c<0)) throw new Error('Missing expected columns. Found: '+headers.filter(h=>h).join(', '));
+
+    const GEO_MAP={'united kingdom':'GB','germany':'DE','france':'FR','italy':'IT','spain':'ES'};
+    const BRAND_MAP={
+      GAMES:['gaming','hasbro gaming','hasbro gaming brand week','game performance plus'],
+      PLAY_DOH:['playdoh','playdoh always on','play-doh performance plus','play-doh performance plus q4'],
+      BEYBLADE:['beyblade'],DISNEY_KIDS:['disney kids','spidey and friends'],
+      MONOPOLY:['monopoly'],NERF:['nerf'],PEPPA_PIG:['peppa pig'],
+      STAR_WARS:['star wars'],TRANSFORMERS:['transformers']
+    };
+    // Collector's Corner is shared between Star Wars and Marvel with no clean
+    // brand column for it — same ambiguity already handled in the Pacvue
+    // uploader. Same rule applied here for consistency: read the campaign
+    // name (Media Buy Name) for a STARWARS tag, default to MARVEL otherwise
+    // (including the "GENERAL" campaigns, which aren't brand-specific).
+    function mapBrand(rawBrand,mediaBuyName){
+      const b=(rawBrand||'').toLowerCase().trim();
+      if(b==="collector's corner") return /starwars/i.test(mediaBuyName||'')?'STAR_WARS':'MARVEL';
+      for(const[bid,keys]of Object.entries(BRAND_MAP)){ if(keys.includes(b)) return bid; }
+      return null;
+    }
+
+    const dataRows=raw.slice(hi+1).filter(r=>r.some(v=>v!==''));
+    const agg={};
+    let excludedUAE=0,excludedTripleLift=0,excludedZeroSpend=0;
+    const unmapped={};
+    dataRows.forEach(r=>{
+      const plat=String(r[platCol]||'').trim();
+      if(plat==='Totals') return;
+      if(plat==='Triple Lift'){ excludedTripleLift+=Number(r[spendCol])||0; return; }
+      if(plat!=='Amazon'&&plat!=='Amazon DSP') return;
+      const geoRaw=String(r[geoCol]||'').trim().toLowerCase();
+      if(geoRaw==='united arab emirates'){ excludedUAE+=Number(r[spendCol])||0; return; }
+      const market=GEO_MAP[geoRaw];
+      if(!market) return;
+      const spend=Number(r[spendCol])||0;
+      if(spend===0){ excludedZeroSpend++; return; }
+      const brandRaw=String(r[brandCol]||'').trim();
+      const bid=mapBrand(brandRaw,r[mediaCol]);
+      if(!bid){ unmapped[brandRaw]=(unmapped[brandRaw]||0)+spend; return; }
+      const bucket=plat==='Amazon'?'AMS':'DSP';
+      const key=bucket+'|'+bid+'|'+market;
+      if(!agg[key]) agg[key]={bucket,bid,market,spend:0,pos:0,imp:0,clicks:0,orders:0,dpvEst:0};
+      const imp=Number(r[impCol])||0,dpvr=Number(r[dpvrCol])||0;
+      agg[key].spend+=spend;
+      agg[key].pos+=Number(r[posCol])||0;
+      agg[key].imp+=imp;
+      agg[key].clicks+=Number(r[clickCol])||0;
+      agg[key].orders+=Number(r[ordersCol])||0;
+      // DPVR read as Detail Page Views ÷ Impressions — Impressions×DPVR summed
+      // per row gives an estimated DPV count. Flagged as an estimate in the
+      // log below rather than presented as a native imported figure.
+      agg[key].dpvEst+=imp*dpvr;
+    });
+
+    logB(`Excluded: ${fmtEuroLog(excludedUAE)} UAE spend, ${fmtEuroLog(excludedTripleLift)} Triple Lift spend (not in current schema), ${excludedZeroSpend} zero-spend rows`,'info');
+    Object.entries(unmapped).forEach(([b,s])=>logB(`⚠️ Unmapped brand "${b}" — ${fmtEuroLog(s)} spend excluded, not guessed at.`,'err'));
+    if(!Object.keys(agg).length) throw new Error('No usable rows after filtering — nothing to upload.');
+
+    // ── Day-weighted split across the Sunday-weeks the range covers ──
+    function snapToSunday(d){const x=new Date(d);x.setDate(x.getDate()-x.getDay());x.setHours(12,0,0,0);return x;}
+    const totalDays=Math.round((rangeEnd-rangeStart)/86400000)+1;
+    const weeks=[];
+    let cursor=snapToSunday(rangeStart);
+    while(cursor<=rangeEnd){
+      const weekEnd=new Date(cursor);weekEnd.setDate(weekEnd.getDate()+6);
+      const overlapStart=cursor>rangeStart?cursor:rangeStart;
+      const overlapEnd=weekEnd<rangeEnd?weekEnd:rangeEnd;
+      const overlapDays=Math.max(0,Math.round((overlapEnd-overlapStart)/86400000)+1);
+      if(overlapDays>0) weeks.push({weekStart:cursor.toISOString().slice(0,10),fraction:overlapDays/totalDays});
+      cursor=new Date(cursor);cursor.setDate(cursor.getDate()+7);
+    }
+    logB(`Splitting across ${weeks.length} week(s): `+weeks.map(w=>w.weekStart+' ('+(w.fraction*100).toFixed(0)+'%)').join(', '),'info');
+
+    const amsRows=[],dspRows=[];
+    Object.values(agg).forEach(a=>{
+      weeks.forEach(w=>{
+        const f=w.fraction;
+        if(a.bucket==='AMS'){
+          amsRows.push({week_start:w.weekStart,brand_classified:a.bid,market:a.market,
+            ad_revenue:round2(a.pos*f),ad_spend:round2(a.spend*f),ad_impressions:Math.round(a.imp*f),
+            ad_clicks:Math.round(a.clicks*f),ad_glance_views:Math.round(a.dpvEst*f),
+            organic_revenue:0,organic_glance_views:0});
+        }else{
+          dspRows.push({week_start:w.weekStart,brand_classified:a.bid,market:a.market,
+            dsp_spend:round2(a.spend*f),dsp_revenue:round2(a.pos*f),dsp_impressions:Math.round(a.imp*f),
+            dsp_clicks:Math.round(a.clicks*f),dsp_dpv:Math.round(a.dpvEst*f),dsp_units:Math.round(a.orders*f)});
+        }
+      });
+    });
+
+    // ── Never overwrite a week/brand/market that already has real spend ──
+    const targetWeeks=weeks.map(w=>w.weekStart);
+    async function filterAgainstExisting(rowsIn,table,spendField){
+      if(!rowsIn.length) return rowsIn;
+      const existing=await sbGet(`/rest/v1/${table}?week_start=in.(${targetWeeks.join(',')})&select=week_start,brand_classified,market,${spendField}`);
+      const existingMap={};
+      existing.forEach(r=>{existingMap[r.week_start+'|'+r.brand_classified+'|'+r.market]=r[spendField]||0;});
+      const keep=[],skipped=[];
+      rowsIn.forEach(r=>{
+        const k=r.week_start+'|'+r.brand_classified+'|'+r.market;
+        if((existingMap[k]||0)>0) skipped.push(k); else keep.push(r);
+      });
+      if(skipped.length) logB(`⚠️ Skipped ${skipped.length} row(s) in ${table} — already has real data for that week/brand/market (not overwritten): `+skipped.slice(0,8).join('; ')+(skipped.length>8?' …':''),'err');
+      return keep;
+    }
+    const amsToWrite=await filterAgainstExisting(amsRows,'brand_health_ads','ad_spend');
+    const dspToWrite=await filterAgainstExisting(dspRows,'brand_health_dsp','dsp_spend');
+    if(!amsToWrite.length&&!dspToWrite.length) throw new Error('Nothing to upload — every targeted week/brand/market already has real data.');
+
+    if(amsToWrite.length){ await sbPost('/rest/v1/brand_health_ads',amsToWrite); logB(`✅ Inserted ${amsToWrite.length} AMS rows into brand_health_ads`,'ok'); }
+    if(dspToWrite.length){ await sbPost('/rest/v1/brand_health_dsp',dspToWrite); logB(`✅ Inserted ${dspToWrite.length} DSP rows into brand_health_dsp`,'ok'); }
+    logB('Done.','ok');
+  }catch(err){logB('❌ Error: '+err.message,'err');}
+  document.getElementById('backfill-btn').disabled=false;
 }
 
 // ─── SEARCH TERMS ─────────────────────────────────────────────
