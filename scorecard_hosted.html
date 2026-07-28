@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Weekly agency scorecard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
+<style>
+  :root{
+    --ink:#1C2333; --ink-soft:#3A4257;
+    --paper:#F7F7F4; --card:#FFFFFF;
+    --line:#E4E3DC; --line-strong:#CFCEC5;
+    --text:#22261E; --text-soft:#63665C; --text-mute:#9C9A8E;
+    --accent:#0F6E56; --accent-bg:#E1F5EE; --accent-text:#085041;
+    --green:#3B6D11; --green-bg:#EAF3DE;
+    --amber:#854F0B; --amber-bg:#FAEEDA;
+    --red:#A32D2D; --red-bg:#FCEBEB;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--paper);color:var(--text);}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 32px 60px;}
+  .topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:18px;flex-wrap:wrap;}
+  .brandline{display:flex;align-items:center;gap:10px;}
+  .brandline .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);}
+  h1{font-size:20px;font-weight:600;margin:0;letter-spacing:-0.01em;}
+  .sub{font-size:13px;color:var(--text-soft);margin-top:2px;}
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  select,input[type=date],input[type=text],input[type=number]{
+    font-family:inherit;font-size:13px;border:1px solid var(--line-strong);border-radius:6px;
+    padding:7px 10px;background:var(--card);color:var(--text);
+  }
+  button{font-family:inherit;font-size:13px;border:1px solid var(--line-strong);border-radius:6px;
+    background:var(--card);color:var(--text);padding:7px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+  button:hover{background:var(--paper);}
+  button.primary{background:var(--ink);color:#fff;border-color:var(--ink);}
+  button.primary:hover{background:var(--ink-soft);}
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:6px 0 22px;}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
+  .kpi .label{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-mute);margin-bottom:6px;}
+  .kpi .value{font-size:20px;font-weight:600;}
+  .kpi .tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 7px;border-radius:5px;margin-left:6px;vertical-align:2px;}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:22px;overflow:hidden;}
+  .panel-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);}
+  .panel-head h2{font-size:14px;font-weight:600;margin:0;}
+  .panel-head .meta{font-size:12px;color:var(--text-mute);}
+  table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-mute);
+    font-weight:600;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--paper);}
+  td{padding:7px 12px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  .num{text-align:right;}
+  tr.brand-row{background:var(--paper);cursor:pointer;}
+  tr.brand-row td{font-weight:600;}
+  tr.brand-row:hover{background:#EFEEE7;}
+  tr.market-row td{color:var(--text-soft);}
+  tr.market-row.hidden{display:none;}
+  .chev{display:inline-block;width:14px;transition:transform .12s;}
+  .chev.open{transform:rotate(90deg);}
+  .status-pill{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;display:inline-block;white-space:nowrap;}
+  .st-green{background:var(--green-bg);color:var(--green);}
+  .st-amber{background:var(--amber-bg);color:var(--amber);}
+  .st-red{background:var(--red-bg);color:var(--red);}
+  .row-actions{display:flex;gap:6px;padding:14px 18px;flex-wrap:wrap;align-items:center;}
+  .icon-btn{border:none;background:transparent;color:var(--text-mute);padding:4px;border-radius:5px;}
+  .icon-btn:hover{background:var(--paper);color:var(--red);}
+  .foot-note{font-size:12px;color:var(--text-mute);padding:0 18px 16px;}
+  .owner-kepler{background:var(--accent-bg);color:var(--accent-text);}
+  .owner-hasbro{background:#EEEDFE;color:#3C3489;}
+  .st-open{background:var(--amber-bg);color:var(--amber);}
+  .st-done{background:var(--green-bg);color:var(--green);}
+  ::placeholder{color:var(--text-mute);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <div class="brandline"><span class="dot"></span><h1>Weekly agency scorecard</h1></div>
+      <div class="sub">AMS only (DSP not broken out by brand in source budget). Actuals: weekly, agency-supplied.</div>
+    </div>
+    <div class="controls">
+      <label style="font-size:13px;color:var(--text-soft);">Pivot</label>
+      <select id="pivotView">
+        <option value="ams">AMS (by brand)</option>
+        <option value="dsp">DSP (by market / tactic)</option>
+      </select>
+      <label style="font-size:13px;color:var(--text-soft);">Budget</label>
+      <select id="budgetPeriod">
+        <option value="h2" selected>H2 (Aug-Dec)</option>
+        <option value="fy">Full year</option>
+      </select>
+      <label style="font-size:13px;color:var(--text-soft);">Period</label>
+      <select id="timeView">
+        <option value="week">Trailing week</option>
+        <option value="week2" selected>Trailing 2 weeks (recommended)</option>
+        <option value="mtd">Month to date</option>
+      </select>
+      <label style="font-size:13px;color:var(--text-soft);">Report</label>
+      <select id="reportType">
+        <option value="monthly">Monthly report (Jan-Jul backfill)</option>
+        <option value="weekly" selected>Weekly upload (Aug onward)</option>
+      </select>
+      <select id="monthSelect" style="display:none;">
+        <option value="2026-01">January</option>
+        <option value="2026-02">February</option>
+        <option value="2026-03">March</option>
+        <option value="2026-04">April</option>
+        <option value="2026-05">May</option>
+        <option value="2026-06">June</option>
+        <option value="2026-07">July</option>
+      </select>
+      <input type="date" id="weekEndingInput">
+      <input type="file" id="csvFile" accept=".csv" style="display:none;">
+      <button id="addActualsBtn" class="primary"><i class="ti ti-upload"></i>Upload CSV</button>
+    </div>
+  </div>
+  <div class="foot-note" style="padding:0 0 12px;">CSV columns: <code>market,brand,spend,revenue,purchases,glanceViews</code> for AMS or <code>market,tactic,spend,revenue,purchases,glanceViews</code> for DSP, one row per market/brand (or market/tactic).</div>
+
+  <div class="kpis" id="kpiRow"></div>
+
+  <div class="panel" id="amsPanel">
+    <div class="panel-head">
+      <h2>AMS: spend and KPIs by brand</h2>
+      <span class="meta">Click a brand to see market detail</span>
+    </div>
+    <table>
+      <colgroup>
+        <col style="width:24%"><col style="width:13%"><col style="width:13%"><col style="width:11%">
+        <col style="width:11%"><col style="width:11%"><col style="width:9%"><col style="width:8%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Brand / market</th>
+          <th class="num" id="amsBudgetHead">Budget (H2)</th>
+          <th class="num">Spend to date</th>
+          <th class="num">Pacing</th>
+          <th class="num">ROAS</th>
+          <th class="num">CPA</th>
+          <th class="num">Glance views</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div class="foot-note">Pacing = cumulative spend to date vs the selected budget period. ROAS, CPA and glance views reflect the selected time period above.</div>
+  </div>
+
+  <div class="panel" id="dspPanel" style="display:none;">
+    <div class="panel-head">
+      <h2>DSP: spend by market and tactic</h2>
+      <span class="meta">Not broken out by brand in the source budget</span>
+    </div>
+    <table>
+      <colgroup>
+        <col style="width:20%"><col style="width:16%"><col style="width:14%"><col style="width:13%">
+        <col style="width:12%"><col style="width:12%"><col style="width:8%"><col style="width:5%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Market / tactic</th>
+          <th class="num" id="dspBudgetHead">Budget (H2)</th>
+          <th class="num">Spend to date</th>
+          <th class="num">Pacing</th>
+          <th class="num">ROAS</th>
+          <th class="num">CPA</th>
+          <th class="num">Glance views</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="dspTableBody"></tbody>
+    </table>
+    <div class="foot-note">H2 tactic split target: Prospecting 45% / Retargeting 55% (was 60/40 in H1). Buckets: Play-Doh, Gaming, Brand Weeks.</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Optimisation comments and actions</h2>
+      <span class="meta">Logged by both sides</span>
+    </div>
+    <table>
+      <colgroup>
+        <col style="width:12%"><col style="width:32%"><col style="width:26%"><col style="width:12%"><col style="width:12%"><col style="width:6%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Date</th><th>Comment / optimisation</th><th>Action taken</th><th>Owner</th><th>Status</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="actionsTableBody"></tbody>
+    </table>
+    <div class="row-actions">
+      <button id="addActionBtn"><i class="ti ti-plus"></i>Add entry</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const PLANS = [
+  {market:'UK', brand:'MARVEL/SPIDERMAN', budget:44920, fy:83191},{market:'UK', brand:'GAMES', budget:147615, fy:263650},
+  {market:'UK', brand:'MONOPOLY', budget:91535, fy:166450},{market:'UK', brand:'STAR WARS', budget:70064, fy:111321},
+  {market:'UK', brand:'PLAY-DOH', budget:112300, fy:207979},{market:'UK', brand:'PEPPA PIG', budget:67380, fy:124787},
+  {market:'UK', brand:'TRANSFORMERS', budget:44920, fy:83191},{market:'UK', brand:'BEYBLADE', budget:59893, fy:110922},
+  {market:'UK', brand:'DISNEY KIDS (IMF SAF)', budget:29947, fy:55461},{market:'UK', brand:'KPOP', budget:28252, fy:28252},
+  {market:'UK', brand:'PAN HASBRO/BRAND WEEKS', budget:69923, fy:152030},{market:'UK', brand:'NERF', budget:30358, fy:36191},
+  {market:'GSA', brand:'MARVEL/SPIDERMAN', budget:44920, fy:83191},{market:'GSA', brand:'GAMES', budget:147615, fy:263650},
+  {market:'GSA', brand:'MONOPOLY', budget:91535, fy:166450},{market:'GSA', brand:'STAR WARS', budget:70064, fy:111321},
+  {market:'GSA', brand:'PLAY-DOH', budget:112300, fy:207979},{market:'GSA', brand:'PEPPA PIG', budget:67380, fy:124787},
+  {market:'GSA', brand:'TRANSFORMERS', budget:44920, fy:83191},{market:'GSA', brand:'BEYBLADE', budget:59893, fy:110922},
+  {market:'GSA', brand:'DISNEY KIDS (IMF SAF)', budget:29947, fy:55461},{market:'GSA', brand:'KPOP', budget:28252, fy:28252},
+  {market:'GSA', brand:'PAN HASBRO/BRAND WEEKS', budget:69923, fy:152030},{market:'GSA', brand:'NERF', budget:30358, fy:36191},
+  {market:'France', brand:'MARVEL/SPIDERMAN', budget:15240, fy:29929},{market:'France', brand:'GAMES', budget:50080, fy:94618},
+  {market:'France', brand:'MONOPOLY', budget:31055, fy:59809},{market:'France', brand:'STAR WARS', budget:23770, fy:39606},
+  {market:'France', brand:'PLAY-DOH', budget:38099, fy:74823},{market:'France', brand:'PEPPA PIG', budget:22860, fy:44894},
+  {market:'France', brand:'TRANSFORMERS', budget:15240, fy:29929},{market:'France', brand:'BEYBLADE', budget:20320, fy:39906},
+  {market:'France', brand:'DISNEY KIDS (IMF SAF)', budget:10160, fy:19953},{market:'France', brand:'KPOP', budget:9585, fy:9585},
+  {market:'France', brand:'PAN HASBRO/BRAND WEEKS', budget:23722, fy:55237},
+  {market:'Iberia', brand:'MARVEL/SPIDERMAN', budget:11702, fy:22982},{market:'Iberia', brand:'GAMES', budget:38456, fy:72656},
+  {market:'Iberia', brand:'MONOPOLY', budget:23846, fy:45926},{market:'Iberia', brand:'STAR WARS', budget:18253, fy:30413},
+  {market:'Iberia', brand:'PLAY-DOH', budget:29256, fy:57456},{market:'Iberia', brand:'PEPPA PIG', budget:17554, fy:34474},
+  {market:'Iberia', brand:'TRANSFORMERS', budget:11702, fy:22982},{market:'Iberia', brand:'BEYBLADE', budget:15603, fy:30643},
+  {market:'Iberia', brand:'DISNEY KIDS (IMF SAF)', budget:7802, fy:15322},{market:'Iberia', brand:'KPOP', budget:7360, fy:7360},
+  {market:'Iberia', brand:'PAN HASBRO/BRAND WEEKS', budget:18216, fy:42416},{market:'Iberia', brand:'NERF', budget:26833, fy:32667},
+  {market:'Italy', brand:'MARVEL/SPIDERMAN', budget:12603, fy:24750},{market:'Italy', brand:'GAMES', budget:41414, fy:78245},
+  {market:'Italy', brand:'MONOPOLY', budget:25681, fy:49459},{market:'Italy', brand:'STAR WARS', budget:19657, fy:32752},
+  {market:'Italy', brand:'PLAY-DOH', budget:31506, fy:61876},{market:'Italy', brand:'PEPPA PIG', budget:18904, fy:37125},
+  {market:'Italy', brand:'TRANSFORMERS', budget:12603, fy:24750},{market:'Italy', brand:'BEYBLADE', budget:16803, fy:33000},
+  {market:'Italy', brand:'DISNEY KIDS (IMF SAF)', budget:8402, fy:16500},{market:'Italy', brand:'KPOP', budget:7926, fy:7926},
+  {market:'Italy', brand:'PAN HASBRO/BRAND WEEKS', budget:19617, fy:45679},{market:'Italy', brand:'NERF', budget:26833, fy:32667},
+];
+const BRANDS = [...new Set(PLANS.map(p=>p.brand))];
+const MARKETS = [...new Set(PLANS.map(p=>p.market))];
+
+const DSP_PLANS = [
+  {market:'UK', tactic:'Play-Doh', budget:75396.81, fy:180952.33},{market:'UK', tactic:'Gaming', budget:75396.81, fy:180952.33},{market:'UK', tactic:'Brand Weeks', budget:75396.81, fy:180952.33},
+  {market:'GSA', tactic:'Play-Doh', budget:75396.81, fy:180952.33},{market:'GSA', tactic:'Gaming', budget:75396.81, fy:180952.33},{market:'GSA', tactic:'Brand Weeks', budget:75396.81, fy:180952.33},
+  {market:'France', tactic:'Play-Doh', budget:42234.86, fy:101363.67},{market:'France', tactic:'Gaming', budget:42234.86, fy:101363.67},{market:'France', tactic:'Brand Weeks', budget:42234.86, fy:101363.67},
+  {market:'Iberia', tactic:'Play-Doh', budget:34722.22, fy:83333.33},{market:'Iberia', tactic:'Gaming', budget:34722.22, fy:83333.33},{market:'Iberia', tactic:'Brand Weeks', budget:34722.22, fy:83333.33},
+  {market:'Italy', tactic:'Play-Doh', budget:37393.19, fy:89743.67},{market:'Italy', tactic:'Gaming', budget:37393.19, fy:89743.67},{market:'Italy', tactic:'Brand Weeks', budget:37393.19, fy:89743.67},
+];
+const DSP_MARKETS = [...new Set(DSP_PLANS.map(p=>p.market))];
+const DSP_TACTICS = ['Play-Doh','Gaming','Brand Weeks'];
+
+let state = { actuals: [], dspActuals: [], monthly: [], dspMonthly: [], actions: [] };
+let openBrands = new Set();
+let openDspMarkets = new Set();
+
+const fmtEUR = n => '\u20ac' + Math.round(Number(n||0)).toLocaleString();
+const fmtPct = n => (Number(n||0)).toFixed(0) + '%';
+const fmtNum = n => Math.round(Number(n||0)).toLocaleString();
+const todayISO = () => new Date().toISOString().slice(0,10);
+
+function pacingStatus(pct){
+  if(pct >= 90 && pct <= 110) return 'green';
+  if((pct >= 75 && pct < 90) || (pct > 110 && pct <= 125)) return 'amber';
+  return 'red';
+}
+
+function windowRange(view){
+  const end = new Date();
+  let start = new Date(end);
+  if(view === 'week') start.setDate(end.getDate()-7);
+  else if(view === 'week2') start.setDate(end.getDate()-14);
+  else { start = new Date(end.getFullYear(), end.getMonth(), 1); }
+  return {start, end};
+}
+
+function actualsFor(market, brand){
+  return state.actuals.filter(a => a.market===market && a.brand===brand);
+}
+function monthlyFor(market, brand){
+  return state.monthly.filter(a => a.market===market && a.brand===brand);
+}
+function dspActualsFor(market, tactic){
+  return state.dspActuals.filter(a => a.market===market && a.tactic===tactic);
+}
+function dspMonthlyFor(market, tactic){
+  return state.dspMonthly.filter(a => a.market===market && a.tactic===tactic);
+}
+function sumField(entries, field){ return entries.reduce((s,e)=>s+Number(e[field]||0),0); }
+
+function planFor(market, brand){
+  const p = PLANS.find(p=>p.market===market && p.brand===brand);
+  if(!p) return 0;
+  return document.getElementById('budgetPeriod').value === 'fy' ? p.fy : p.budget;
+}
+function dspPlanFor(market, tactic){
+  const p = DSP_PLANS.find(p=>p.market===market && p.tactic===tactic);
+  if(!p) return 0;
+  return document.getElementById('budgetPeriod').value === 'fy' ? p.fy : p.budget;
+}
+
+function windowedSums(entries, view){
+  const {start, end} = windowRange(view);
+  const windowed = entries.filter(a=>{ const d = new Date(a.weekEnding); return d >= start && d <= end; });
+  return {
+    spend: sumField(windowed,'spend'), revenue: sumField(windowed,'revenue'),
+    purchases: sumField(windowed,'purchases'), glanceViews: sumField(windowed,'glanceViews'),
+  };
+}
+
+function aggregate(market, brand){
+  const weekly = actualsFor(market, brand);
+  const monthly = monthlyFor(market, brand);
+  const cumulativeSpend = sumField(weekly, 'spend') + sumField(monthly, 'spend');
+  const w = windowedSums(weekly, document.getElementById('timeView').value);
+  return {
+    budget: planFor(market, brand), cumulativeSpend,
+    roas: w.spend ? (w.revenue/w.spend) : 0,
+    cpa: w.purchases ? (w.spend/w.purchases) : 0,
+    glanceViews: w.glanceViews,
+  };
+}
+function dspAggregate(market, tactic){
+  const weekly = dspActualsFor(market, tactic);
+  const monthly = dspMonthlyFor(market, tactic);
+  const cumulativeSpend = sumField(weekly, 'spend') + sumField(monthly, 'spend');
+  const w = windowedSums(weekly, document.getElementById('timeView').value);
+  return {
+    budget: dspPlanFor(market, tactic), cumulativeSpend,
+    roas: w.spend ? (w.revenue/w.spend) : 0,
+    cpa: w.purchases ? (w.spend/w.purchases) : 0,
+    glanceViews: w.glanceViews,
+  };
+}
+
+function renderRowCells(a, isBrand){
+  const pacing = a.budget ? (a.cumulativeSpend/a.budget*100) : 0;
+  const st = pacingStatus(pacing);
+  return `
+    <td class="num">${fmtEUR(a.budget)}</td>
+    <td class="num">${fmtEUR(a.cumulativeSpend)}</td>
+    <td class="num">${fmtPct(pacing)}</td>
+    <td class="num">${a.roas ? a.roas.toFixed(2)+'x' : '\u2014'}</td>
+    <td class="num">${a.cpa ? fmtEUR(a.cpa) : '\u2014'}</td>
+    <td class="num">${fmtNum(a.glanceViews)}</td>
+    <td><span class="status-pill st-${st}">${st}</span></td>
+  `;
+}
+
+function render(){
+  const pivot = document.getElementById('pivotView').value;
+  const periodLabel = document.getElementById('budgetPeriod').value === 'fy' ? 'Budget (FY)' : 'Budget (H2)';
+  document.getElementById('amsBudgetHead').textContent = periodLabel;
+  document.getElementById('dspBudgetHead').textContent = periodLabel;
+  // KPI summary across everything, respecting the active pivot
+  let totalBudget=0, totalCum=0, wSpendAll=0, wRevAll=0, wPurchAll=0;
+  if(pivot === 'dsp'){
+    DSP_MARKETS.forEach(market=>{
+      DSP_TACTICS.forEach(tactic=>{
+        const a = dspAggregate(market, tactic);
+        totalBudget += a.budget; totalCum += a.cumulativeSpend;
+        const w = windowedSums(dspActualsFor(market, tactic), document.getElementById('timeView').value);
+        wSpendAll += w.spend; wRevAll += w.revenue; wPurchAll += w.purchases;
+      });
+    });
+  } else {
+    BRANDS.forEach(brand=>{
+      MARKETS.forEach(market=>{
+        if(!PLANS.find(p=>p.market===market&&p.brand===brand)) return;
+        const a = aggregate(market, brand);
+        totalBudget += a.budget; totalCum += a.cumulativeSpend;
+        const w = windowedSums(actualsFor(market, brand), document.getElementById('timeView').value);
+        wSpendAll += w.spend; wRevAll += w.revenue; wPurchAll += w.purchases;
+      });
+    });
+  }
+  const pacing = totalBudget ? (totalCum/totalBudget*100) : 0;
+  const roas = wSpendAll ? (wRevAll/wSpendAll) : 0;
+  const cpa = wPurchAll ? (wSpendAll/wPurchAll) : 0;
+  const st = pacingStatus(pacing);
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi"><div class="label">Total budget (H2)</div><div class="value">${fmtEUR(totalBudget)}</div></div>
+    <div class="kpi"><div class="label">Spend to date</div><div class="value">${fmtEUR(totalCum)}</div></div>
+    <div class="kpi"><div class="label">Pacing</div><div class="value">${fmtPct(pacing)}<span class="tag st-${st}">${st}</span></div></div>
+    <div class="kpi"><div class="label">ROAS (period)</div><div class="value">${roas?roas.toFixed(2)+'x':'\u2014'}</div></div>
+    <div class="kpi"><div class="label">CPA (period)</div><div class="value">${cpa?fmtEUR(cpa):'\u2014'}</div></div>
+  `;
+
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  BRANDS.forEach(brand=>{
+    const marketsForBrand = MARKETS.filter(m=>PLANS.find(p=>p.market===m&&p.brand===brand));
+    // brand-level aggregate = sum of market-level aggregates
+    let ba = {budget:0, cumulativeSpend:0, glanceViews:0};
+    let wSpend=0, wRev=0, wPurch=0;
+    marketsForBrand.forEach(market=>{
+      const a = aggregate(market, brand);
+      ba.budget += a.budget; ba.cumulativeSpend += a.cumulativeSpend; ba.glanceViews += a.glanceViews;
+      const all = actualsFor(market, brand);
+      const {start,end} = windowRange(document.getElementById('timeView').value);
+      const windowed = all.filter(e=>{const d=new Date(e.weekEnding); return d>=start&&d<=end;});
+      wSpend += sumField(windowed,'spend'); wRev += sumField(windowed,'revenue'); wPurch += sumField(windowed,'purchases');
+    });
+    ba.roas = wSpend ? wRev/wSpend : 0;
+    ba.cpa = wPurch ? wSpend/wPurch : 0;
+
+    const isOpen = openBrands.has(brand);
+    const tr = document.createElement('tr');
+    tr.className = 'brand-row';
+    tr.dataset.brand = brand;
+    tr.innerHTML = `<td><span class="chev ${isOpen?'open':''}"><i class="ti ti-chevron-right"></i></span>${brand}</td>${renderRowCells(ba)}`;
+    tbody.appendChild(tr);
+
+    marketsForBrand.forEach(market=>{
+      const a = aggregate(market, brand);
+      const mr = document.createElement('tr');
+      mr.className = 'market-row' + (isOpen ? '' : ' hidden');
+      mr.dataset.brand = brand;
+      mr.innerHTML = `<td style="padding-left:32px;">${market}</td>${renderRowCells(a)}`;
+      tbody.appendChild(mr);
+    });
+  });
+
+  // DSP pivot table
+  const dtbody = document.getElementById('dspTableBody');
+  dtbody.innerHTML = '';
+  DSP_MARKETS.forEach(market=>{
+    let ma = {budget:0, cumulativeSpend:0, glanceViews:0};
+    let wSpend=0, wRev=0, wPurch=0;
+    DSP_TACTICS.forEach(tactic=>{
+      const a = dspAggregate(market, tactic);
+      ma.budget += a.budget; ma.cumulativeSpend += a.cumulativeSpend; ma.glanceViews += a.glanceViews;
+      const all = dspActualsFor(market, tactic);
+      const w = windowedSums(all, document.getElementById('timeView').value);
+      wSpend += w.spend; wRev += w.revenue; wPurch += w.purchases;
+    });
+    ma.roas = wSpend ? wRev/wSpend : 0;
+    ma.cpa = wPurch ? wSpend/wPurch : 0;
+    const isOpen = openDspMarkets.has(market);
+    const tr = document.createElement('tr');
+    tr.className = 'brand-row';
+    tr.dataset.dspMarket = market;
+    tr.innerHTML = `<td><span class="chev ${isOpen?'open':''}"><i class="ti ti-chevron-right"></i></span>${market}</td>${renderRowCells(ma)}`;
+    dtbody.appendChild(tr);
+    DSP_TACTICS.forEach(tactic=>{
+      const a = dspAggregate(market, tactic);
+      const mr = document.createElement('tr');
+      mr.className = 'market-row' + (isOpen ? '' : ' hidden');
+      mr.dataset.dspMarket = market;
+      mr.innerHTML = `<td style="padding-left:32px;">${tactic}</td>${renderRowCells(a)}`;
+      dtbody.appendChild(mr);
+    });
+  });
+
+  // actions table
+  const atbody = document.getElementById('actionsTableBody');
+  atbody.innerHTML = '';
+  state.actions.forEach((a,i)=>{
+    const ownerClass = a.owner==='Kepler' ? 'owner-kepler' : 'owner-hasbro';
+    const statusClass = a.status==='Done' ? 'st-done' : 'st-open';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="date" value="${a.date||''}" data-ai="${i}" data-af="date"></td>
+      <td><input type="text" value="${a.comment||''}" placeholder="What did you observe?" data-ai="${i}" data-af="comment"></td>
+      <td><input type="text" value="${a.action||''}" placeholder="What was done or agreed?" data-ai="${i}" data-af="action"></td>
+      <td><select data-ai="${i}" data-af="owner">
+            <option ${a.owner==='Kepler'?'selected':''}>Kepler</option>
+            <option ${a.owner==='Hasbro'?'selected':''}>Hasbro</option>
+          </select></td>
+      <td><select data-ai="${i}" data-af="status">
+            <option ${a.status==='Open'?'selected':''}>Open</option>
+            <option ${a.status==='Done'?'selected':''}>Done</option>
+          </select></td>
+      <td><button class="icon-btn" data-del-action="${i}" aria-label="Remove entry"><i class="ti ti-trash"></i></button></td>
+    `;
+    atbody.appendChild(tr);
+  });
+}
+
+document.getElementById('tableBody').addEventListener('click', e=>{
+  const row = e.target.closest('tr.brand-row');
+  if(!row) return;
+  const brand = row.dataset.brand;
+  if(openBrands.has(brand)) openBrands.delete(brand); else openBrands.add(brand);
+  render();
+});
+document.getElementById('dspTableBody').addEventListener('click', e=>{
+  const row = e.target.closest('tr.brand-row');
+  if(!row) return;
+  const market = row.dataset.dspMarket;
+  if(openDspMarkets.has(market)) openDspMarkets.delete(market); else openDspMarkets.add(market);
+  render();
+});
+document.getElementById('timeView').onchange = render;
+document.getElementById('budgetPeriod').onchange = render;
+document.getElementById('pivotView').onchange = (e)=>{
+  const isDsp = e.target.value === 'dsp';
+  document.getElementById('amsPanel').style.display = isDsp ? 'none' : '';
+  document.getElementById('dspPanel').style.display = isDsp ? '' : 'none';
+  render();
+};
+
+document.getElementById('reportType').onchange = (e) => {
+  const isMonthly = e.target.value === 'monthly';
+  document.getElementById('monthSelect').style.display = isMonthly ? '' : 'none';
+  document.getElementById('weekEndingInput').style.display = isMonthly ? 'none' : '';
+};
+document.getElementById('weekEndingInput').value = todayISO();
+
+function parseCSV(text){
+  const lines = text.trim().split(/\r?\n/);
+  const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
+  return lines.slice(1).filter(l=>l.trim()).map(line=>{
+    const cells = line.split(',').map(c=>c.trim());
+    const row = {};
+    headers.forEach((h,i)=> row[h] = cells[i]);
+    return row;
+  });
+}
+
+document.getElementById('addActualsBtn').onclick = () => {
+  document.getElementById('csvFile').click();
+};
+document.getElementById('csvFile').onchange = (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const rows = parseCSV(ev.target.result);
+    const pivot = document.getElementById('pivotView').value;
+    const reportType = document.getElementById('reportType').value;
+    const period = reportType === 'monthly'
+      ? {month: document.getElementById('monthSelect').value}
+      : {weekEnding: document.getElementById('weekEndingInput').value};
+    let added = 0;
+    rows.forEach(r => {
+      const spend = Number(r.spend||0), revenue = Number(r.revenue||0),
+            purchases = Number(r.purchases||0), glanceViews = Number(r.glanceviews||0);
+      if(pivot === 'dsp'){
+        const entry = {market: r.market, tactic: r.tactic, spend, revenue, purchases, glanceViews, ...period};
+        if(reportType === 'monthly') state.dspMonthly.push(entry); else state.dspActuals.push(entry);
+      } else {
+        const entry = {market: r.market, brand: r.brand, spend, revenue, purchases, glanceViews, ...period};
+        if(reportType === 'monthly') state.monthly.push(entry); else state.actuals.push(entry);
+      }
+      added++;
+    });
+    saveState();
+    render();
+    alert(added + ' rows loaded.');
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+};
+
+document.getElementById('addActionBtn').onclick = () => {
+  state.actions.push({date: todayISO(), comment:'', action:'', owner:'Kepler', status:'Open'});
+  render();
+};
+document.addEventListener('input', e=>{
+  const t = e.target;
+  if(t.dataset.ai !== undefined) state.actions[+t.dataset.ai][t.dataset.af] = t.value;
+});
+document.addEventListener('change', e=>{
+  const t = e.target;
+  if(t.dataset.ai !== undefined){ state.actions[+t.dataset.ai][t.dataset.af] = t.value; saveState(); render(); }
+});
+document.addEventListener('click', e=>{
+  const del = e.target.closest('[data-del-action]');
+  if(del){ state.actions.splice(+del.dataset.delAction,1); saveState(); render(); }
+});
+
+async function saveState(){
+  try{ localStorage.setItem('hasbro-scorecard-state', JSON.stringify(state)); }catch(err){}
+}
+async function loadState(){
+  try{
+    const raw = localStorage.getItem('hasbro-scorecard-state');
+    if(raw) state = JSON.parse(raw);
+  }catch(err){}
+}
+
+(async function init(){ await loadState(); render(); })();
+</script>
+</body>
+</html>
