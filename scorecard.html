@@ -194,7 +194,34 @@
     </div>
   </div>
 
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Raw data audit</h2>
+      <span class="meta">Every stored record \u2014 spot duplicates/overlaps and delete individually</span>
+    </div>
+    <div class="row-actions" style="padding-top:14px;">
+      <label style="font-size:13px;color:var(--text-soft);">Show</label>
+      <select id="auditSource">
+        <option value="ams-weekly">AMS \u2014 weekly</option>
+        <option value="ams-monthly">AMS \u2014 monthly backfill</option>
+        <option value="dsp-weekly">DSP \u2014 weekly</option>
+        <option value="dsp-monthly">DSP \u2014 monthly backfill</option>
+      </select>
+    </div>
+    <table>
+      <colgroup><col style="width:14%"><col style="width:26%"><col style="width:14%">
+        <col style="width:14%"><col style="width:14%"><col style="width:12%"><col style="width:6%"></colgroup>
+      <thead>
+        <tr><th>Date/Month</th><th>Market / Brand-Tactic</th><th class="num">Spend</th>
+          <th class="num">Revenue</th><th class="num">Purchases</th><th class="num">Glance views</th><th></th></tr>
+      </thead>
+      <tbody id="auditTableBody"></tbody>
+    </table>
+    <div class="foot-note">Sorted by date. Look for two rows with the same or overlapping date for the same market/brand \u2014 that's the double-count.</div>
+  </div>
+
 </div>
+
 
 <script>
 const PLANS = [
@@ -503,6 +530,8 @@ function render(){
     `;
     atbody.appendChild(tr);
   });
+
+  renderAudit();
 }
 
 document.getElementById('tableBody').addEventListener('click', e=>{
@@ -737,6 +766,57 @@ function processUploadedRows(rows, summary){
       matched++;
     });
 }
+
+function renderAudit(){
+  const source = document.getElementById('auditSource').value;
+  const [pivot, kind] = source.split('-');
+  let arr, labelFn;
+  if(pivot==='ams' && kind==='weekly'){ arr = state.actuals; labelFn = e => e.market+' / '+e.brand; }
+  else if(pivot==='ams' && kind==='monthly'){ arr = state.monthly; labelFn = e => e.market+' / '+e.brand; }
+  else if(pivot==='dsp' && kind==='weekly'){ arr = state.dspActuals; labelFn = e => e.market+' / '+e.tactic; }
+  else { arr = state.dspMonthly; labelFn = e => e.market+' / '+e.tactic; }
+
+  const withIdx = arr.map((e,i)=>({e,i}));
+  withIdx.sort((a,b)=>{
+    const da = a.e.weekEnding || a.e.month || '';
+    const db = b.e.weekEnding || b.e.month || '';
+    return da.localeCompare(db);
+  });
+
+  const tbody = document.getElementById('auditTableBody');
+  tbody.innerHTML = '';
+  if(!withIdx.length){
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-mute);padding:20px;">No records in this bucket.</td></tr>';
+    return;
+  }
+  withIdx.forEach(({e,i}) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${e.weekEnding || e.month || '\u2014'}</td>
+      <td>${labelFn(e)}</td>
+      <td class="num">${fmtEUR(e.spend)}</td>
+      <td class="num">${fmtEUR(e.revenue)}</td>
+      <td class="num">${fmtNum(e.purchases)}</td>
+      <td class="num">${fmtNum(e.glanceViews)}</td>
+      <td><button class="icon-btn" data-audit-del="${source}|${i}" aria-label="Delete"><i class="ti ti-trash"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+document.getElementById('auditSource').onchange = renderAudit;
+document.getElementById('auditTableBody').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-audit-del]');
+  if(!btn) return;
+  const [source, idxStr] = btn.dataset.auditDel.split('|');
+  const idx = Number(idxStr);
+  const [pivot, kind] = source.split('-');
+  if(pivot==='ams' && kind==='weekly') state.actuals.splice(idx,1);
+  else if(pivot==='ams' && kind==='monthly') state.monthly.splice(idx,1);
+  else if(pivot==='dsp' && kind==='weekly') state.dspActuals.splice(idx,1);
+  else state.dspMonthly.splice(idx,1);
+  saveState();
+  render();
+});
 
 document.getElementById('addActionBtn').onclick = () => {
   state.actions.push({date: todayISO(), comment:'', action:'', owner:'Kepler', status:'Open'});
