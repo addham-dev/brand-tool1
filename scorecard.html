@@ -106,6 +106,59 @@
 
   <div class="panel">
     <div class="panel-head">
+      <h2>Market summary</h2>
+      <span class="meta">AMS + DSP combined, top line per market</span>
+    </div>
+    <table>
+      <colgroup>
+        <col style="width:20%"><col style="width:16%"><col style="width:16%"><col style="width:12%">
+        <col style="width:12%"><col style="width:12%"><col style="width:12%">
+      </colgroup>
+      <thead>
+        <tr><th>Market</th><th class="num">Budget</th><th class="num">Spend to date</th>
+          <th class="num">Pacing</th><th class="num">ROAS</th><th class="num">CPA</th><th>Status</th></tr>
+      </thead>
+      <tbody id="marketSummaryBody"></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Performance over time</h2>
+      <span class="meta">Pivot by source, market, brand/tactic and month or week</span>
+    </div>
+    <div class="row-actions" style="padding-top:14px;flex-wrap:wrap;">
+      <label style="font-size:13px;color:var(--text-soft);">Source</label>
+      <select id="tsSource">
+        <option value="ams">AMS</option>
+        <option value="dsp">DSP</option>
+      </select>
+      <label style="font-size:13px;color:var(--text-soft);">Market</label>
+      <select id="tsMarket"><option value="all">All markets</option></select>
+      <label style="font-size:13px;color:var(--text-soft);">Brand/Tactic</label>
+      <select id="tsBrand"><option value="all">All</option></select>
+      <span style="flex:1"></span>
+      <div class="periodbar" id="granBar">
+        <button class="periodbtn active" data-gran="month">Monthly</button>
+        <button class="periodbtn" data-gran="week">Weekly</button>
+      </div>
+    </div>
+    <table>
+      <colgroup>
+        <col style="width:20%"><col style="width:14%"><col style="width:14%"><col style="width:14%">
+        <col style="width:12%"><col style="width:12%"><col style="width:14%">
+      </colgroup>
+      <thead>
+        <tr><th id="tsDateHead">Month</th><th class="num">Spend</th><th class="num">Revenue</th>
+          <th class="num">Purchases</th><th class="num">ROAS</th><th class="num">CPA</th><th>Glance views*</th></tr>
+      </thead>
+      <tbody id="tsBody"></tbody>
+    </table>
+    <div class="foot-note">Rows shaded and marked <span class="status-pill st-amber" style="margin:0 2px;">attributing</span> are within 14 days of your latest upload \u2014 Amazon's attribution window means these haven't finished converting yet, so don't read them as underperforming. Older rows are safe to judge and act on.</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
       <h2>AMS: spend and KPIs by brand</h2>
       <span class="meta">Click a brand to see market detail</span>
     </div>
@@ -332,6 +385,120 @@ function renderRowCells(a){
   `;
 }
 
+let tsGranularity = 'month';
+
+function monthKey(dateStr){
+  const d = new Date(dateStr);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+function monthLabel(key){
+  const [y,m] = key.split('-');
+  const names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return names[Number(m)-1] + ' ' + y;
+}
+function bucketKeyFor(entry, gran){
+  return gran === 'week' ? entry.weekEnding : monthKey(entry.rangeStart || entry.weekEnding);
+}
+function bucketLabelFor(key, gran){
+  return gran === 'week' ? ('Week ending ' + key) : monthLabel(key);
+}
+function bucketEndDate(key, gran){
+  return gran === 'week' ? new Date(key) : new Date(key + '-28'); // approx end for sorting/attribution purposes
+}
+
+function renderMarketSummary(){
+  const tbody = document.getElementById('marketSummaryBody');
+  tbody.innerHTML = '';
+  MARKETS.forEach(function(market){
+    let budget=0, spend=0, rev=0, purch=0;
+    BRANDS.forEach(function(brand){
+      if(!PLANS.find(function(p){ return p.market===market && p.brand===brand; })) return;
+      const a = aggregate(actualsFor(market,brand), planFor(market,brand));
+      budget += a.budget; spend += a.cumulativeSpend;
+      const inRange = actualsFor(market,brand).filter(function(e){ return inPeriod(e.weekEnding); });
+      rev += sumField(inRange,'revenue'); purch += sumField(inRange,'purchases');
+    });
+    if(DSP_MARKETS.includes(market)){
+      DSP_TACTICS.forEach(function(tactic){
+        const a = aggregate(dspActualsFor(market,tactic), dspPlanFor(market,tactic));
+        budget += a.budget; spend += a.cumulativeSpend;
+        const inRange = dspActualsFor(market,tactic).filter(function(e){ return inPeriod(e.weekEnding); });
+        rev += sumField(inRange,'revenue'); purch += sumField(inRange,'purchases');
+      });
+    }
+    const pacing = budget ? (spend/budget*100) : 0;
+    const roas = spend ? rev/spend : 0;
+    const cpa = purch ? spend/purch : 0;
+    const st = pacingStatus(pacing);
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td style="font-weight:600;">' + market + '</td><td class="num">' + fmtEUR(budget) + '</td><td class="num">' + fmtEUR(spend) +
+      '</td><td class="num">' + fmtPct(pacing) + '</td><td class="num">' + (roas?roas.toFixed(2)+'x':'\u2014') + '</td>' +
+      '<td class="num">' + (cpa?fmtEUR(cpa):'\u2014') + '</td><td><span class="status-pill st-' + st + '">' + st + '</span></td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function refreshTsFilterOptions(){
+  const source = document.getElementById('tsSource').value;
+  const marketSel = document.getElementById('tsMarket');
+  const brandSel = document.getElementById('tsBrand');
+  const markets = source === 'dsp' ? DSP_MARKETS : MARKETS;
+  const items = source === 'dsp' ? DSP_TACTICS : BRANDS;
+  const curMarket = marketSel.value, curBrand = brandSel.value;
+  marketSel.innerHTML = '<option value="all">All markets</option>' + markets.map(function(m){ return '<option value="'+m+'">'+m+'</option>'; }).join('');
+  brandSel.innerHTML = '<option value="all">All</option>' + items.map(function(b){ return '<option value="'+b+'">'+b+'</option>'; }).join('');
+  if(markets.includes(curMarket)) marketSel.value = curMarket;
+  if(items.includes(curBrand)) brandSel.value = curBrand;
+}
+
+function renderTimeSeries(){
+  const source = document.getElementById('tsSource').value;
+  const marketFilter = document.getElementById('tsMarket').value;
+  const itemFilter = document.getElementById('tsBrand').value;
+  document.getElementById('tsDateHead').textContent = tsGranularity === 'week' ? 'Week ending' : 'Month';
+
+  const pool = source === 'dsp' ? state.dspActuals : state.actuals;
+  const itemKey = source === 'dsp' ? 'tactic' : 'brand';
+  const filtered = pool.filter(function(e){
+    if(marketFilter !== 'all' && e.market !== marketFilter) return false;
+    if(itemFilter !== 'all' && e[itemKey] !== itemFilter) return false;
+    return inPeriod(e.weekEnding);
+  });
+
+  const buckets = {};
+  filtered.forEach(function(e){
+    const key = bucketKeyFor(e, tsGranularity);
+    buckets[key] = buckets[key] || {spend:0, revenue:0, purchases:0, glanceViews:0};
+    buckets[key].spend += Number(e.spend||0); buckets[key].revenue += Number(e.revenue||0);
+    buckets[key].purchases += Number(e.purchases||0); buckets[key].glanceViews += Number(e.glanceViews||0);
+  });
+
+  const keys = Object.keys(buckets).sort();
+  const latestDate = filtered.length ? new Date(Math.max.apply(null, filtered.map(function(e){ return new Date(e.weekEnding); }))) : null;
+
+  const tbody = document.getElementById('tsBody');
+  tbody.innerHTML = '';
+  if(!keys.length){
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-mute);padding:20px;">No data for this selection.</td></tr>';
+    return;
+  }
+  keys.forEach(function(key){
+    const b = buckets[key];
+    const roas = b.spend ? b.revenue/b.spend : 0;
+    const cpa = b.purchases ? b.spend/b.purchases : 0;
+    const endDate = bucketEndDate(key, tsGranularity);
+    const isAttributing = latestDate && ((latestDate - endDate) / 86400000) < 14 && ((latestDate-endDate)/86400000) >= -1;
+    const tr = document.createElement('tr');
+    if(isAttributing) tr.style.opacity = '0.6';
+    tr.innerHTML =
+      '<td style="font-weight:600;">' + bucketLabelFor(key, tsGranularity) + (isAttributing ? ' <span class="status-pill st-amber">attributing</span>' : '') + '</td>' +
+      '<td class="num">' + fmtEUR(b.spend) + '</td><td class="num">' + fmtEUR(b.revenue) + '</td>' +
+      '<td class="num">' + fmtNum(b.purchases) + '</td><td class="num">' + (roas?roas.toFixed(2)+'x':'\u2014') + '</td>' +
+      '<td class="num">' + (cpa?fmtEUR(cpa):'\u2014') + '</td><td class="num">' + fmtNum(b.glanceViews) + '</td>';
+    tbody.appendChild(tr);
+  });
+}
+
 function render(){
   document.querySelectorAll('.periodbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.period===currentPeriod); });
 
@@ -417,6 +584,8 @@ function render(){
   });
 
   renderAudit();
+  renderMarketSummary();
+  renderTimeSeries();
 }
 
 document.getElementById('periodBar').addEventListener('click', function(e){
@@ -425,6 +594,18 @@ document.getElementById('periodBar').addEventListener('click', function(e){
   currentPeriod = btn.dataset.period;
   render();
 });
+
+document.getElementById('tsSource').onchange = function(){ refreshTsFilterOptions(); renderTimeSeries(); };
+document.getElementById('tsMarket').onchange = renderTimeSeries;
+document.getElementById('tsBrand').onchange = renderTimeSeries;
+document.getElementById('granBar').addEventListener('click', function(e){
+  const btn = e.target.closest('.periodbtn');
+  if(!btn) return;
+  tsGranularity = btn.dataset.gran;
+  document.querySelectorAll('#granBar .periodbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.gran===tsGranularity); });
+  renderTimeSeries();
+});
+refreshTsFilterOptions();
 
 document.getElementById('tableBody').addEventListener('click', function(e){
   const row = e.target.closest('tr.brand-row');
