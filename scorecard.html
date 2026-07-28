@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Weekly agency scorecard</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --ink:#1C2333; --ink-soft:#3A4257;
@@ -109,11 +110,11 @@
         <option value="2026-07">July</option>
       </select>
       <input type="date" id="weekEndingInput">
-      <input type="file" id="csvFile" accept=".csv" style="display:none;">
-      <button id="addActualsBtn" class="primary"><i class="ti ti-upload"></i>Upload CSV</button>
+      <input type="file" id="csvFile" accept=".csv,.xlsx,.xls" style="display:none;">
+      <button id="addActualsBtn" class="primary"><i class="ti ti-upload"></i>Upload file</button>
     </div>
   </div>
-  <div class="foot-note" style="padding:0 0 12px;">CSV columns: <code>market,brand,spend,revenue,purchases,glanceViews</code> for AMS or <code>market,tactic,spend,revenue,purchases,glanceViews</code> for DSP, one row per market/brand (or market/tactic).</div>
+  <div class="foot-note" style="padding:0 0 12px;">Accepts .csv or .xlsx. Columns: <code>market,brand,spend,revenue,purchases,glanceViews</code> for AMS or <code>market,tactic,spend,revenue,purchases,glanceViews</code> for DSP, one row per market/brand (or market/tactic).</div>
 
   <div class="kpis" id="kpiRow"></div>
 
@@ -514,9 +515,28 @@ document.getElementById('addActualsBtn').onclick = () => {
 document.getElementById('csvFile').onchange = (e) => {
   const file = e.target.files[0];
   if(!file) return;
+  const isExcel = /\.(xlsx|xls)$/i.test(file.name);
   const reader = new FileReader();
   reader.onload = (ev) => {
-    const rows = parseCSV(ev.target.result);
+    let rows;
+    if(isExcel){
+      const wb = XLSX.read(ev.target.result, {type:'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet, {defval:''});
+      rows = json.map(r => {
+        const lower = {};
+        Object.keys(r).forEach(k => lower[k.trim().toLowerCase()] = r[k]);
+        return lower;
+      });
+    } else {
+      rows = parseCSV(ev.target.result);
+    }
+    processUploadedRows(rows);
+  };
+  if(isExcel) reader.readAsArrayBuffer(file); else reader.readAsText(file);
+};
+
+function processUploadedRows(rows){
     const pivot = document.getElementById('pivotView').value;
     const reportType = document.getElementById('reportType').value;
     const period = reportType === 'monthly'
@@ -538,10 +558,8 @@ document.getElementById('csvFile').onchange = (e) => {
     saveState();
     render();
     alert(added + ' rows loaded.');
-    e.target.value = '';
-  };
-  reader.readAsText(file);
-};
+    document.getElementById('csvFile').value = '';
+}
 
 document.getElementById('addActionBtn').onclick = () => {
   state.actions.push({date: todayISO(), comment:'', action:'', owner:'Kepler', status:'Open'});
