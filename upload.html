@@ -206,30 +206,9 @@
     <div class="log-area" id="vc-log"><span class="log-line">Drop your weekly VC reports above to get started.</span></div>
   </div>
 
-  <!-- ADS UPLOAD — PRIMARY (Kepler/Adverity export, AMS + DSP in one file) -->
-  <div class="section-card" style="border-color:var(--green);">
-    <div class="card-title" style="color:var(--green);">🎯 Ads Upload — Kepler/Adverity Export (AMS + Amazon DSP) — PRIMARY</div>
-    <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">
-      This is now the main way ads data gets into the dashboard — one file gives you AMS and DSP together, instead of Pacvue (AMS only) plus a separate manual DSP load. Upload the "Performance Detail by Platform &amp; Brand" export for whatever date range you pulled (a single week or a full month both work). The date range is read automatically from the file's own "Widget Date Range" row, and the totals are day-weighted across the Sunday-weeks it covers.<br>
-      Rules applied automatically: rows with €0 Spend are skipped, United Arab Emirates is excluded, "Totals" rows are excluded, and any week/brand/market that already has real spend data is skipped rather than silently overwritten (so it's safe to re-upload the same or overlapping files without double-counting). Triple Lift rows and any unmapped brand (e.g. "Preschool Brand Week") are logged and excluded rather than guessed at.<br>
-      <b>Known source issue:</b> this export tool has previously gotten stuck returning the same date range on every pull regardless of the filter — check the "Date range detected" line in the log below matches what you actually meant to pull before trusting the result.
-    </div>
-    <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;margin-bottom:16px;">
-      <div class="upload-card" id="card-backfill" onclick="document.getElementById('file-backfill').click()" ondragover="dOver(event,'card-backfill')" ondragleave="dLeave('card-backfill')" ondrop="dDrop(event,'backfill')" style="border-color:var(--green);background:var(--green-bg);">
-        <div class="uc-icon">🎯</div>
-        <div class="uc-title">Performance Detail by Platform &amp; Brand</div>
-        <div class="uc-sub" id="lbl-backfill">Kepler/Adverity export · any date range</div>
-        <div class="uc-check">✅</div>
-        <input type="file" id="file-backfill" accept=".xlsx" onchange="onFile(event,'backfill')">
-      </div>
-      <button class="process-btn" id="backfill-btn" onclick="uploadAdsBackfill()" disabled style="padding:12px 20px;font-size:13px;align-self:end;background:var(--green);color:#fff;">Upload Ads Data</button>
-    </div>
-    <div class="log-area" id="backfill-log" style="height:180px;"><span class="log-line">Upload the Performance Detail by Platform &amp; Brand export.</span></div>
-  </div>
-
-  <!-- ADS BULK UPLOAD (LEGACY — kept as fallback only) -->
+  <!-- ADS BULK UPLOAD -->
   <div class="section-card ad-border">
-    <div class="card-title ad">🎯 Weekly Ads Report — Pacvue Query Report <span style="font-size:11px;font-weight:400;color:var(--text3);">(legacy — AMS only, no DSP. Use the Kepler/Adverity uploader above instead unless Pacvue is genuinely your only option)</span></div>
+    <div class="card-title ad">🎯 Weekly Ads Report — Pacvue Query Report</div>
     <div class="note-box ad-note">Drop your weekly Pacvue <b>Query report</b> .xlsx file. Week is auto-detected from the filename. Drop multiple files to bulk upload multiple weeks at once.</div>
     <div class="ads-drop" id="ads-dropzone" ondragover="adsDragOver(event)" ondragleave="adsDragLeave()" ondrop="adsDrop(event)" onclick="document.getElementById('ads-file-input').click()">
       <div style="font-size:32px;margin-bottom:8px;">📊</div>
@@ -331,7 +310,7 @@ const ADMIN_PW = 'hasbro2026';
 const EU5 = ['GB','DE','FR','IT','ES'];
 const YOY_CAP = 2.0;
 
-let files = { loyalty:null, coverage:null, search:null, backfill:null };
+let files = { loyalty:null, coverage:null, search:null };
 
 // ─── LOGIN ────────────────────────────────────────────────────
 function checkPassword() {
@@ -359,7 +338,6 @@ function loadFile(f,type){
   if(type==='loyalty') document.getElementById('loyalty-btn').disabled=false;
   if(type==='coverage') document.getElementById('coverage-btn').disabled=false;
   if(type==='search') document.getElementById('search-btn').disabled=false;
-  if(type==='backfill') document.getElementById('backfill-btn').disabled=false;
 }
 
 // ─── DATE DETECTION ───────────────────────────────────────────
@@ -1083,19 +1061,14 @@ async function uploadCoverage() {
       }
       return -1;
     }
-    // Coverage = ASINs marked "Include? Y/N" = Y. We're not tracking ad
-    // format (SP vs SB) — just whether an ASIN is in the plan this quarter,
-    // matched later against the trading catalogue from weekly VC uploads.
-    // The SP/SB checkbox columns are unreliable across exports (some files
-    // use them as real live status, some leave every row as a placeholder
-    // "?" because format hasn't been decided yet) — Include? Y/N is the
-    // one field that's consistently populated with a real Y/N/TBC signal.
-    function hasUsableIncludeSignal(allRows, colIdx){
+    // A column only counts as real checkbox/coverage data if it actually
+    // contains a checkbox mark somewhere. Files that use a placeholder like
+    // "?" for every row (seen in some KAM recommendation exports) are NOT
+    // coverage data — including them would silently fabricate an ad-status
+    // signal from a column that never actually recorded one.
+    function hasRealCheckboxSignal(allRows, colIdx){
       if(colIdx<0) return false;
-      return allRows.some(r=>{
-        const v=String(r[colIdx]||'').trim().toUpperCase();
-        return v==='Y'||v==='N';
-      });
+      return allRows.some(r=>String(r[colIdx]||'').includes('☑'));
     }
     const MARKETPLACE_MAP={'.co.uk':'GB','.de':'DE','.fr':'FR','.it':'IT','.es':'ES','amazon.co.uk':'GB','amazon.de':'DE','amazon.fr':'FR','amazon.it':'IT','amazon.es':'ES'};
     function marketFromFilename(name){
@@ -1109,7 +1082,7 @@ async function uploadCoverage() {
     }
 
     const rows=[];
-    const flaggedSheets=[]; // sheets/files with no usable Include? Y/N signal
+    const flaggedSheets=[]; // sheets/files whose SP/SB column had no real signal
 
     if (isCsv) {
       // ── Single-market CSV path ──
@@ -1122,21 +1095,17 @@ async function uploadCoverage() {
       const raw = parsed.data;
       const headers = raw[0].map(h=>String(h).trim());
       const asinCol = findCol(headers, ['ASIN']);
-      // NOTE: 'Brand Name' must come before 'brand' — some exports have BOTH
-      // a real "Brand Name" column (MONOPOLY, PEPPA PIG, etc.) and a separate,
-      // mostly-blank internal short-code column literally named "brand". If
-      // "brand" is checked first it wins the exact-match pass and silently
-      // pulls the wrong, near-empty column — this dropped several brands
-      // (GAMES, NERF, MONOPOLY, DISNEY_KIDS) entirely in earlier uploads.
-      const brandCol = findCol(headers, ['Brand Name','brand']);
-      const incCol = findCol(headers, ['Include? Y/N','Include']);
+      const brandCol = findCol(headers, ['brand','Brand Name']);
+      const spCol = findCol(headers, ['Sponsored Product Priority','Sponsored Product']);
+      const sbCol = findCol(headers, ['Sponsored Brand']);
       const mktCol = findCol(headers, ['Marketplace Name','Marketplace']);
       if(asinCol<0||brandCol<0){ throw new Error(`Could not find ASIN/brand columns. Found: ${headers.filter(h=>h).join(', ')}`); }
       const dataRows = raw.slice(1).filter(r=>r.some(v=>v!==''));
-      const incOk = hasUsableIncludeSignal(dataRows, incCol);
-      if(!incOk){
+      const spOk = hasRealCheckboxSignal(dataRows, spCol);
+      const sbOk = hasRealCheckboxSignal(dataRows, sbCol);
+      if(!spOk){
         flaggedSheets.push(files.coverage.name);
-        logC(`⚠️ No usable "Include? Y/N" column found (or it has no real Y/N values) — can't determine which ASINs are in the plan. Found columns: ${headers.filter(h=>h).join(', ')}`,'err');
+        logC(`⚠️ "${headers[spCol]||'Sponsored Product'}" column contains no ☑ marks anywhere in this file — every value is a placeholder ("${String(dataRows[0][spCol]||'').slice(0,3)}" etc). This looks like a recommendation list, not a live coverage export. Skipping — will NOT fabricate ad-status from this column.`,'err');
       } else {
         const market = marketFromFilename(files.coverage.name) || (mktCol>=0 ? MARKETPLACE_MAP[String(dataRows[0][mktCol]||'').toLowerCase()] : null);
         if(!market){ throw new Error('Could not determine market — expected GB/DE/FR/IT/ES in the filename.'); }
@@ -1145,120 +1114,57 @@ async function uploadCoverage() {
           const asin=String(r[asinCol]||'').trim();if(!asin||asin.length<5)return;
           const brand=String(r[brandCol]||'').trim();if(!brand)return;
           const bid=mapBrand(brand);if(!bid)return;
-          const included=String(r[incCol]||'').trim().toUpperCase()==='Y';
-          if(!brandAgg[bid])brandAgg[bid]={total:0,included:0};
-          brandAgg[bid].total++;if(included)brandAgg[bid].included++;
+          const sp=String(r[spCol]||'').includes('☑');
+          const sb=sbCol>=0?String(r[sbCol]||'').includes('☑'):false;
+          if(!brandAgg[bid])brandAgg[bid]={total:0,sp:0,sb:0};
+          brandAgg[bid].total++;if(sp)brandAgg[bid].sp++;if(sb)brandAgg[bid].sb++;
         });
         Object.entries(brandAgg).forEach(([brand_classified,counts])=>{
-          rows.push({quarter,brand_classified,market,total_asins:counts.included,sp_asins:counts.included,sb_asins:counts.included});
-          logC(`  ${market} ${brand_classified}: ${counts.included}/${counts.total} ASINs included (${Math.round(counts.included/counts.total*100)}%)`,'ok');
+          rows.push({quarter,brand_classified,market,total_asins:counts.total,sp_asins:counts.sp,sb_asins:counts.sb});
+          logC(`  ${market} ${brand_classified}: ${counts.sp}/${counts.total} SP (${Math.round(counts.sp/counts.total*100)}%)`,'ok');
         });
       }
     } else {
-      // ── xlsx path — flexible sheet-name matching + single-sheet fallback ──
-      // Originally hardcoded to sheets literally named UK/DE/FR/IT/ES. Some
-      // exports use full country names, GB instead of UK, or a single sheet
-      // with a market/marketplace column instead of one sheet per market.
-      // Try aliases first; if nothing matches, fall back to scanning every
-      // sheet for a market column. Coverage = Include? Y/N = Y, matched
-      // later against the trading catalogue — not ad-format specific.
+      // ── Multi-sheet xlsx path (existing format) ──
       const data = await files.coverage.arrayBuffer();
       const wb = XLSX.read(data,{type:'array'});
-      const MARKET_ALIASES={
-        GB:['uk','gb','united kingdom','great britain'],
-        DE:['de','germany','deutschland'],
-        FR:['fr','france'],
-        IT:['it','italy','italia'],
-        ES:['es','spain','espana','españa']
-      };
-      function findSheetName(sheetNames, aliases){
-        const norm=s=>s.trim().toLowerCase();
-        for(const name of sheetNames){ if(aliases.includes(norm(name))) return name; }
-        for(const name of sheetNames){ if(aliases.some(a=>norm(name).includes(a))) return name; }
-        return null;
-      }
-      function processCoverageRows(dataRows, headers, market, sourceLabel){
-        // 'Brand Name' before 'brand' — see note in the CSV path above on why
-        // order matters here: some files have both, and 'brand' is a near-empty
-        // internal code column, not the real brand field.
-        const brandCol=findCol(headers, ['Brand Name','brand']);
-        const incCol=findCol(headers, ['Include? Y/N','Include']);
+      const MARKET_SHEET={UK:'GB',DE:'DE',FR:'FR',IT:'IT',ES:'ES'};
+      for(const[sheetName,market]of Object.entries(MARKET_SHEET)){
+        const ws=wb.Sheets[sheetName];
+        if(!ws){logC(`⚠️ Sheet "${sheetName}" not found — skipping`,'err');continue;}
+        const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        if(raw.length<2) continue;
+        const headers=raw[0].map(h=>String(h).trim());
+        const brandCol=findCol(headers, ['brand','Brand Name']);
+        const spCol=findCol(headers, ['Sponsored Product Priority','Sponsored Product']);
+        const sbCol=findCol(headers, ['Sponsored Brand']);
         const asinCol=findCol(headers, ['ASIN']);
-        if(brandCol===-1||asinCol===-1){logC(`⚠️ ${sourceLabel}: missing ASIN/brand columns. Found: ${headers.filter(h=>h).join(', ')}`,'err');return;}
-        if(!hasUsableIncludeSignal(dataRows, incCol)){
-          flaggedSheets.push(sourceLabel);
-          logC(`⚠️ ${sourceLabel}: no usable "Include? Y/N" column/values found — can't determine which ASINs are in the plan. Skipping.`,'err');
-          return;
+        if(brandCol===-1||spCol===-1||asinCol===-1){logC(`⚠️ ${sheetName}: missing columns. Found: ${headers.filter(h=>h).join(', ')}`,'err');continue;}
+        const dataRows = raw.slice(1).filter(r=>r.some(v=>v!==''));
+        if(!hasRealCheckboxSignal(dataRows, spCol)){
+          flaggedSheets.push(sheetName);
+          logC(`⚠️ ${sheetName}: "${headers[spCol]}" column has no ☑ marks anywhere — looks like a placeholder, not live coverage. Skipping this sheet.`,'err');
+          continue;
         }
         const brandAgg={};
         dataRows.forEach(r=>{
           const asin=String(r[asinCol]||'').trim();if(!asin||asin.length<5)return;
           const brand=String(r[brandCol]||'').trim();if(!brand)return;
+          const sp=String(r[spCol]||'').includes('☑');
+          const sb=sbCol>=0?String(r[sbCol]||'').includes('☑'):false;
           const bid=mapBrand(brand);if(!bid)return;
-          const included=String(r[incCol]||'').trim().toUpperCase()==='Y';
-          if(!brandAgg[bid])brandAgg[bid]={total:0,included:0};
-          brandAgg[bid].total++;if(included)brandAgg[bid].included++;
+          if(!brandAgg[bid])brandAgg[bid]={total:0,sp:0,sb:0};
+          brandAgg[bid].total++;if(sp)brandAgg[bid].sp++;if(sb)brandAgg[bid].sb++;
         });
         Object.entries(brandAgg).forEach(([brand_classified,counts])=>{
-          rows.push({quarter,brand_classified,market,total_asins:counts.included,sp_asins:counts.included,sb_asins:counts.included});
-          logC(`  ${market} ${brand_classified}: ${counts.included}/${counts.total} ASINs included (${Math.round(counts.included/counts.total*100)}%)`,'ok');
+          rows.push({quarter,brand_classified,market,total_asins:counts.total,sp_asins:counts.sp,sb_asins:counts.sb});
+          logC(`  ${market} ${brand_classified}: ${counts.sp}/${counts.total} SP (${Math.round(counts.sp/counts.total*100)}%)`,'ok');
         });
-      }
-
-      // Attempt 1: one sheet per market, matched via aliases (not exact UK/DE/FR/IT/ES only)
-      let matchedAnySheet=false;
-      for(const[market,aliases]of Object.entries(MARKET_ALIASES)){
-        const sheetName=findSheetName(wb.SheetNames, aliases);
-        if(!sheetName) continue;
-        matchedAnySheet=true;
-        const ws=wb.Sheets[sheetName];
-        const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-        if(raw.length<2) continue;
-        const headers=raw[0].map(h=>String(h).trim());
-        const dataRows=raw.slice(1).filter(r=>r.some(v=>v!==''));
-        processCoverageRows(dataRows, headers, market, sheetName);
-      }
-
-      // Attempt 2: no market-named sheets found — look for a single sheet
-      // (or sheets) containing a Marketplace/Market/Country column instead.
-      if(!matchedAnySheet){
-        logC('No sheet names matched known market aliases (UK/DE/FR/IT/ES or full country names) — trying single-sheet-with-market-column format...','info');
-        const COUNTRY_MAP={'united kingdom':'GB','uk':'GB','gb':'GB','great britain':'GB','.co.uk':'GB','germany':'DE','deutschland':'DE','de':'DE','.de':'DE','france':'FR','fr':'FR','.fr':'FR','italy':'IT','italia':'IT','it':'IT','.it':'IT','spain':'ES','espana':'ES','españa':'ES','es':'ES','.es':'ES'};
-        function matchCountry(raw){
-          if(COUNTRY_MAP[raw]) return COUNTRY_MAP[raw];
-          for(const[k,v]of Object.entries(COUNTRY_MAP)){ if(raw.includes(k)) return v; }
-          return null;
-        }
-        let anyRowsFound=false;
-        for(const sheetName of wb.SheetNames){
-          const ws=wb.Sheets[sheetName];
-          const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-          if(raw.length<2) continue;
-          const headers=raw[0].map(h=>String(h).trim());
-          const mktCol=findCol(headers, ['Marketplace Name','Marketplace','Market','Country']);
-          if(mktCol<0) continue;
-          const dataRows=raw.slice(1).filter(r=>r.some(v=>v!==''));
-          const byMarket={};
-          dataRows.forEach(r=>{
-            const market=matchCountry(String(r[mktCol]||'').toLowerCase().trim());
-            if(!market) return;
-            if(!byMarket[market]) byMarket[market]=[];
-            byMarket[market].push(r);
-          });
-          if(Object.keys(byMarket).length===0) continue;
-          anyRowsFound=true;
-          Object.entries(byMarket).forEach(([market,mrows])=>{
-            processCoverageRows(mrows, headers, market, `${sheetName} (${market})`);
-          });
-        }
-        if(!anyRowsFound){
-          logC(`⚠️ Could not find per-market sheets OR a market/marketplace column. Sheets in file: ${wb.SheetNames.join(', ')}`,'err');
-        }
       }
     }
     if(!rows.length){
       const msg = flaggedSheets.length
-        ? `No usable coverage data — ${flaggedSheets.join(', ')} had no usable "Include? Y/N" values. Source a file with that column populated.`
+        ? `No usable coverage data — ${flaggedSheets.join(', ')} had no real ☑ signal. Source a file with live Sponsored Product/Brand checkboxes, not a recommendation list.`
         : 'No data extracted';
       throw new Error(msg);
     }
@@ -1267,192 +1173,6 @@ async function uploadCoverage() {
     logC(`✅ Done! ${rows.length} brand-market rows uploaded for ${quarter}`,'ok');
   } catch(err){logC('❌ Error: '+err.message,'err');}
   document.getElementById('coverage-btn').disabled=false;
-}
-
-// ─── ADS UPLOAD — PRIMARY SOURCE (Kepler/Adverity export — AMS + Amazon DSP) ──
-// This replaced Pacvue as the main ads data source: one file gives AMS +
-// Amazon DSP together instead of a Pacvue-only weekly upload plus a separate
-// manual DSP load. Also used for backfilling historical gaps — same logic
-// either way, since it's driven entirely by whatever date range is in the
-// file. The range is read straight from the file's own "Widget Date Range"
-// row, then the totals are day-weighted across the Sunday-weeks it spans.
-//
-// Deliberately conservative: skips €0-spend rows, skips UAE (outside EU5),
-// skips "Totals" rollup rows, excludes Triple Lift (no home for it in the
-// current schema — logged, not merged into AMS or DSP), and — most
-// importantly — will NOT overwrite a week/brand/market that already has
-// real ad_spend data. Safe to re-run on the same or overlapping files.
-function logB(msg,type=''){log(msg,type,'backfill-log');}
-async function sbGet(path){
-  const r=await fetch(SB_URL+path,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
-  if(!r.ok) throw new Error('Fetch failed: '+r.status);
-  return r.json();
-}
-function fmtEuroLog(v){return '€'+Math.round(v).toLocaleString();}
-function round2(v){return Math.round(v*100)/100;}
-
-async function uploadAdsBackfill(){
-  if(!files.backfill){alert('Please select the Performance Detail by Platform & Brand export.');return;}
-  document.getElementById('backfill-btn').disabled=true;
-  document.getElementById('backfill-log').innerHTML='';
-  logB('Reading export...','info');
-  try{
-    const data=await files.backfill.arrayBuffer();
-    const wb=XLSX.read(data,{type:'array'});
-    const sheetName=wb.SheetNames.find(n=>/performance detail/i.test(n));
-    if(!sheetName) throw new Error('No "Performance Detail by Platform & Brand" sheet found. Sheets: '+wb.SheetNames.join(', '));
-    const raw=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:''});
-
-    // ── Date range, read from the file itself ──
-    const rangeRow=raw.find(r=>String(r[0]||'').trim()==='Widget Date Range:');
-    if(!rangeRow) throw new Error('Could not find "Widget Date Range:" row in this sheet.');
-    const m=String(rangeRow[1]||'').match(/(\d{2})-(\d{2})-(\d{4})\s+(\d{2})-(\d{2})-(\d{4})/);
-    if(!m) throw new Error('Could not parse date range: "'+rangeRow[1]+'"');
-    const rangeStart=new Date(parseInt(m[3]),parseInt(m[2])-1,parseInt(m[1]),12);
-    const rangeEnd=new Date(parseInt(m[6]),parseInt(m[5])-1,parseInt(m[4]),12);
-    logB('Date range detected: '+rangeStart.toISOString().slice(0,10)+' to '+rangeEnd.toISOString().slice(0,10),'info');
-
-    // ── Header row + columns ──
-    const hi=raw.findIndex(r=>r.some(c=>String(c).trim()==='k_Buying Platform'));
-    if(hi<0) throw new Error('Could not find header row (k_Buying Platform). This may not be the right export.');
-    const headers=raw[hi].map(h=>String(h).trim());
-    const ci=name=>headers.indexOf(name);
-    const platCol=ci('k_Buying Platform'),brandCol=ci('Brand'),geoCol=ci('Marketing Geography'),
-          mediaCol=ci('Media Buy Name'),spendCol=ci('Spend'),posCol=ci('Nominal POS'),
-          impCol=ci('Impressions'),clickCol=ci('Clicks'),ordersCol=ci('Total Orders'),dpvrCol=ci('DPVR');
-    if([platCol,brandCol,geoCol,spendCol,posCol].some(c=>c<0)) throw new Error('Missing expected columns. Found: '+headers.filter(h=>h).join(', '));
-
-    const GEO_MAP={'united kingdom':'GB','germany':'DE','france':'FR','italy':'IT','spain':'ES'};
-    const BRAND_MAP={
-      GAMES:['gaming','hasbro gaming','hasbro gaming brand week','game performance plus'],
-      PLAY_DOH:['playdoh','playdoh always on','play-doh performance plus','play-doh performance plus q4'],
-      BEYBLADE:['beyblade'],DISNEY_KIDS:['disney kids','spidey and friends'],
-      MONOPOLY:['monopoly'],NERF:['nerf'],PEPPA_PIG:['peppa pig'],
-      STAR_WARS:['star wars'],TRANSFORMERS:['transformers']
-    };
-    // Collector's Corner is shared between Star Wars and Marvel with no clean
-    // brand column for it — same ambiguity already handled in the Pacvue
-    // uploader. Same rule applied here for consistency: read the campaign
-    // name (Media Buy Name) for a STARWARS tag, default to MARVEL otherwise
-    // (including the "GENERAL" campaigns, which aren't brand-specific).
-    function mapBrand(rawBrand,mediaBuyName){
-      const b=(rawBrand||'').toLowerCase().trim();
-      if(b==="collector's corner") return /starwars/i.test(mediaBuyName||'')?'STAR_WARS':'MARVEL';
-      for(const[bid,keys]of Object.entries(BRAND_MAP)){ if(keys.includes(b)) return bid; }
-      return null;
-    }
-
-    const dataRows=raw.slice(hi+1).filter(r=>r.some(v=>v!==''));
-    const agg={};
-    let excludedUAE=0,excludedTripleLift=0,excludedZeroSpend=0;
-    const unmapped={};
-    dataRows.forEach(r=>{
-      const plat=String(r[platCol]||'').trim();
-      if(plat==='Totals') return;
-      if(plat==='Triple Lift'){ excludedTripleLift+=Number(r[spendCol])||0; return; }
-      if(plat!=='Amazon'&&plat!=='Amazon DSP') return;
-      const geoRaw=String(r[geoCol]||'').trim().toLowerCase();
-      if(geoRaw==='united arab emirates'){ excludedUAE+=Number(r[spendCol])||0; return; }
-      const market=GEO_MAP[geoRaw];
-      if(!market) return;
-      const spend=Number(r[spendCol])||0;
-      if(spend===0){ excludedZeroSpend++; return; }
-      const brandRaw=String(r[brandCol]||'').trim();
-      const bid=mapBrand(brandRaw,r[mediaCol]);
-      if(!bid){ unmapped[brandRaw]=(unmapped[brandRaw]||0)+spend; return; }
-      const bucket=plat==='Amazon'?'AMS':'DSP';
-      const key=bucket+'|'+bid+'|'+market;
-      if(!agg[key]) agg[key]={bucket,bid,market,spend:0,pos:0,imp:0,clicks:0,orders:0,dpvEst:0};
-      const imp=Number(r[impCol])||0,dpvr=Number(r[dpvrCol])||0;
-      agg[key].spend+=spend;
-      agg[key].pos+=Number(r[posCol])||0;
-      agg[key].imp+=imp;
-      agg[key].clicks+=Number(r[clickCol])||0;
-      agg[key].orders+=Number(r[ordersCol])||0;
-      // DPVR read as Detail Page Views ÷ Impressions — Impressions×DPVR summed
-      // per row gives an estimated DPV count. Flagged as an estimate in the
-      // log below rather than presented as a native imported figure.
-      agg[key].dpvEst+=imp*dpvr;
-    });
-
-    logB(`Excluded: ${fmtEuroLog(excludedUAE)} UAE spend, ${fmtEuroLog(excludedTripleLift)} Triple Lift spend (not in current schema), ${excludedZeroSpend} zero-spend rows`,'info');
-    Object.entries(unmapped).forEach(([b,s])=>logB(`⚠️ Unmapped brand "${b}" — ${fmtEuroLog(s)} spend excluded, not guessed at.`,'err'));
-    if(!Object.keys(agg).length) throw new Error('No usable rows after filtering — nothing to upload.');
-
-    // ── Day-weighted split across the Sunday-weeks the range covers ──
-    function snapToSunday(d){const x=new Date(d);x.setDate(x.getDate()-x.getDay());x.setHours(12,0,0,0);return x;}
-    const totalDays=Math.round((rangeEnd-rangeStart)/86400000)+1;
-    const weeks=[];
-    let cursor=snapToSunday(rangeStart);
-    while(cursor<=rangeEnd){
-      const weekEnd=new Date(cursor);weekEnd.setDate(weekEnd.getDate()+6);
-      const overlapStart=cursor>rangeStart?cursor:rangeStart;
-      const overlapEnd=weekEnd<rangeEnd?weekEnd:rangeEnd;
-      const overlapDays=Math.max(0,Math.round((overlapEnd-overlapStart)/86400000)+1);
-      if(overlapDays>0) weeks.push({weekStart:cursor.toISOString().slice(0,10),fraction:overlapDays/totalDays});
-      cursor=new Date(cursor);cursor.setDate(cursor.getDate()+7);
-    }
-    logB(`Splitting across ${weeks.length} week(s): `+weeks.map(w=>w.weekStart+' ('+(w.fraction*100).toFixed(0)+'%)').join(', '),'info');
-
-    const amsRows=[],dspRows=[];
-    Object.values(agg).forEach(a=>{
-      weeks.forEach(w=>{
-        const f=w.fraction;
-        if(a.bucket==='AMS'){
-          amsRows.push({week_start:w.weekStart,brand_classified:a.bid,market:a.market,
-            ad_revenue:round2(a.pos*f),ad_spend:round2(a.spend*f),ad_impressions:Math.round(a.imp*f),
-            ad_clicks:Math.round(a.clicks*f),ad_glance_views:Math.round(a.dpvEst*f),
-            organic_revenue:0,organic_glance_views:0,source:'kepler'});
-        }else{
-          dspRows.push({week_start:w.weekStart,brand_classified:a.bid,market:a.market,
-            dsp_spend:round2(a.spend*f),dsp_revenue:round2(a.pos*f),dsp_impressions:Math.round(a.imp*f),
-            dsp_clicks:Math.round(a.clicks*f),dsp_dpv:Math.round(a.dpvEst*f),dsp_units:Math.round(a.orders*f),source:'kepler'});
-        }
-      });
-    });
-
-    // ── De-dupe: a prior Kepler upload for the same week/brand/market gets
-    // deleted and replaced (it's a genuine duplicate, not independent data —
-    // must not be double-counted by leaving both rows in place). Anything
-    // NOT tagged 'source=kepler' (i.e. real Pacvue data, or anything from
-    // before this tagging existed) is still left alone and only skipped —
-    // that's higher-fidelity weekly data we should never silently overwrite.
-    const targetWeeks=weeks.map(w=>w.weekStart);
-    async function filterAgainstExisting(rowsIn,table,spendField){
-      if(!rowsIn.length) return rowsIn;
-      const existing=await sbGet(`/rest/v1/${table}?week_start=in.(${targetWeeks.join(',')})&select=week_start,brand_classified,market,${spendField},source`);
-      const existingMap={};
-      existing.forEach(r=>{existingMap[r.week_start+'|'+r.brand_classified+'|'+r.market]=r;});
-      const keep=[],skipped=[],replaced=[];
-      for(const r of rowsIn){
-        const k=r.week_start+'|'+r.brand_classified+'|'+r.market;
-        const ex=existingMap[k];
-        if(ex&&(ex[spendField]||0)>0){
-          if(ex.source==='kepler'){
-            // duplicate of our own prior upload — delete it, then let the new value go in
-            await sbDelete(`/rest/v1/${table}?week_start=eq.${r.week_start}&brand_classified=eq.${r.brand_classified}&market=eq.${r.market}`);
-            replaced.push(k);
-            keep.push(r);
-          } else {
-            skipped.push(k);
-          }
-        } else {
-          keep.push(r);
-        }
-      }
-      if(replaced.length) logB(`🔁 Replaced ${replaced.length} duplicate row(s) in ${table} from a previous Kepler upload (not double-counted): `+replaced.slice(0,8).join('; ')+(replaced.length>8?' …':''),'info');
-      if(skipped.length) logB(`⚠️ Skipped ${skipped.length} row(s) in ${table} — already has real (non-Kepler) data for that week/brand/market, not overwritten: `+skipped.slice(0,8).join('; ')+(skipped.length>8?' …':''),'err');
-      return keep;
-    }
-    const amsToWrite=await filterAgainstExisting(amsRows,'brand_health_ads','ad_spend');
-    const dspToWrite=await filterAgainstExisting(dspRows,'brand_health_dsp','dsp_spend');
-    if(!amsToWrite.length&&!dspToWrite.length) throw new Error('Nothing to upload — every targeted week/brand/market already has real (non-Kepler) data.');
-
-    if(amsToWrite.length){ await sbPost('/rest/v1/brand_health_ads',amsToWrite); logB(`✅ Inserted ${amsToWrite.length} AMS rows into brand_health_ads`,'ok'); }
-    if(dspToWrite.length){ await sbPost('/rest/v1/brand_health_dsp',dspToWrite); logB(`✅ Inserted ${dspToWrite.length} DSP rows into brand_health_dsp`,'ok'); }
-    logB('Done.','ok');
-  }catch(err){logB('❌ Error: '+err.message,'err');}
-  document.getElementById('backfill-btn').disabled=false;
 }
 
 // ─── SEARCH TERMS ─────────────────────────────────────────────
