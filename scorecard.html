@@ -502,7 +502,7 @@ function renderTimeSeries(){
 function render(){
   document.querySelectorAll('.periodbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.period===currentPeriod); });
 
-  let totalBudget=0, totalSpend=0, totalRev=0, totalPurch=0;
+  let totalBudget=0, totalSpend=0, totalRev=0, totalPurch=0, totalClicks=0;
   const tbody = document.getElementById('tableBody');
   tbody.innerHTML = '';
   BRANDS.forEach(function(brand){
@@ -516,7 +516,7 @@ function render(){
     });
     ba.roas = ba.cumulativeSpend ? rev/ba.cumulativeSpend : 0;
     ba.cpa = purch ? ba.cumulativeSpend/purch : 0;
-    totalBudget += ba.budget; totalSpend += ba.cumulativeSpend; totalRev += rev; totalPurch += purch;
+    totalBudget += ba.budget; totalSpend += ba.cumulativeSpend; totalRev += rev; totalPurch += purch; totalClicks += ba.glanceViews;
 
     const isOpen = openBrands.has(brand);
     const tr = document.createElement('tr');
@@ -534,14 +534,13 @@ function render(){
 
   const pacing = totalBudget ? (totalSpend/totalBudget*100) : 0;
   const roas = totalSpend ? (totalRev/totalSpend) : 0;
-  const cpa = totalPurch ? (totalSpend/totalPurch) : 0;
   const st = pacingStatus(pacing);
   document.getElementById('kpiRow').innerHTML =
     '<div class="kpi"><div class="label">AMS Budget</div><div class="value">' + fmtEUR(totalBudget) + '</div></div>' +
     '<div class="kpi"><div class="label">Spend to date</div><div class="value">' + fmtEUR(totalSpend) + '</div></div>' +
     '<div class="kpi"><div class="label">Pacing</div><div class="value">' + fmtPct(pacing) + '<span class="tag st-' + st + '">' + st + '</span></div></div>' +
     '<div class="kpi"><div class="label">ROAS</div><div class="value">' + (roas?roas.toFixed(2)+'x':'\u2014') + '</div></div>' +
-    '<div class="kpi"><div class="label">CPA</div><div class="value">' + (cpa?fmtEUR(cpa):'\u2014') + '</div></div>';
+    '<div class="kpi"><div class="label">Clicks</div><div class="value">' + fmtNum(totalClicks) + '</div></div>';
 
   const dtbody = document.getElementById('dspTableBody');
   dtbody.innerHTML = '';
@@ -732,7 +731,8 @@ function processKeplerExport(sheet, summary, fileName){
   const headers = raw[headerRowIdx].map(function(h){ return String(h).trim(); });
   const col = function(name){ return headers.findIndex(function(h){ return h.toLowerCase() === name.toLowerCase(); }); };
   const iPlatform = col('k_Buying Platform'), iBrand = col('Brand'), iMarket = col('Marketing Geography'),
-        iSpend = col('Spend'), iRevenue = col('Nominal POS'), iOrders = col('Total Orders'), iClicks = col('Clicks');
+        iSpend = col('Spend'), iRevenue = col('Nominal POS'), iOrders = col('Total Orders'), iClicks = col('Clicks'),
+        iMediaBuy = col('Media Buy Name');
 
   const detectedRange = extractWidgetDateRange(raw);
   if(!detectedRange){
@@ -773,7 +773,13 @@ function processKeplerExport(sheet, summary, fileName){
     const spend = Number(row[iSpend]||0), revenue = Number(row[iRevenue]||0), purchases = Number(row[iOrders]||0),
           glanceViews = Number(row[iClicks]||0);
     if(platform === 'Amazon'){
-      const brand = KEPLER_BRAND_MAP[brandRaw];
+      let brand;
+      if(brandRaw === "collector's corner"){
+        const mediaBuy = String(row[iMediaBuy]||'').toUpperCase();
+        brand = mediaBuy.includes('STARWARS') ? 'STAR WARS' : 'MARVEL/SPIDERMAN';
+      } else {
+        brand = KEPLER_BRAND_MAP[brandRaw];
+      }
       if(!brand){ if(brandRaw) summary.unmappedBrands.add(row[iBrand]); continue; }
       const key = market+'|'+brand;
       amsAgg[key] = amsAgg[key] || {market:market, brand:brand, spend:0, revenue:0, purchases:0, glanceViews:0};
