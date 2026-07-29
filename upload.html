@@ -206,9 +206,30 @@
     <div class="log-area" id="vc-log"><span class="log-line">Drop your weekly VC reports above to get started.</span></div>
   </div>
 
-  <!-- ADS BULK UPLOAD -->
+  <!-- ADS UPLOAD — PRIMARY (Kepler/Adverity export, AMS + DSP in one file) -->
+  <div class="section-card" style="border-color:var(--green);">
+    <div class="card-title" style="color:var(--green);">🎯 Ads Upload — Kepler/Adverity Export (AMS + Amazon DSP) — PRIMARY</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">
+      This is now the main way ads data gets into the dashboard — one file gives you AMS and DSP together, instead of Pacvue (AMS only) plus a separate manual DSP load. Upload the "Performance Detail by Platform &amp; Brand" export for whatever date range you pulled (a single week or a full month both work). The date range is read automatically from the file's own "Widget Date Range" row, and the totals are day-weighted across the Sunday-weeks it covers.<br>
+      Rules applied automatically: rows with €0 Spend are skipped, United Arab Emirates is excluded, "Totals" rows are excluded, and any week/brand/market that already has real spend data is skipped rather than silently overwritten (so it's safe to re-upload the same or overlapping files without double-counting). Triple Lift rows and any unmapped brand (e.g. "Preschool Brand Week") are logged and excluded rather than guessed at.<br>
+      <b>Known source issue:</b> this export tool has previously gotten stuck returning the same date range on every pull regardless of the filter — check the "Date range detected" line in the log below matches what you actually meant to pull before trusting the result.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;margin-bottom:16px;">
+      <div class="upload-card" id="card-backfill" onclick="document.getElementById('file-backfill').click()" ondragover="dOver(event,'card-backfill')" ondragleave="dLeave('card-backfill')" ondrop="dDrop(event,'backfill')" style="border-color:var(--green);background:var(--green-bg);">
+        <div class="uc-icon">🎯</div>
+        <div class="uc-title">Performance Detail by Platform &amp; Brand</div>
+        <div class="uc-sub" id="lbl-backfill">Kepler/Adverity export · any date range</div>
+        <div class="uc-check">✅</div>
+        <input type="file" id="file-backfill" accept=".xlsx" onchange="onFile(event,'backfill')">
+      </div>
+      <button class="process-btn" id="backfill-btn" onclick="uploadAdsBackfill()" disabled style="padding:12px 20px;font-size:13px;align-self:end;background:var(--green);color:#fff;">Upload Ads Data</button>
+    </div>
+    <div class="log-area" id="backfill-log" style="height:180px;"><span class="log-line">Upload the Performance Detail by Platform &amp; Brand export.</span></div>
+  </div>
+
+  <!-- ADS BULK UPLOAD (LEGACY — kept as fallback only) -->
   <div class="section-card ad-border">
-    <div class="card-title ad">🎯 Weekly Ads Report — Pacvue Query Report</div>
+    <div class="card-title ad">🎯 Weekly Ads Report — Pacvue Query Report <span style="font-size:11px;font-weight:400;color:var(--text3);">(legacy — AMS only, no DSP. Use the Kepler/Adverity uploader above instead unless Pacvue is genuinely your only option)</span></div>
     <div class="note-box ad-note">Drop your weekly Pacvue <b>Query report</b> .xlsx file. Week is auto-detected from the filename. Drop multiple files to bulk upload multiple weeks at once.</div>
     <div class="ads-drop" id="ads-dropzone" ondragover="adsDragOver(event)" ondragleave="adsDragLeave()" ondrop="adsDrop(event)" onclick="document.getElementById('ads-file-input').click()">
       <div style="font-size:32px;margin-bottom:8px;">📊</div>
@@ -290,26 +311,6 @@
       <button class="process-btn purple-btn" id="search-btn" onclick="uploadSearchTerms()" disabled style="padding:12px 20px;font-size:13px;align-self:end;">Upload Search Terms</button>
     </div>
     <div class="log-area" id="search-log" style="height:100px;"><span class="log-line">Upload the Top Search Terms CSV.</span></div>
-  </div>
-
-  <!-- ADS BACKFILL (Adverity/Kepler export) -->
-  <div class="section-card" style="border-color:var(--green);">
-    <div class="card-title" style="color:var(--green);">📅 Ads Backfill — Kepler/Adverity Export (AMS + Amazon DSP)</div>
-    <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">
-      Upload the "Performance Detail by Platform &amp; Brand" export for a custom date range (monthly works well). The date range is read automatically from the file's "Widget Date Range" row and the totals are day-weighted across the Sunday-weeks it covers — same method as the June DSP one-off load.<br>
-      Rules applied automatically: rows with €0 Spend are skipped, United Arab Emirates is excluded, "Totals" rows are excluded, and any week that already has real (Pacvue) ad_spend data is skipped rather than overwritten — this is a gap-filler, not a replacement for weekly Pacvue uploads. Triple Lift rows and any unmapped brand (e.g. "Preschool Brand Week") are logged and excluded rather than guessed at.
-    </div>
-    <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;margin-bottom:16px;">
-      <div class="upload-card" id="card-backfill" onclick="document.getElementById('file-backfill').click()" ondragover="dOver(event,'card-backfill')" ondragleave="dLeave('card-backfill')" ondrop="dDrop(event,'backfill')" style="border-color:var(--green);background:var(--green-bg);">
-        <div class="uc-icon">📅</div>
-        <div class="uc-title">Performance Detail by Platform &amp; Brand</div>
-        <div class="uc-sub" id="lbl-backfill">Kepler/Adverity export · any custom date range</div>
-        <div class="uc-check">✅</div>
-        <input type="file" id="file-backfill" accept=".xlsx" onchange="onFile(event,'backfill')">
-      </div>
-      <button class="process-btn" id="backfill-btn" onclick="uploadAdsBackfill()" disabled style="padding:12px 20px;font-size:13px;align-self:end;background:var(--green);color:#fff;">Upload Backfill</button>
-    </div>
-    <div class="log-area" id="backfill-log" style="height:180px;"><span class="log-line">Upload the Performance Detail by Platform &amp; Brand export.</span></div>
   </div>
 
   <!-- UPLOAD HISTORY -->
@@ -1268,22 +1269,19 @@ async function uploadCoverage() {
   document.getElementById('coverage-btn').disabled=false;
 }
 
-// ─── ADS BACKFILL (Kepler/Adverity export — AMS + Amazon DSP) ──
-// Fills historical gaps using a "Performance Detail by Platform & Brand"
-// export covering any custom date range (the tool this comes from only lets
-// that widget be pulled for one range at a time — monthly is what's
-// practical for now). The range is read straight from the file's own
-// "Widget Date Range" row, then the totals are day-weighted across the
-// Sunday-weeks it spans — same method already used for the June DSP
-// one-off load, just generalised and built into the uploader instead of a
-// manual SQL script.
+// ─── ADS UPLOAD — PRIMARY SOURCE (Kepler/Adverity export — AMS + Amazon DSP) ──
+// This replaced Pacvue as the main ads data source: one file gives AMS +
+// Amazon DSP together instead of a Pacvue-only weekly upload plus a separate
+// manual DSP load. Also used for backfilling historical gaps — same logic
+// either way, since it's driven entirely by whatever date range is in the
+// file. The range is read straight from the file's own "Widget Date Range"
+// row, then the totals are day-weighted across the Sunday-weeks it spans.
 //
 // Deliberately conservative: skips €0-spend rows, skips UAE (outside EU5),
 // skips "Totals" rollup rows, excludes Triple Lift (no home for it in the
 // current schema — logged, not merged into AMS or DSP), and — most
 // importantly — will NOT overwrite a week/brand/market that already has
-// real ad_spend data (i.e. already covered by the weekly Pacvue upload or
-// the June DSP load). This is a gap-filler, not a replacement.
+// real ad_spend data. Safe to re-run on the same or overlapping files.
 function logB(msg,type=''){log(msg,type,'backfill-log');}
 async function sbGet(path){
   const r=await fetch(SB_URL+path,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
@@ -1404,33 +1402,51 @@ async function uploadAdsBackfill(){
           amsRows.push({week_start:w.weekStart,brand_classified:a.bid,market:a.market,
             ad_revenue:round2(a.pos*f),ad_spend:round2(a.spend*f),ad_impressions:Math.round(a.imp*f),
             ad_clicks:Math.round(a.clicks*f),ad_glance_views:Math.round(a.dpvEst*f),
-            organic_revenue:0,organic_glance_views:0});
+            organic_revenue:0,organic_glance_views:0,source:'kepler'});
         }else{
           dspRows.push({week_start:w.weekStart,brand_classified:a.bid,market:a.market,
             dsp_spend:round2(a.spend*f),dsp_revenue:round2(a.pos*f),dsp_impressions:Math.round(a.imp*f),
-            dsp_clicks:Math.round(a.clicks*f),dsp_dpv:Math.round(a.dpvEst*f),dsp_units:Math.round(a.orders*f)});
+            dsp_clicks:Math.round(a.clicks*f),dsp_dpv:Math.round(a.dpvEst*f),dsp_units:Math.round(a.orders*f),source:'kepler'});
         }
       });
     });
 
-    // ── Never overwrite a week/brand/market that already has real spend ──
+    // ── De-dupe: a prior Kepler upload for the same week/brand/market gets
+    // deleted and replaced (it's a genuine duplicate, not independent data —
+    // must not be double-counted by leaving both rows in place). Anything
+    // NOT tagged 'source=kepler' (i.e. real Pacvue data, or anything from
+    // before this tagging existed) is still left alone and only skipped —
+    // that's higher-fidelity weekly data we should never silently overwrite.
     const targetWeeks=weeks.map(w=>w.weekStart);
     async function filterAgainstExisting(rowsIn,table,spendField){
       if(!rowsIn.length) return rowsIn;
-      const existing=await sbGet(`/rest/v1/${table}?week_start=in.(${targetWeeks.join(',')})&select=week_start,brand_classified,market,${spendField}`);
+      const existing=await sbGet(`/rest/v1/${table}?week_start=in.(${targetWeeks.join(',')})&select=week_start,brand_classified,market,${spendField},source`);
       const existingMap={};
-      existing.forEach(r=>{existingMap[r.week_start+'|'+r.brand_classified+'|'+r.market]=r[spendField]||0;});
-      const keep=[],skipped=[];
-      rowsIn.forEach(r=>{
+      existing.forEach(r=>{existingMap[r.week_start+'|'+r.brand_classified+'|'+r.market]=r;});
+      const keep=[],skipped=[],replaced=[];
+      for(const r of rowsIn){
         const k=r.week_start+'|'+r.brand_classified+'|'+r.market;
-        if((existingMap[k]||0)>0) skipped.push(k); else keep.push(r);
-      });
-      if(skipped.length) logB(`⚠️ Skipped ${skipped.length} row(s) in ${table} — already has real data for that week/brand/market (not overwritten): `+skipped.slice(0,8).join('; ')+(skipped.length>8?' …':''),'err');
+        const ex=existingMap[k];
+        if(ex&&(ex[spendField]||0)>0){
+          if(ex.source==='kepler'){
+            // duplicate of our own prior upload — delete it, then let the new value go in
+            await sbDelete(`/rest/v1/${table}?week_start=eq.${r.week_start}&brand_classified=eq.${r.brand_classified}&market=eq.${r.market}`);
+            replaced.push(k);
+            keep.push(r);
+          } else {
+            skipped.push(k);
+          }
+        } else {
+          keep.push(r);
+        }
+      }
+      if(replaced.length) logB(`🔁 Replaced ${replaced.length} duplicate row(s) in ${table} from a previous Kepler upload (not double-counted): `+replaced.slice(0,8).join('; ')+(replaced.length>8?' …':''),'info');
+      if(skipped.length) logB(`⚠️ Skipped ${skipped.length} row(s) in ${table} — already has real (non-Kepler) data for that week/brand/market, not overwritten: `+skipped.slice(0,8).join('; ')+(skipped.length>8?' …':''),'err');
       return keep;
     }
     const amsToWrite=await filterAgainstExisting(amsRows,'brand_health_ads','ad_spend');
     const dspToWrite=await filterAgainstExisting(dspRows,'brand_health_dsp','dsp_spend');
-    if(!amsToWrite.length&&!dspToWrite.length) throw new Error('Nothing to upload — every targeted week/brand/market already has real data.');
+    if(!amsToWrite.length&&!dspToWrite.length) throw new Error('Nothing to upload — every targeted week/brand/market already has real (non-Kepler) data.');
 
     if(amsToWrite.length){ await sbPost('/rest/v1/brand_health_ads',amsToWrite); logB(`✅ Inserted ${amsToWrite.length} AMS rows into brand_health_ads`,'ok'); }
     if(dspToWrite.length){ await sbPost('/rest/v1/brand_health_dsp',dspToWrite); logB(`✅ Inserted ${dspToWrite.length} DSP rows into brand_health_dsp`,'ok'); }
