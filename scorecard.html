@@ -111,12 +111,12 @@
     </div>
     <table>
       <colgroup>
-        <col style="width:20%"><col style="width:16%"><col style="width:16%"><col style="width:12%">
-        <col style="width:12%"><col style="width:12%"><col style="width:12%">
+        <col style="width:17%"><col style="width:13%"><col style="width:14%"><col style="width:13%">
+        <col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:10%">
       </colgroup>
       <thead>
         <tr><th>Market</th><th class="num">Budget</th><th class="num">Spend to date</th>
-          <th class="num">Pacing</th><th class="num">ROAS</th><th class="num">CPA</th><th>Status</th></tr>
+          <th class="num">Underspend</th><th class="num">Pacing</th><th class="num">ROAS</th><th class="num">CPA</th><th>Status</th></tr>
       </thead>
       <tbody id="marketSummaryBody"></tbody>
     </table>
@@ -145,12 +145,12 @@
     </div>
     <table>
       <colgroup>
-        <col style="width:20%"><col style="width:14%"><col style="width:14%"><col style="width:14%">
-        <col style="width:12%"><col style="width:12%"><col style="width:14%">
+        <col style="width:22%"><col style="width:16%"><col style="width:16%"><col style="width:16%">
+        <col style="width:14%"><col style="width:16%">
       </colgroup>
       <thead>
         <tr><th id="tsDateHead">Month</th><th class="num">Spend</th><th class="num">Revenue</th>
-          <th class="num">Purchases</th><th class="num">ROAS</th><th class="num">CPA</th><th>Glance views*</th></tr>
+          <th class="num">Purchases</th><th class="num">ROAS</th><th>Glance views*</th></tr>
       </thead>
       <tbody id="tsBody"></tbody>
     </table>
@@ -164,19 +164,19 @@
     </div>
     <table>
       <colgroup>
-        <col style="width:24%"><col style="width:13%"><col style="width:13%"><col style="width:11%">
-        <col style="width:11%"><col style="width:11%"><col style="width:9%"><col style="width:8%">
+        <col style="width:20%"><col style="width:11%"><col style="width:11%"><col style="width:11%">
+        <col style="width:10%"><col style="width:10%"><col style="width:9%"><col style="width:9%"><col style="width:9%">
       </colgroup>
       <thead>
         <tr>
           <th>Brand / market</th><th class="num">Budget</th><th class="num">Spend to date</th>
-          <th class="num">Pacing</th><th class="num">ROAS</th><th class="num">CPA</th>
+          <th class="num">Underspend</th><th class="num">Pacing</th><th class="num">ROAS</th><th class="num">CPA</th>
           <th class="num">Glance views*</th><th>Status</th>
         </tr>
       </thead>
       <tbody id="tableBody"></tbody>
     </table>
-    <div class="foot-note">Pacing = spend to date vs the selected period's budget. *Glance views = Clicks from the Kepler export.</div>
+    <div class="foot-note">Pacing = spend to date vs the selected period's budget. Underspend = Budget minus Spend to date (negative = overspend). *Glance views = Clicks from the Kepler export.</div>
   </div>
 
   <div class="panel">
@@ -186,19 +186,19 @@
     </div>
     <table>
       <colgroup>
-        <col style="width:20%"><col style="width:16%"><col style="width:14%"><col style="width:13%">
-        <col style="width:12%"><col style="width:12%"><col style="width:8%"><col style="width:5%">
+        <col style="width:17%"><col style="width:13%"><col style="width:12%"><col style="width:11%">
+        <col style="width:10%"><col style="width:10%"><col style="width:8%"><col style="width:9%"><col style="width:5%">
       </colgroup>
       <thead>
         <tr>
           <th>Market / tactic</th><th class="num">Budget</th><th class="num">Spend to date</th>
-          <th class="num">Pacing</th><th class="num">ROAS</th><th class="num">CPA</th>
+          <th class="num">Underspend</th><th class="num">Pacing</th><th class="num">ROAS</th><th class="num">CPA</th>
           <th class="num">Glance views*</th><th>Status</th>
         </tr>
       </thead>
       <tbody id="dspTableBody"></tbody>
     </table>
-    <div class="foot-note">Tactic split target: Prospecting 45% / Retargeting 55% for H2 (was 60/40 in H1).</div>
+    <div class="foot-note">Tactic split target: Prospecting 45% / Retargeting 55% for H2 (was 60/40 in H1). Underspend = Budget minus Spend to date.</div>
   </div>
 
   <div class="panel">
@@ -374,9 +374,12 @@ function aggregate(entries, budget){
 function renderRowCells(a){
   const pacing = a.budget ? (a.cumulativeSpend/a.budget*100) : 0;
   const st = pacingStatus(pacing);
+  const underspend = a.budget - a.cumulativeSpend;
+  const underColor = underspend < 0 ? 'var(--red)' : (underspend > 0 ? 'var(--green)' : 'inherit');
   return `
     <td class="num">${fmtEUR(a.budget)}</td>
     <td class="num">${fmtEUR(a.cumulativeSpend)}</td>
+    <td class="num" style="color:${underColor};">${underspend < 0 ? '\u2212' : ''}${fmtEUR(Math.abs(underspend))}</td>
     <td class="num">${fmtPct(pacing)}</td>
     <td class="num">${a.roas ? a.roas.toFixed(2)+'x' : '\u2014'}</td>
     <td class="num">${a.cpa ? fmtEUR(a.cpa) : '\u2014'}</td>
@@ -430,8 +433,11 @@ function renderMarketSummary(){
     const roas = spend ? rev/spend : 0;
     const cpa = purch ? spend/purch : 0;
     const st = pacingStatus(pacing);
+    const underspend = budget - spend;
+    const underColor = underspend < 0 ? 'var(--red)' : (underspend > 0 ? 'var(--green)' : 'inherit');
     const tr = document.createElement('tr');
     tr.innerHTML = '<td style="font-weight:600;">' + market + '</td><td class="num">' + fmtEUR(budget) + '</td><td class="num">' + fmtEUR(spend) +
+      '</td><td class="num" style="color:' + underColor + ';">' + (underspend<0?'\u2212':'') + fmtEUR(Math.abs(underspend)) +
       '</td><td class="num">' + fmtPct(pacing) + '</td><td class="num">' + (roas?roas.toFixed(2)+'x':'\u2014') + '</td>' +
       '<td class="num">' + (cpa?fmtEUR(cpa):'\u2014') + '</td><td><span class="status-pill st-' + st + '">' + st + '</span></td>';
     tbody.appendChild(tr);
@@ -479,13 +485,12 @@ function renderTimeSeries(){
   const tbody = document.getElementById('tsBody');
   tbody.innerHTML = '';
   if(!keys.length){
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-mute);padding:20px;">No data for this selection.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-mute);padding:20px;">No data for this selection.</td></tr>';
     return;
   }
   keys.forEach(function(key){
     const b = buckets[key];
     const roas = b.spend ? b.revenue/b.spend : 0;
-    const cpa = b.purchases ? b.spend/b.purchases : 0;
     const endDate = bucketEndDate(key, tsGranularity);
     const isAttributing = latestDate && ((latestDate - endDate) / 86400000) < 14 && ((latestDate-endDate)/86400000) >= -1;
     const tr = document.createElement('tr');
@@ -494,13 +499,13 @@ function renderTimeSeries(){
       '<td style="font-weight:600;">' + bucketLabelFor(key, tsGranularity) + (isAttributing ? ' <span class="status-pill st-amber">attributing</span>' : '') + '</td>' +
       '<td class="num">' + fmtEUR(b.spend) + '</td><td class="num">' + fmtEUR(b.revenue) + '</td>' +
       '<td class="num">' + fmtNum(b.purchases) + '</td><td class="num">' + (roas?roas.toFixed(2)+'x':'\u2014') + '</td>' +
-      '<td class="num">' + (cpa?fmtEUR(cpa):'\u2014') + '</td><td class="num">' + fmtNum(b.glanceViews) + '</td>';
+      '<td class="num">' + fmtNum(b.glanceViews) + '</td>';
     tbody.appendChild(tr);
   });
 }
 
 function render(){
-  document.querySelectorAll('.periodbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.period===currentPeriod); });
+  document.querySelectorAll('#periodBar .periodbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.period===currentPeriod); });
 
   let totalBudget=0, totalSpend=0, totalRev=0, totalPurch=0, totalClicks=0;
   const tbody = document.getElementById('tableBody');
