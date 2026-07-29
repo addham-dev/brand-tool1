@@ -111,51 +111,15 @@
     </div>
     <table>
       <colgroup>
-        <col style="width:17%"><col style="width:13%"><col style="width:14%"><col style="width:13%">
-        <col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:10%">
+        <col style="width:19%"><col style="width:15%"><col style="width:15%"><col style="width:15%">
+        <col style="width:12%"><col style="width:12%"><col style="width:12%">
       </colgroup>
       <thead>
         <tr><th>Market</th><th class="num">Budget</th><th class="num">Spend to date</th>
-          <th class="num">Underspend</th><th class="num">Pacing</th><th class="num">ROAS</th><th class="num">CPA</th><th>Status</th></tr>
+          <th class="num">Underspend</th><th class="num">Pacing</th><th class="num">ROAS</th><th>Status</th></tr>
       </thead>
       <tbody id="marketSummaryBody"></tbody>
     </table>
-  </div>
-
-  <div class="panel">
-    <div class="panel-head">
-      <h2>Performance over time</h2>
-      <span class="meta">Pivot by source, market, brand/tactic and month or week</span>
-    </div>
-    <div class="row-actions" style="padding-top:14px;flex-wrap:wrap;">
-      <label style="font-size:13px;color:var(--text-soft);">Source</label>
-      <select id="tsSource">
-        <option value="ams">AMS</option>
-        <option value="dsp">DSP</option>
-      </select>
-      <label style="font-size:13px;color:var(--text-soft);">Market</label>
-      <select id="tsMarket"><option value="all">All markets</option></select>
-      <label style="font-size:13px;color:var(--text-soft);">Brand/Tactic</label>
-      <select id="tsBrand"><option value="all">All</option></select>
-      <span style="flex:1"></span>
-      <div class="periodbar" id="granBar">
-        <button class="periodbtn active" data-gran="month">Monthly</button>
-        <button class="periodbtn" data-gran="week">Weekly</button>
-      </div>
-    </div>
-    <div class="foot-note" style="padding:0 18px 8px;">Jan-Jun data was backfilled as monthly blocks, so Weekly view shows the same rows as Monthly for that period \u2014 it can't be split finer after the fact. True week-by-week rows start appearing once you upload single-week files from August onward.</div>
-    <table>
-      <colgroup>
-        <col style="width:24%"><col style="width:19%"><col style="width:19%"><col style="width:19%">
-        <col style="width:19%">
-      </colgroup>
-      <thead>
-        <tr><th id="tsDateHead">Month</th><th class="num">Spend</th><th class="num">Revenue</th>
-          <th class="num">Purchases</th><th>Clicks</th></tr>
-      </thead>
-      <tbody id="tsBody"></tbody>
-    </table>
-    <div class="foot-note">Purchases are Amazon's own "Total Orders" per campaign/keyword, summed \u2014 not deduplicated across overlapping campaigns, so treat as directional rather than a literal unique-order count. Rows shaded and marked <span class="status-pill st-amber" style="margin:0 2px;">attributing</span> are within 14 days of your latest upload \u2014 Amazon's attribution window means these haven't finished converting yet, so don't read them as underperforming. Older rows are safe to judge and act on.</div>
   </div>
 
   <div class="panel">
@@ -200,6 +164,42 @@
       <tbody id="dspTableBody"></tbody>
     </table>
     <div class="foot-note">Tactic split target: Prospecting 45% / Retargeting 55% for H2 (was 60/40 in H1). Underspend = Budget minus Spend to date.</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Performance over time</h2>
+      <span class="meta">Pivot by source, market, brand/tactic and month or week</span>
+    </div>
+    <div class="row-actions" style="padding-top:14px;flex-wrap:wrap;">
+      <label style="font-size:13px;color:var(--text-soft);">Source</label>
+      <select id="tsSource">
+        <option value="ams">AMS</option>
+        <option value="dsp">DSP</option>
+      </select>
+      <label style="font-size:13px;color:var(--text-soft);">Market</label>
+      <select id="tsMarket"><option value="all">All markets</option></select>
+      <label style="font-size:13px;color:var(--text-soft);">Brand/Tactic</label>
+      <select id="tsBrand"><option value="all">All</option></select>
+      <span style="flex:1"></span>
+      <div class="periodbar" id="granBar">
+        <button class="periodbtn active" data-gran="month">Monthly</button>
+        <button class="periodbtn" data-gran="week">Weekly</button>
+      </div>
+    </div>
+    <div class="foot-note" style="padding:0 18px 8px;">Jan-Jun data was backfilled as monthly blocks, so Weekly view shows the same rows as Monthly for that period \u2014 it can't be split finer after the fact. True week-by-week rows start appearing once you upload single-week files from August onward.</div>
+    <table>
+      <colgroup>
+        <col style="width:24%"><col style="width:19%"><col style="width:19%"><col style="width:19%">
+        <col style="width:19%">
+      </colgroup>
+      <thead>
+        <tr><th id="tsDateHead">Month</th><th class="num">Spend</th><th class="num">Revenue</th>
+          <th class="num">Purchases</th><th>Clicks</th></tr>
+      </thead>
+      <tbody id="tsBody"></tbody>
+    </table>
+    <div class="foot-note">Purchases are Amazon's own "Total Orders" per campaign/keyword, summed \u2014 not deduplicated across overlapping campaigns, so treat as directional rather than a literal unique-order count. Rows shaded and marked <span class="status-pill st-amber" style="margin:0 2px;">attributing</span> are within 14 days of your latest upload \u2014 Amazon's attribution window means these haven't finished converting yet, so don't read them as underperforming. Older rows are safe to judge and act on.</div>
   </div>
 
   <div class="panel">
@@ -413,6 +413,7 @@ function bucketEndDate(key, gran){
 function renderMarketSummary(){
   const tbody = document.getElementById('marketSummaryBody');
   tbody.innerHTML = '';
+  let totalBudgetMS=0, totalSpendMS=0, totalRevMS=0;
   MARKETS.forEach(function(market){
     let budget=0, spend=0, rev=0, purch=0;
     BRANDS.forEach(function(brand){
@@ -432,7 +433,6 @@ function renderMarketSummary(){
     }
     const pacing = budget ? (spend/budget*100) : 0;
     const roas = spend ? rev/spend : 0;
-    const cpa = purch ? spend/purch : 0;
     const st = pacingStatus(pacing);
     const underspend = budget - spend;
     const underColor = underspend < 0 ? 'var(--red)' : (underspend > 0 ? 'var(--green)' : 'inherit');
@@ -440,9 +440,22 @@ function renderMarketSummary(){
     tr.innerHTML = '<td style="font-weight:600;">' + market + '</td><td class="num">' + fmtEUR(budget) + '</td><td class="num">' + fmtEUR(spend) +
       '</td><td class="num" style="color:' + underColor + ';">' + (underspend<0?'\u2212':'') + fmtEUR(Math.abs(underspend)) +
       '</td><td class="num">' + fmtPct(pacing) + '</td><td class="num">' + (roas?roas.toFixed(2)+'x':'\u2014') + '</td>' +
-      '<td class="num">' + (cpa?fmtEUR(cpa):'\u2014') + '</td><td><span class="status-pill st-' + st + '">' + st + '</span></td>';
+      '<td><span class="status-pill st-' + st + '">' + st + '</span></td>';
     tbody.appendChild(tr);
+    totalBudgetMS += budget; totalSpendMS += spend; totalRevMS += rev;
   });
+
+  const totalPacingMS = totalBudgetMS ? (totalSpendMS/totalBudgetMS*100) : 0;
+  const totalRoasMS = totalSpendMS ? totalRevMS/totalSpendMS : 0;
+  const totalUnderMS = totalBudgetMS - totalSpendMS;
+  const totalUnderColorMS = totalUnderMS < 0 ? 'var(--red)' : (totalUnderMS > 0 ? 'var(--green)' : 'inherit');
+  const totalStMS = pacingStatus(totalPacingMS);
+  const totalTr = document.createElement('tr');
+  totalTr.innerHTML = '<td style="font-weight:700;">TOTAL</td><td class="num" style="font-weight:700;">' + fmtEUR(totalBudgetMS) + '</td><td class="num" style="font-weight:700;">' + fmtEUR(totalSpendMS) +
+    '</td><td class="num" style="font-weight:700;color:' + totalUnderColorMS + ';">' + (totalUnderMS<0?'\u2212':'') + fmtEUR(Math.abs(totalUnderMS)) +
+    '</td><td class="num" style="font-weight:700;">' + fmtPct(totalPacingMS) + '</td><td class="num" style="font-weight:700;">' + (totalRoasMS?totalRoasMS.toFixed(2)+'x':'\u2014') + '</td>' +
+    '<td><span class="status-pill st-' + totalStMS + '">' + totalStMS + '</span></td>';
+  tbody.appendChild(totalTr);
 }
 
 function refreshTsFilterOptions(){
