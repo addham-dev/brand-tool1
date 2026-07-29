@@ -143,18 +143,19 @@
         <button class="periodbtn" data-gran="week">Weekly</button>
       </div>
     </div>
+    <div class="foot-note" style="padding:0 18px 8px;">Jan-Jun data was backfilled as monthly blocks, so Weekly view shows the same rows as Monthly for that period \u2014 it can't be split finer after the fact. True week-by-week rows start appearing once you upload single-week files from August onward.</div>
     <table>
       <colgroup>
-        <col style="width:22%"><col style="width:16%"><col style="width:16%"><col style="width:16%">
-        <col style="width:14%"><col style="width:16%">
+        <col style="width:24%"><col style="width:19%"><col style="width:19%"><col style="width:19%">
+        <col style="width:19%">
       </colgroup>
       <thead>
         <tr><th id="tsDateHead">Month</th><th class="num">Spend</th><th class="num">Revenue</th>
-          <th class="num">Purchases</th><th class="num">ROAS</th><th>Glance views*</th></tr>
+          <th class="num">Purchases</th><th>Clicks</th></tr>
       </thead>
       <tbody id="tsBody"></tbody>
     </table>
-    <div class="foot-note">Rows shaded and marked <span class="status-pill st-amber" style="margin:0 2px;">attributing</span> are within 14 days of your latest upload \u2014 Amazon's attribution window means these haven't finished converting yet, so don't read them as underperforming. Older rows are safe to judge and act on.</div>
+    <div class="foot-note">Purchases are Amazon's own "Total Orders" per campaign/keyword, summed \u2014 not deduplicated across overlapping campaigns, so treat as directional rather than a literal unique-order count. Rows shaded and marked <span class="status-pill st-amber" style="margin:0 2px;">attributing</span> are within 14 days of your latest upload \u2014 Amazon's attribution window means these haven't finished converting yet, so don't read them as underperforming. Older rows are safe to judge and act on.</div>
   </div>
 
   <div class="panel">
@@ -485,12 +486,11 @@ function renderTimeSeries(){
   const tbody = document.getElementById('tsBody');
   tbody.innerHTML = '';
   if(!keys.length){
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-mute);padding:20px;">No data for this selection.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-mute);padding:20px;">No data for this selection.</td></tr>';
     return;
   }
   keys.forEach(function(key){
     const b = buckets[key];
-    const roas = b.spend ? b.revenue/b.spend : 0;
     const endDate = bucketEndDate(key, tsGranularity);
     const isAttributing = latestDate && ((latestDate - endDate) / 86400000) < 14 && ((latestDate-endDate)/86400000) >= -1;
     const tr = document.createElement('tr');
@@ -498,8 +498,8 @@ function renderTimeSeries(){
     tr.innerHTML =
       '<td style="font-weight:600;">' + bucketLabelFor(key, tsGranularity) + (isAttributing ? ' <span class="status-pill st-amber">attributing</span>' : '') + '</td>' +
       '<td class="num">' + fmtEUR(b.spend) + '</td><td class="num">' + fmtEUR(b.revenue) + '</td>' +
-      '<td class="num">' + fmtNum(b.purchases) + '</td><td class="num">' + (roas?roas.toFixed(2)+'x':'\u2014') + '</td>' +
-      '<td class="num">' + fmtNum(b.glanceViews) + '</td>';
+      '<td class="num">' + fmtNum(b.purchases) + '</td>' +
+      '<td>' + fmtNum(b.glanceViews) + '</td>';
     tbody.appendChild(tr);
   });
 }
