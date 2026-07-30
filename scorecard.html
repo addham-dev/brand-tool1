@@ -86,7 +86,7 @@
   <div class="topbar">
     <div>
       <div class="brandline"><span class="dot"></span><h1>Weekly agency scorecard</h1></div>
-      <div class="sub">AMS + DSP, both always shown. H1 = Jan-Jun, H2 = Jul-Dec.</div>
+      <div class="sub">AMS + DSP, both always shown. H1 = Jan-Jun, H2 = Jul-Dec. Budget converted from USD to EUR at 1 EUR = $1.15 (source plan is USD across all markets).</div>
     </div>
     <div class="periodbar" id="periodBar">
       <button class="periodbtn" data-period="h1">H1</button>
@@ -256,46 +256,21 @@
 
 <script>
 const PLANS = [
-  {market:'UK', brand:'MARVEL/SPIDERMAN', h1:31757, h2:51434, fy:83191},{market:'UK', brand:'GAMES', h1:85093, h2:178558, fy:263650},
-  {market:'UK', brand:'MONOPOLY', h1:58629, h2:107821, fy:166450},{market:'UK', brand:'STAR WARS', h1:27143, h2:84178, fy:111321},
-  {market:'UK', brand:'PLAY-DOH', h1:79393, h2:128586, fy:207979},{market:'UK', brand:'PEPPA PIG', h1:47636, h2:77152, fy:124787},
-  {market:'UK', brand:'TRANSFORMERS', h1:31757, h2:51434, fy:83191},{market:'UK', brand:'BEYBLADE', h1:42343, h2:68579, fy:110922},
-  {market:'UK', brand:'DISNEY KIDS (IMF SAF)', h1:21171, h2:34290, fy:55461},{market:'UK', brand:'KPOP', h1:0, h2:28252, fy:28252},
-  {market:'UK', brand:'PAN HASBRO/BRAND WEEKS', h1:59714, h2:92316, fy:152030},{market:'UK', brand:'NERF', h1:0, h2:36191, fy:36191},
-  {market:'GSA', brand:'MARVEL/SPIDERMAN', h1:31757, h2:51434, fy:83191},{market:'GSA', brand:'GAMES', h1:85093, h2:178558, fy:263650},
-  {market:'GSA', brand:'MONOPOLY', h1:58629, h2:107821, fy:166450},{market:'GSA', brand:'STAR WARS', h1:27143, h2:84178, fy:111321},
-  {market:'GSA', brand:'PLAY-DOH', h1:79393, h2:128586, fy:207979},{market:'GSA', brand:'PEPPA PIG', h1:47636, h2:77152, fy:124787},
-  {market:'GSA', brand:'TRANSFORMERS', h1:31757, h2:51434, fy:83191},{market:'GSA', brand:'BEYBLADE', h1:42343, h2:68579, fy:110922},
-  {market:'GSA', brand:'DISNEY KIDS (IMF SAF)', h1:21171, h2:34290, fy:55461},{market:'GSA', brand:'KPOP', h1:0, h2:28252, fy:28252},
-  {market:'GSA', brand:'PAN HASBRO/BRAND WEEKS', h1:59714, h2:92316, fy:152030},{market:'GSA', brand:'NERF', h1:0, h2:36191, fy:36191},
-  {market:'France', brand:'MARVEL/SPIDERMAN', h1:12189, h2:17740, fy:29929},{market:'France', brand:'GAMES', h1:32661, h2:61957, fy:94618},
-  {market:'France', brand:'MONOPOLY', h1:22503, h2:37305, fy:59809},{market:'France', brand:'STAR WARS', h1:10418, h2:29188, fy:39606},
-  {market:'France', brand:'PLAY-DOH', h1:30473, h2:44350, fy:74823},{market:'France', brand:'PEPPA PIG', h1:18284, h2:26610, fy:44894},
-  {market:'France', brand:'TRANSFORMERS', h1:12189, h2:17740, fy:29929},{market:'France', brand:'BEYBLADE', h1:16252, h2:23653, fy:39906},
-  {market:'France', brand:'DISNEY KIDS (IMF SAF)', h1:8126, h2:11827, fy:19953},{market:'France', brand:'KPOP', h1:0, h2:9585, fy:9585},
-  {market:'France', brand:'PAN HASBRO/BRAND WEEKS', h1:22920, h2:32317, fy:55237},
-  {market:'Iberia', brand:'MARVEL/SPIDERMAN', h1:9360, h2:13622, fy:22982},{market:'Iberia', brand:'GAMES', h1:25080, h2:47576, fy:72656},
-  {market:'Iberia', brand:'MONOPOLY', h1:17280, h2:28646, fy:45926},{market:'Iberia', brand:'STAR WARS', h1:8000, h2:22413, fy:30413},
-  {market:'Iberia', brand:'PLAY-DOH', h1:23400, h2:34056, fy:57456},{market:'Iberia', brand:'PEPPA PIG', h1:14040, h2:20434, fy:34474},
-  {market:'Iberia', brand:'TRANSFORMERS', h1:9360, h2:13622, fy:22982},{market:'Iberia', brand:'BEYBLADE', h1:12480, h2:18163, fy:30643},
-  {market:'Iberia', brand:'DISNEY KIDS (IMF SAF)', h1:6240, h2:9082, fy:15322},{market:'Iberia', brand:'KPOP', h1:0, h2:7360, fy:7360},
-  {market:'Iberia', brand:'PAN HASBRO/BRAND WEEKS', h1:17600, h2:24816, fy:42416},{market:'Iberia', brand:'NERF', h1:0, h2:32667, fy:32667},
-  {market:'Italy', brand:'MARVEL/SPIDERMAN', h1:10080, h2:14670, fy:24750},{market:'Italy', brand:'GAMES', h1:27009, h2:51236, fy:78245},
-  {market:'Italy', brand:'MONOPOLY', h1:18609, h2:30850, fy:49459},{market:'Italy', brand:'STAR WARS', h1:8615, h2:24137, fy:32752},
-  {market:'Italy', brand:'PLAY-DOH', h1:25200, h2:36676, fy:61876},{market:'Italy', brand:'PEPPA PIG', h1:15120, h2:22005, fy:37125},
-  {market:'Italy', brand:'TRANSFORMERS', h1:10080, h2:14670, fy:24750},{market:'Italy', brand:'BEYBLADE', h1:13440, h2:19560, fy:33000},
-  {market:'Italy', brand:'DISNEY KIDS (IMF SAF)', h1:6720, h2:9780, fy:16500},{market:'Italy', brand:'KPOP', h1:0, h2:7926, fy:7926},
-  {market:'Italy', brand:'PAN HASBRO/BRAND WEEKS', h1:18954, h2:26725, fy:45679},{market:'Italy', brand:'NERF', h1:0, h2:32667, fy:32667},
+  {market:'UK', brand:'MARVEL/SPIDERMAN', h1:27614.91, h2:44725.52, fy:72340.43},{market:'UK', brand:'GAMES', h1:73993.8, h2:155267.4, fy:229261.2},{market:'UK', brand:'MONOPOLY', h1:50981.37, h2:93757.33, fy:144738.7},{market:'UK', brand:'STAR WARS', h1:23602.49, h2:73198.5, fy:96800.99},{market:'UK', brand:'PLAY-DOH', h1:69037.27, h2:111813.79, fy:180851.07},{market:'UK', brand:'PEPPA PIG', h1:41422.36, h2:67088.27, fy:108510.64},{market:'UK', brand:'TRANSFORMERS', h1:27614.91, h2:44725.52, fy:72340.43},{market:'UK', brand:'BEYBLADE', h1:36819.88, h2:59634.02, fy:96453.9},{market:'UK', brand:'DISNEY KIDS (IMF SAF)', h1:18409.94, h2:29817.01, fy:48226.95},{market:'UK', brand:'KPOP', h1:0.0, h2:24566.62, fy:24566.62},{market:'UK', brand:'PAN HASBRO/BRAND WEEKS', h1:51925.47, h2:80274.43, fy:132199.9},{market:'UK', brand:'NERF', h1:0.0, h2:31470.8, fy:31470.8},
+  {market:'GSA', brand:'MARVEL/SPIDERMAN', h1:27614.91, h2:44725.52, fy:72340.43},{market:'GSA', brand:'GAMES', h1:73993.8, h2:155267.4, fy:229261.2},{market:'GSA', brand:'MONOPOLY', h1:50981.37, h2:93757.33, fy:144738.7},{market:'GSA', brand:'STAR WARS', h1:23602.49, h2:73198.5, fy:96800.99},{market:'GSA', brand:'PLAY-DOH', h1:69037.27, h2:111813.79, fy:180851.07},{market:'GSA', brand:'PEPPA PIG', h1:41422.36, h2:67088.27, fy:108510.64},{market:'GSA', brand:'TRANSFORMERS', h1:27614.91, h2:44725.52, fy:72340.43},{market:'GSA', brand:'BEYBLADE', h1:36819.88, h2:59634.02, fy:96453.9},{market:'GSA', brand:'DISNEY KIDS (IMF SAF)', h1:18409.94, h2:29817.01, fy:48226.95},{market:'GSA', brand:'KPOP', h1:0.0, h2:24566.62, fy:24566.62},{market:'GSA', brand:'PAN HASBRO/BRAND WEEKS', h1:51925.47, h2:80274.43, fy:132199.9},{market:'GSA', brand:'NERF', h1:0.0, h2:31470.8, fy:31470.8},
+  {market:'France', brand:'MARVEL/SPIDERMAN', h1:10599.37, h2:15426.15, fy:26025.52},{market:'France', brand:'GAMES', h1:28400.86, h2:53875.58, fy:82276.44},{market:'France', brand:'MONOPOLY', h1:19568.06, h2:32439.49, fy:52007.55},{market:'France', brand:'STAR WARS', h1:9059.29, h2:25380.5, fy:34439.79},{market:'France', brand:'PLAY-DOH', h1:26498.41, h2:38565.38, fy:65063.8},{market:'France', brand:'PEPPA PIG', h1:15899.05, h2:23139.23, fy:39038.28},{market:'France', brand:'TRANSFORMERS', h1:10599.37, h2:15426.15, fy:26025.52},{market:'France', brand:'BEYBLADE', h1:14132.49, h2:20568.21, fy:34700.69},{market:'France', brand:'DISNEY KIDS (IMF SAF)', h1:7066.24, h2:10284.1, fy:17350.35},{market:'France', brand:'KPOP', h1:0.0, h2:8334.54, fy:8334.54},{market:'France', brand:'PAN HASBRO/BRAND WEEKS', h1:19930.43, h2:28101.91, fy:48032.34},
+  {market:'Iberia', brand:'MARVEL/SPIDERMAN', h1:8139.13, h2:11845.57, fy:19984.7},{market:'Iberia', brand:'GAMES', h1:21808.7, h2:41370.43, fy:63179.13},{market:'Iberia', brand:'MONOPOLY', h1:15026.09, h2:24909.91, fy:39936.0},{market:'Iberia', brand:'STAR WARS', h1:6956.52, h2:19489.39, fy:26445.91},{market:'Iberia', brand:'PLAY-DOH', h1:20347.83, h2:29613.91, fy:49961.74},{market:'Iberia', brand:'PEPPA PIG', h1:12208.7, h2:17768.35, fy:29977.04},{market:'Iberia', brand:'TRANSFORMERS', h1:8139.13, h2:11845.57, fy:19984.7},{market:'Iberia', brand:'BEYBLADE', h1:10852.17, h2:15794.09, fy:26646.26},{market:'Iberia', brand:'DISNEY KIDS (IMF SAF)', h1:5426.09, h2:7897.04, fy:13323.13},{market:'Iberia', brand:'KPOP', h1:0.0, h2:6400.0, fy:6400.0},{market:'Iberia', brand:'PAN HASBRO/BRAND WEEKS', h1:15304.35, h2:21579.13, fy:36883.48},{market:'Iberia', brand:'NERF', h1:0.0, h2:28405.8, fy:28405.8},
+  {market:'Italy', brand:'MARVEL/SPIDERMAN', h1:8765.21, h2:12756.76, fy:21521.97},{market:'Italy', brand:'GAMES', h1:23486.28, h2:44552.75, fy:68039.03},{market:'Italy', brand:'MONOPOLY', h1:16181.93, h2:26826.05, fy:43007.98},{market:'Italy', brand:'STAR WARS', h1:7491.63, h2:20988.56, fy:28480.2},{market:'Italy', brand:'PLAY-DOH', h1:21913.03, h2:31891.89, fy:53804.92},{market:'Italy', brand:'PEPPA PIG', h1:13147.82, h2:19135.13, fy:32282.95},{market:'Italy', brand:'TRANSFORMERS', h1:8765.21, h2:12756.76, fy:21521.97},{market:'Italy', brand:'BEYBLADE', h1:11686.95, h2:17009.01, fy:28695.96},{market:'Italy', brand:'DISNEY KIDS (IMF SAF)', h1:5843.48, h2:8504.5, fy:14347.98},{market:'Italy', brand:'KPOP', h1:0.0, h2:6892.3, fy:6892.3},{market:'Italy', brand:'PAN HASBRO/BRAND WEEKS', h1:16481.6, h2:23239.05, fy:39720.65},{market:'Italy', brand:'NERF', h1:0.0, h2:28405.8, fy:28405.8}
 ];
 const BRANDS = [...new Set(PLANS.map(p=>p.brand))];
 const MARKETS = [...new Set(PLANS.map(p=>p.market))];
 
 const DSP_PLANS = [
-  {market:'UK', tactic:'Play-Doh', h1:90476.17, h2:90476.16, fy:180952.33},{market:'UK', tactic:'Gaming', h1:90476.17, h2:90476.16, fy:180952.33},{market:'UK', tactic:'Brand Weeks', h1:90476.17, h2:90476.16, fy:180952.33},
-  {market:'GSA', tactic:'Play-Doh', h1:90476.17, h2:90476.16, fy:180952.33},{market:'GSA', tactic:'Gaming', h1:90476.17, h2:90476.16, fy:180952.33},{market:'GSA', tactic:'Brand Weeks', h1:90476.17, h2:90476.16, fy:180952.33},
-  {market:'France', tactic:'Play-Doh', h1:50681.83, h2:50681.84, fy:101363.67},{market:'France', tactic:'Gaming', h1:50681.83, h2:50681.84, fy:101363.67},{market:'France', tactic:'Brand Weeks', h1:50681.83, h2:50681.84, fy:101363.67},
-  {market:'Iberia', tactic:'Play-Doh', h1:41666.67, h2:41666.66, fy:83333.33},{market:'Iberia', tactic:'Gaming', h1:41666.67, h2:41666.66, fy:83333.33},{market:'Iberia', tactic:'Brand Weeks', h1:41666.67, h2:41666.66, fy:83333.33},
-  {market:'Italy', tactic:'Play-Doh', h1:44871.83, h2:44871.84, fy:89743.67},{market:'Italy', tactic:'Gaming', h1:44871.83, h2:44871.84, fy:89743.67},{market:'Italy', tactic:'Brand Weeks', h1:44871.83, h2:44871.84, fy:89743.67},
+  {market:'UK', tactic:'Play-Doh', h1:78674.93, h2:78674.93, fy:157349.86},{market:'UK', tactic:'Gaming', h1:78674.93, h2:78674.93, fy:157349.86},{market:'UK', tactic:'Brand Weeks', h1:78674.93, h2:78674.93, fy:157349.86},
+  {market:'GSA', tactic:'Play-Doh', h1:78674.93, h2:78674.93, fy:157349.86},{market:'GSA', tactic:'Gaming', h1:78674.93, h2:78674.93, fy:157349.86},{market:'GSA', tactic:'Brand Weeks', h1:78674.93, h2:78674.93, fy:157349.86},
+  {market:'France', tactic:'Play-Doh', h1:44071.16, h2:44071.16, fy:88142.32},{market:'France', tactic:'Gaming', h1:44071.16, h2:44071.16, fy:88142.32},{market:'France', tactic:'Brand Weeks', h1:44071.16, h2:44071.16, fy:88142.32},
+  {market:'Iberia', tactic:'Play-Doh', h1:36231.88, h2:36231.88, fy:72463.77},{market:'Iberia', tactic:'Gaming', h1:36231.88, h2:36231.88, fy:72463.77},{market:'Iberia', tactic:'Brand Weeks', h1:36231.88, h2:36231.88, fy:72463.77},
+  {market:'Italy', tactic:'Play-Doh', h1:39018.99, h2:39018.99, fy:78037.97},{market:'Italy', tactic:'Gaming', h1:39018.99, h2:39018.99, fy:78037.97},{market:'Italy', tactic:'Brand Weeks', h1:39018.99, h2:39018.99, fy:78037.97}
 ];
 const DSP_MARKETS = [...new Set(DSP_PLANS.map(p=>p.market))];
 const DSP_TACTICS = ['Play-Doh','Gaming','Brand Weeks'];
@@ -717,10 +692,19 @@ document.getElementById('csvFile').onchange = async function(e){
         if(keplerSheetName){
           processKeplerExport(wb.Sheets[keplerSheetName], summary, file.name);
         } else {
-          const sheet = wb.Sheets[wb.SheetNames[0]];
-          const json = XLSX.utils.sheet_to_json(sheet, {defval:''});
-          const rows = json.map(function(r){ const lower={}; Object.keys(r).forEach(function(k){ lower[k.trim().toLowerCase()]=r[k]; }); return lower; });
-          processUploadedRows(rows, summary);
+          const dataSheetNames = wb.SheetNames.filter(function(n){ return /^ams|^dsp/i.test(n.trim()); });
+          if(dataSheetNames.length){
+            dataSheetNames.forEach(function(sheetName){
+              const json = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {defval:''});
+              const rows = json.map(function(r){ const lower={}; Object.keys(r).forEach(function(k){ lower[k.trim().toLowerCase()]=r[k]; }); return lower; });
+              processUploadedRows(rows, summary);
+            });
+          } else {
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, {defval:''});
+            const rows = json.map(function(r){ const lower={}; Object.keys(r).forEach(function(k){ lower[k.trim().toLowerCase()]=r[k]; }); return lower; });
+            processUploadedRows(rows, summary);
+          }
         }
       } else {
         processUploadedRows(parseCSV(data), summary);
@@ -818,8 +802,10 @@ function processKeplerExport(sheet, summary, fileName){
 }
 
 function processUploadedRows(rows, summary){
-  const weekEnding = document.getElementById('weekEndingInput').value;
+  const fallbackWeekEnding = document.getElementById('weekEndingInput').value;
   rows.forEach(function(r){
+    const weekEnding = (r.period_ending || r.periodending || r.week_ending || r.weekending || r.date || fallbackWeekEnding).toString().trim();
+    const rangeStart = (r.period_start || r.periodstart || weekEnding).toString().trim();
     const market = (r.market||'').toString().trim();
     const brand = (r.brand||'').toString().trim();
     const tactic = (r.tactic||'').toString().trim();
@@ -830,8 +816,14 @@ function processUploadedRows(rows, summary){
       if(!marketOk) summary.unmappedMarkets.add(market||'(blank)');
       if(!tacticOk) summary.unmappedBrands.add(tactic||'(blank)');
       if(marketOk && tacticOk){
-        state.dspActuals.push({market: DSP_MARKETS.find(function(m){ return m.toLowerCase()===market.toLowerCase(); }),
-          tactic: DSP_TACTICS.find(function(t){ return t.toLowerCase()===tactic.toLowerCase(); }), spend:spend, revenue:revenue, purchases:purchases, glanceViews:glanceViews, weekEnding:weekEnding, rangeStart:weekEnding});
+        const canonMarket = DSP_MARKETS.find(function(m){ return m.toLowerCase()===market.toLowerCase(); });
+        const canonTactic = DSP_TACTICS.find(function(t){ return t.toLowerCase()===tactic.toLowerCase(); });
+        state.dspActuals.filter(function(e){ return e.market===canonMarket && e.rangeStart; }).forEach(function(e){
+          if(rangesOverlap(rangeStart, weekEnding, e.rangeStart, e.weekEnding)){
+            summary.overlapWarnings.add(canonMarket + '/' + canonTactic + ' (DSP): new [' + rangeStart + '\u2192' + weekEnding + '] overlaps existing [' + e.rangeStart + '\u2192' + e.weekEnding + ']');
+          }
+        });
+        state.dspActuals.push({market:canonMarket, tactic:canonTactic, spend:spend, revenue:revenue, purchases:purchases, glanceViews:glanceViews, weekEnding:weekEnding, rangeStart:rangeStart});
         summary.dspRows++;
       }
     } else {
@@ -840,8 +832,14 @@ function processUploadedRows(rows, summary){
       if(!marketOk) summary.unmappedMarkets.add(market||'(blank)');
       if(!brandOk) summary.unmappedBrands.add(brand||'(blank)');
       if(marketOk && brandOk){
-        state.actuals.push({market: MARKETS.find(function(m){ return m.toLowerCase()===market.toLowerCase(); }),
-          brand: BRANDS.find(function(b){ return b.toLowerCase()===brand.toLowerCase(); }), spend:spend, revenue:revenue, purchases:purchases, glanceViews:glanceViews, weekEnding:weekEnding, rangeStart:weekEnding});
+        const canonMarket = MARKETS.find(function(m){ return m.toLowerCase()===market.toLowerCase(); });
+        const canonBrand = BRANDS.find(function(b){ return b.toLowerCase()===brand.toLowerCase(); });
+        state.actuals.filter(function(e){ return e.market===canonMarket && e.rangeStart; }).forEach(function(e){
+          if(rangesOverlap(rangeStart, weekEnding, e.rangeStart, e.weekEnding)){
+            summary.overlapWarnings.add(canonMarket + '/' + canonBrand + ' (AMS): new [' + rangeStart + '\u2192' + weekEnding + '] overlaps existing [' + e.rangeStart + '\u2192' + e.weekEnding + ']');
+          }
+        });
+        state.actuals.push({market:canonMarket, brand:canonBrand, spend:spend, revenue:revenue, purchases:purchases, glanceViews:glanceViews, weekEnding:weekEnding, rangeStart:rangeStart});
         summary.amsRows++;
       }
     }
